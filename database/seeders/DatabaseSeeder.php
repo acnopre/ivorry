@@ -1,23 +1,46 @@
 <?php
 
-namespace Database\Seeders;
-
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Database\Seeders\AccountManagerSeeder;
+use Database\Seeders\AccreditationSeeder;
+use Database\Seeders\AccreditationStatusSeeder;
+use Database\Seeders\ClaimsProcessorSeeder;
+use Database\Seeders\ClinicSeeder;
+use Database\Seeders\CSRSeeder;
+use Database\Seeders\DentistAccountSeeder;
+use Database\Seeders\DentistSeeder;
+use Database\Seeders\EndorsementTypeSeeder;
+use Database\Seeders\MemberSeeder;
+use Database\Seeders\MiddleManagementSeeder;
+use Database\Seeders\RolesAndPermissionsSeeder;
+use Database\Seeders\RoleSeeder;
+use Database\Seeders\SpecializationSeeder;
+use Database\Seeders\SuperAdminSeeder;
+use Database\Seeders\UpperManagementSeeder;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+            SuperAdminSeeder::class,
+            CSRSeeder::class,
+            ClaimsProcessorSeeder::class,
+            AccountManagerSeeder::class,
+            AccreditationSeeder::class,
+            MiddleManagementSeeder::class,
+            MemberSeeder::class,
+            DentistAccountSeeder::class,
+            UpperManagementSeeder::class,
+            ClinicSeeder::class,
+            DentistSeeder::class,
+            AccreditationStatusSeeder::class,
+            SpecializationSeeder::class,
+            EndorsementTypeSeeder::class,
         ]);
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Database\Seeders\AccountManagerSeeder;
+use Database\Seeders\AccountSeeder;
 use Database\Seeders\AccreditationSeeder;
 use Database\Seeders\AccreditationStatusSeeder;
 use Database\Seeders\BenefitsSeeder;
@@ -46,6 +47,7 @@ class DatabaseSeeder extends Seeder
             EndorsementTypeSeeder::class,
             BenefitsSeeder::class,
             UnitsSeeder::class,
+            AccountSeeder::class,
         ]);
     }
 }

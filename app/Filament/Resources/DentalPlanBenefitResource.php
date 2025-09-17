@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\DentalPlanBenefitResource\Pages;
+use App\Models\Benefits;
 use App\Models\DentalPlanBenefit;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -11,7 +12,7 @@ use Filament\Tables\Table;
 
 class DentalPlanBenefitResource extends Resource
 {
-    protected static ?string $model = DentalPlanBenefit::class;
+    protected static ?string $model = Benefits::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationGroup = 'Dental Plans';
@@ -27,19 +28,11 @@ class DentalPlanBenefitResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('service_name')
+                Tables\Columns\TextColumn::make('name')
                     ->label('Service Name')
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('unit')
-                    ->label('Unit')
-                    ->sortable()
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('limits')
-                    ->label('Limits')
-                    ->wrap(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category')

@@ -42,7 +42,7 @@ class MemberResource extends Resource
                             ->searchable(),
 
                         TextInput::make('card_number')
-                            ->label('Member ID / Policy No.')
+                            ->label('Card Number')
                             ->required()
                             ->unique(ignoreRecord: true),
 

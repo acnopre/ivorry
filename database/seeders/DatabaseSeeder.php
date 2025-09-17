@@ -7,6 +7,7 @@ use Database\Seeders\AccreditationStatusSeeder;
 use Database\Seeders\ClaimsProcessorSeeder;
 use Database\Seeders\ClinicSeeder;
 use Database\Seeders\CSRSeeder;
+use Database\Seeders\DentalPlanBenefitsSeeder;
 use Database\Seeders\DentistAccountSeeder;
 use Database\Seeders\DentistSeeder;
 use Database\Seeders\EndorsementTypeSeeder;
@@ -41,6 +42,7 @@ class DatabaseSeeder extends Seeder
             AccreditationStatusSeeder::class,
             SpecializationSeeder::class,
             EndorsementTypeSeeder::class,
+            DentalPlanBenefitsSeeder::class,
         ]);
     }
 }

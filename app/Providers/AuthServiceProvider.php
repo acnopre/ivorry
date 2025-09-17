@@ -14,7 +14,6 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // 👇 Define your custom gates here
         Gate::define('access-admin', function ($user) {
             return $user->hasAnyRole(['Super Admin', 'Admin', 'Staff']);
         });

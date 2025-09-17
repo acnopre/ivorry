@@ -73,7 +73,7 @@ class AccountResource extends Resource
                         Select::make('endorsement_type')
                             ->label('Endorsement Type')
                             ->options(
-                                \App\Models\EndorsementType::pluck('name', 'id')
+                                \App\Models\EndorsementType::pluck('name', 'name')
                             )
                             ->required(),
                     ])->columns(3),
@@ -114,9 +114,11 @@ class AccountResource extends Resource
             ])
             ->filters([
                 // filter dynamically from DB
-                SelectFilter::make('endorsement_type_id')
+                SelectFilter::make('endorsement_type')
                     ->label('Endorsement Type')
-                    ->relationship('endorsementType', 'name'),
+                    ->options(
+                        \App\Models\EndorsementType::pluck('name', 'name')
+                    )
             ])
             ->headerActions([
                 Action::make('importXls')
@@ -134,14 +136,16 @@ class AccountResource extends Resource
                     ])
                     ->action(function (array $data): void {
                         $relativePath = $data['file'];
-                        $absolutePath = Storage::path($relativePath);
+                        $disk = Storage::disk('public'); // use the public disk
+                        $absolutePath = $disk->path($relativePath);
 
-                        if (! Storage::exists($relativePath)) {
+                        if (! $disk->exists($relativePath)) {
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
 
                         Excel::import(new AccountImport, $absolutePath);
                     }),
+
             ])
             ->actions([
                 ViewAction::make()
@@ -170,6 +174,12 @@ class AccountResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Account Manager', 'Upper Management']);
     }
 
     public static function getRelations(): array

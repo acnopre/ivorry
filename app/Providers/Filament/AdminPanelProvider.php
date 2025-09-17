@@ -26,15 +26,18 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            ->path('')
+            ->brandLogo(asset('images/brand_logo.png'))
+            ->brandLogoHeight('80px')
             ->login()
             ->colors([
-                'primary' => Color::Cyan,
+                'primary' => '#8B1C52'
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources') // 👈 this is important
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                Dashboard::class
+                Dashboard::class,
+                \App\Filament\Pages\Auth\SetPassword::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([

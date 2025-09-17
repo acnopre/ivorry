@@ -50,6 +50,11 @@ class PermissionResource extends Resource
             //
         ];
     }
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin']);
+    }
 
     public static function getPages(): array
     {

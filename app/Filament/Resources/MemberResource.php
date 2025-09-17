@@ -3,15 +3,19 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\MemberResource\Pages;
+use App\Imports\MembersImport;
 use App\Models\Member;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\{DatePicker, Section, Select, Textarea, TextInput};
+use Filament\Forms\Components\{DatePicker, FileUpload, Section, Select, Textarea, TextInput};
 use Filament\Tables\Columns\{TextColumn, BadgeColumn};
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use Filament\Tables\Actions\Action;
 
 class MemberResource extends Resource
 {
@@ -76,7 +80,7 @@ class MemberResource extends Resource
             ->columns([
                 TextColumn::make('account.policy_code')->label('Policy Code')->sortable()->searchable(),
                 TextColumn::make('account.company_name')->label('Company Name')->sortable()->searchable(),
-                TextColumn::make('full_name')->label('Full Name')->sortable()->searchable(),
+                TextColumn::make('name')->label('Full Name')->sortable()->searchable(),
                 TextColumn::make('card_number')->label('Card Number')->sortable()->searchable(),
                 TextColumn::make('member_type')->label('Member Type')->sortable()->searchable(),
                 TextColumn::make('account.status')
@@ -96,11 +100,39 @@ class MemberResource extends Resource
                         'inactive' => 'Inactive',
                     ]),
             ])
+            ->headerActions([
+                Action::make('importXls')
+                    ->label('Import XLS')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('success')
+                    ->form([
+                        FileUpload::make('file')
+                            ->label('Upload Excel File')
+                            ->acceptedFileTypes([
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $relativePath = $data['file'];
+                        $disk = Storage::disk('public'); // use the public disk
+                        $absolutePath = $disk->path($relativePath);
+
+                        if (! $disk->exists($relativePath)) {
+                            throw new \Exception("File not found at: {$absolutePath}");
+                        }
+
+                        Excel::import(new MembersImport, $absolutePath);
+                    }),
+
+            ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
+
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
@@ -111,6 +143,18 @@ class MemberResource extends Resource
     public static function getRelations(): array
     {
         return [];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole([
+                'Super Admin',
+                'Account Manager',
+                'Upper Management',
+                'Dentist',
+                'CSR'
+            ]);
     }
 
     public static function getPages(): array

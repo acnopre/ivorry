@@ -8,9 +8,7 @@ class Member extends Model
 {
     protected $fillable = [
         'account_id',
-        'first_name',
-        'last_name',
-        'middle_initial',
+        'name',
         'member_type',
         'card_number',
         'birthdate',
@@ -18,6 +16,7 @@ class Member extends Model
         'email',
         'phone',
         'address',
+        'user_id',
     ];
 
     public function account()

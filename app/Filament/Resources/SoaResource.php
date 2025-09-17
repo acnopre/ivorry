@@ -20,7 +20,7 @@ class SoaResource extends Resource
     protected static ?string $navigationGroup = 'Finance';
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
     protected static ?int $navigationSort = 1;
-    
+
 
     public static function form(Form $form): Form
     {
@@ -54,6 +54,12 @@ class SoaResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin']);
     }
 
     public static function getPages(): array

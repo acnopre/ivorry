@@ -4,6 +4,7 @@ use App\Models\User;
 use Database\Seeders\AccountManagerSeeder;
 use Database\Seeders\AccreditationSeeder;
 use Database\Seeders\AccreditationStatusSeeder;
+use Database\Seeders\BenefitsSeeder;
 use Database\Seeders\ClaimsProcessorSeeder;
 use Database\Seeders\ClinicSeeder;
 use Database\Seeders\CSRSeeder;
@@ -17,6 +18,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SpecializationSeeder;
 use Database\Seeders\SuperAdminSeeder;
+use Database\Seeders\UnitsSeeder;
 use Database\Seeders\UpperManagementSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -42,7 +44,8 @@ class DatabaseSeeder extends Seeder
             AccreditationStatusSeeder::class,
             SpecializationSeeder::class,
             EndorsementTypeSeeder::class,
-            DentalPlanBenefitsSeeder::class,
+            BenefitsSeeder::class,
+            UnitsSeeder::class,
         ]);
     }
 }

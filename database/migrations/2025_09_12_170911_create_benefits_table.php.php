@@ -8,12 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('dental_plan_benefits', function (Blueprint $table) {
+        Schema::create('benefits', function (Blueprint $table) {
             $table->id();
-            $table->string('category'); // BASIC DENTAL SERVICES, PLAN ENHANCEMENTS
-            $table->string('service_name');
-            $table->string('unit')->nullable();
-            $table->string('limits')->nullable(); // "TO BE ENTERED BASED ON MOA"
+            $table->string('category');
+            $table->string('name');
             $table->timestamps();
         });
     }

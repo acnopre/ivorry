@@ -1,10 +1,12 @@
 <?php
 
+use App\Models\BasicDentalService;
 use App\Models\User;
 use Database\Seeders\AccountManagerSeeder;
 use Database\Seeders\AccountSeeder;
 use Database\Seeders\AccreditationSeeder;
 use Database\Seeders\AccreditationStatusSeeder;
+use Database\Seeders\BasicDentalServicesSeeder;
 use Database\Seeders\BenefitsSeeder;
 use Database\Seeders\ClaimsProcessorSeeder;
 use Database\Seeders\ClinicSeeder;
@@ -15,6 +17,7 @@ use Database\Seeders\DentistSeeder;
 use Database\Seeders\EndorsementTypeSeeder;
 use Database\Seeders\MemberSeeder;
 use Database\Seeders\MiddleManagementSeeder;
+use Database\Seeders\PlanEnhancementsSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SpecializationSeeder;
@@ -48,6 +51,8 @@ class DatabaseSeeder extends Seeder
             BenefitsSeeder::class,
             UnitsSeeder::class,
             AccountSeeder::class,
+            BasicDentalServicesSeeder::class,
+            PlanEnhancementsSeeder::class,
         ]);
     }
 }

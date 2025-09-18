@@ -48,7 +48,6 @@ class DatabaseSeeder extends Seeder
             AccreditationStatusSeeder::class,
             SpecializationSeeder::class,
             EndorsementTypeSeeder::class,
-            BenefitsSeeder::class,
             UnitsSeeder::class,
             AccountSeeder::class,
             BasicDentalServicesSeeder::class,

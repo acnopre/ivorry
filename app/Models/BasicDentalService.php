@@ -14,4 +14,9 @@ class BasicDentalService extends Model
     protected $fillable = [
         'name',
     ];
+
+    public function accounts()
+    {
+        return $this->belongsToMany(Account::class, 'account_basic_dental_service');
+    }
 }

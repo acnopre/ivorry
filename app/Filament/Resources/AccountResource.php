@@ -7,6 +7,7 @@ use App\Imports\AccountImport;
 use App\Models\Account;
 use App\Models\EndorsementType;
 use Filament\Forms;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
@@ -77,6 +78,21 @@ class AccountResource extends Resource
                             )
                             ->required(),
                     ])->columns(3),
+
+                Section::make('Dental Coverage')
+                    ->schema([
+                        CheckboxList::make('basicDentalServices')
+                            ->label('Basic Dental Services')
+                            ->relationship('basicDentalServices', 'name')
+                            ->columns(2)
+                            ->searchable(), // allows typing to filter options
+
+                        CheckboxList::make('planEnhancements')
+                            ->label('Plan Enhancements')
+                            ->relationship('planEnhancements', 'name')
+                            ->columns(2)
+                            ->searchable(),
+                    ])
             ]);
     }
 

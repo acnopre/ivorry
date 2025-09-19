@@ -25,4 +25,14 @@ class Account extends Model
     {
         return $this->belongsTo(EndorsementType::class);
     }
+
+    public function basicDentalServices()
+    {
+        return $this->belongsToMany(\App\Models\BasicDentalService::class, 'account_basic_dental_service');
+    }
+
+    public function planEnhancements()
+    {
+        return $this->belongsToMany(\App\Models\PlanEnhancement::class, 'account_plan_enhancement');
+    }
 }

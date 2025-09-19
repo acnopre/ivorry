@@ -16,6 +16,12 @@ return new class extends Migration
             $table->string('name');
             $table->timestamps();
         });
+
+        Schema::create('account_basic_dental_service', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('account_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('basic_dental_service_id')->constrained()->cascadeOnDelete();
+        });
     }
 
     /**
@@ -23,6 +29,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('account_basic_dental_service');
         Schema::dropIfExists('basic_dental_services');
     }
 };

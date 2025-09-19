@@ -14,4 +14,8 @@ class PlanEnhancement extends Model
     protected $fillable = [
         'name',
     ];
+    public function accounts()
+    {
+        return $this->belongsToMany(Account::class, 'account_plan_enhancement');
+    }
 }

@@ -19,4 +19,9 @@ class BasicDentalService extends Model
     {
         return $this->belongsToMany(Account::class, 'account_basic_dental_service');
     }
+
+    public function dentists()
+    {
+        return $this->belongsToMany(Dentist::class, 'account_basic_dental_service');
+    }
 }

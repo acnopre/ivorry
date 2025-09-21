@@ -43,8 +43,6 @@ class DatabaseSeeder extends Seeder
             MemberSeeder::class,
             DentistAccountSeeder::class,
             UpperManagementSeeder::class,
-            ClinicSeeder::class,
-            DentistSeeder::class,
             AccreditationStatusSeeder::class,
             SpecializationSeeder::class,
             EndorsementTypeSeeder::class,

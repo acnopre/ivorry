@@ -18,4 +18,9 @@ class PlanEnhancement extends Model
     {
         return $this->belongsToMany(Account::class, 'account_plan_enhancement');
     }
+
+    public function dentists()
+    {
+        return $this->belongsToMany(Dentist::class, 'account_plan_enhancement');
+    }
 }

@@ -22,23 +22,29 @@ class ActivityResource extends Resource
         return $form->schema([]);
     }
 
-    public static function table(Table $table): Table
+    public static function table(Tables\Table $table): Tables\Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->sortable(),
                 Tables\Columns\TextColumn::make('causer.name')
-                ->label('User')
-                ->sortable()
-                ->searchable()
-                ->formatStateUsing(fn ($record) => $record->causer?->name ?? 'System'),
-                Tables\Columns\TextColumn::make('description')->label('Action')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('subject_type')->label('Model'),
-                Tables\Columns\TextColumn::make('event')->label('Event'),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
+                    ->label('User')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('description')
+                    ->label('Action')
+                    ->wrap()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Date')
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([])
-            ->defaultSort('created_at', 'desc');
+            ->actions([])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\ExportBulkAction::make() 
+            ]);
     }
 
     public static function getRelations(): array
@@ -51,5 +57,10 @@ class ActivityResource extends Resource
         return [
             'index' => Pages\ListActivities::route('/'),
         ];
+    }
+
+     public static function canCreate(): bool
+    {
+        return false; 
     }
 }

@@ -71,9 +71,9 @@ class DentistResource extends Resource
 
 
                    // Accreditation Status Dropdown (store name, not ID)
-                   Forms\Components\Select::make('accreditation_status_id') // virtual field
+                   Forms\Components\Select::make('accreditation_status') // virtual field
                    ->label('Accreditation Status')
-                   ->options(AccreditationStatus::pluck('name', 'id')->toArray())
+                   ->options(AccreditationStatus::pluck('name', 'name')->toArray())
                    ->required(),
 
                 ])->columns(2),
@@ -94,7 +94,7 @@ class DentistResource extends Resource
                 ])->columns(2),
                     
                     
-                Section::make('Dental Coverage')->schema(function (\Filament\Forms\Get $get, $operation, $record) {
+                Section::make('Basic Dental Services Rate')->schema(function (\Filament\Forms\Get $get, $operation, $record) {
                     $services = \App\Models\BasicDentalService::all();
                 
                     return $services->map(function ($service) use ($record) {
@@ -129,10 +129,8 @@ class DentistResource extends Resource
                         ]);
                     })->toArray();
                 }),
-                
-                
 
-                Section::make('Plan Enhancements')->schema(function (\Filament\Forms\Get $get, $operation, $record) {
+                Section::make('Plan Enhancements Rate')->schema(function (\Filament\Forms\Get $get, $operation, $record) {
                     $enhancements = \App\Models\PlanEnhancement::all();
                 
                     return $enhancements->map(function ($enhancement) use ($record) {
@@ -218,10 +216,11 @@ class DentistResource extends Resource
             ]);
     }
     
-    public static function getEloquentQuery(): Builder
-{
-    return parent::getEloquentQuery()->with('specializations');
-}
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Accreditation', 'Upper Management']);
+    }
 
     public static function getPages(): array
     {

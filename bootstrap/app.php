@@ -12,6 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         //
+        $middleware->web([
+            \App\Http\Middleware\LogUserActivity::class, // 👈 logs all web requests
+        ]);
+        $middleware->alias([
+            'log.user.activity' => \App\Http\Middleware\LogUserActivity::class,
+        ]);
+        
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

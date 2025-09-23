@@ -3,9 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Account extends Model
 {
+
+    use LogsActivity;
+
     protected $fillable = [
         'company_name',
         'policy_code',
@@ -34,5 +39,13 @@ class Account extends Model
     public function planEnhancements()
     {
         return $this->belongsToMany(\App\Models\PlanEnhancement::class, 'account_plan_enhancement');
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll() // log all attributes
+            ->logOnlyDirty() // log only changed values
+            ->useLogName('post');
     }
 }

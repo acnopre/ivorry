@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BasicDentalServiceResource\Pages;
 use App\Filament\Resources\BasicDentalServiceResource\RelationManagers;
 use App\Models\BasicDentalService;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -17,7 +16,7 @@ class BasicDentalServiceResource extends Resource
 {
     protected static ?string $model = BasicDentalService::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationGroup = 'Configuration';
+    protected static ?string $navigationGroup = 'Settings';
     protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form

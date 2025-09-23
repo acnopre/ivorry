@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('')
             ->brandLogo(asset('images/logo.png'))
             ->login()
-            ->brandLogoHeight('64px')
+            ->brandLogoHeight('80px')
             ->colors([
                 'primary' => '#8B1C52'
             ])
@@ -43,6 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
+                \App\Filament\Widgets\ActivityTimeline::class,
             ])
             ->middleware([
                 EncryptCookies::class,

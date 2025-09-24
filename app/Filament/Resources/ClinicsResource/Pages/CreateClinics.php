@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Filament\Resources\DentistResource\Pages;
+namespace App\Filament\Resources\ClinicsResource\Pages;
 
-use App\Filament\Resources\DentistResource;
+use App\Filament\Resources\ClinicsResource;
 use Filament\Resources\Pages\CreateRecord;
 
-class CreateDentist extends CreateRecord
+class CreateClinics extends CreateRecord
 {
-    protected static string $resource = DentistResource::class;
+    protected static string $resource = ClinicsResource::class;
 
     protected array $basicDentalServicesData = [];
     protected array $planEnhancementsData = [];

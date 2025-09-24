@@ -15,8 +15,8 @@ class Specializations extends Model
         return $this->belongsToMany(
             Dentist::class,
             'dentist_specializations',
-            'specialization_id', // FK on pivot
-            'dentist_id'         // related key on pivot
+            'specialization_id', 
+            'dentist_id'       
         );
     }
 }

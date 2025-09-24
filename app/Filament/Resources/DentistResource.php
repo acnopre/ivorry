@@ -36,7 +36,7 @@ class DentistResource extends Resource
 {
     protected static ?string $model = Dentist::class;
 
-    protected static ?string $navigationGroup = 'Accounts & Members';
+    protected static ?string $navigationGroup = 'Dental Management';
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Dentists';
 

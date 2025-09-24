@@ -14,8 +14,9 @@ use Filament\Tables\Table;
 class AccountTypeResource extends Resource
 {
     protected static ?string $model = AccountType::class;
-    public static ?string $navigationGroup = 'Settings';
+    public static ?string $navigationGroup = 'Lookup Tables';
     public static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
     {

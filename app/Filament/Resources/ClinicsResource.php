@@ -33,7 +33,7 @@ class ClinicsResource extends Resource
     protected static ?string $navigationGroup = 'Dental Management';
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
     protected static ?string $navigationLabel = 'Clinic Details';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
 
     public static function form(Form $form): Form

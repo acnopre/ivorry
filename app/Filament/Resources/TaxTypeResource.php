@@ -14,9 +14,9 @@ use Filament\Resources\Resource;
 class TaxTypeResource extends Resource
 {
     protected static ?string $model = TaxType::class;
-    public static ?string $navigationGroup = 'Settings';
+    public static ?string $navigationGroup = 'Lookup Tables';
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-
+    protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
     {

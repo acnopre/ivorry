@@ -17,9 +17,8 @@ class SoaResource extends Resource
 {
     protected static ?string $model = Soa::class;
 
-    protected static ?string $navigationGroup = 'Finance';
+    protected static ?string $navigationGroup = 'Reports';
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?int $navigationSort = 1;
 
 
     public static function form(Form $form): Form

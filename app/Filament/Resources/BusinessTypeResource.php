@@ -14,7 +14,7 @@ use Filament\Resources\Resource;
 class BusinessTypeResource extends Resource
 {
     protected static ?string $model = BusinessType::class;
-    public static ?string $navigationGroup = 'Settings';
+    public static ?string $navigationGroup = 'Lookup Tables';
     public static ?string $navigationIcon = 'heroicon-o-building-office';
 
     public static function form(Form $form): Form

@@ -45,6 +45,15 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\FilamentInfoWidget::class,
                 \App\Filament\Widgets\ActivityTimeline::class,
             ])
+            ->navigationGroups([
+                'Accounts & Members',
+                'Dental Management',
+                'Claims Management',
+                'Reports',
+                'Lookup Tables',
+                'Settings',
+                'System'  
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

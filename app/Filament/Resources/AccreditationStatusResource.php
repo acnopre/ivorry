@@ -13,8 +13,9 @@ use Filament\Resources\Resource;
 class AccreditationStatusResource extends Resource
 {
     protected static ?string $model = AccreditationStatus::class;
-    public static ?string $navigationGroup = 'Settings';
+    public static ?string $navigationGroup = 'Lookup Tables';
     public static ?string $navigationIcon = 'heroicon-o-check-badge';
+    protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
     {
@@ -26,8 +27,13 @@ class AccreditationStatusResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            Tables\Columns\TextColumn::make('id')->sortable(),
             Tables\Columns\TextColumn::make('name')->searchable(),
+            Tables\Columns\TextColumn::make('created_at')
+            ->dateTime()
+            ->label('Created'),
+             Tables\Columns\TextColumn::make('updated_at')
+            ->dateTime()
+            ->label('Updated'),
         ]);
     }
 

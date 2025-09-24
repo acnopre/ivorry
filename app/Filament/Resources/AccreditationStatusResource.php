@@ -37,6 +37,12 @@ class AccreditationStatusResource extends Resource
         ]);
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+    }
+    
     public static function getPages(): array
     {
         return [

@@ -79,7 +79,7 @@ class UserResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Account Manager']);
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
     }
 
     public static function getPages(): array

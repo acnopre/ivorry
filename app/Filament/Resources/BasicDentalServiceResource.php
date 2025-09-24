@@ -54,11 +54,10 @@ class BasicDentalServiceResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
+    public static function shouldRegisterNavigation(): bool
     {
-        return [
-            //
-        ];
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
     }
 
     public static function getPages(): array

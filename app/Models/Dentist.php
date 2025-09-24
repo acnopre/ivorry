@@ -11,35 +11,27 @@ class Dentist extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'clinic_id',
         'last_name',
         'first_name',
         'middle_initial',
-        'suffix',
-        'owner_last_name',
-        'owner_first_name',
-        'owner_middle_initial',
-        'owner_suffix',
-        'corporate_name',
-        'clinic_name',
-        'branch_code',
-        'tin_number',
-        'clinic_address',
-        'barangay',
-        'city',
-        'province',
-        'region',
-        'landline',
-        'mobile_number',
-        'alternative_number',
-        'accreditation_status',
-        'bank_account_name',
-        'bank_branch',
-        'bank_account_number',
-        'tax_registration',
-        'withholding_tax',
+        'prc_license_number',
+        'prc_expiration_date',
+        'is_owner',
     ];
 
     protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];
+
+    protected $casts = [
+        'prc_expiration_date' => 'date',
+        'is_owner' => 'boolean',
+    ];
+    
+    public function clinic()
+    {
+        return $this->belongsTo(Clinics::class, 'clinic_id');
+    }
+
 
     public function specializations()
     {
@@ -50,7 +42,6 @@ class Dentist extends Model
             'specialization_id'
         );
     }
-
 
     public function basicDentalServices()
     {
@@ -67,6 +58,17 @@ class Dentist extends Model
     public function accreditationStatus()
     {
         return $this->belongsTo(\App\Models\AccreditationStatus::class);
+    }
+
+    protected static function booted()
+    {
+        static::saving(function ($dentist) {
+            if ($dentist->is_owner) {
+                static::where('clinic_id', $dentist->clinic_id)
+                    ->where('id', '!=', $dentist->id)
+                    ->update(['is_owner' => false]);
+            }
+        });
     }
 }
 

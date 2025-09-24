@@ -11,35 +11,44 @@ class Clinics extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'last_name',
-        'first_name',
-        'middle_initial',
-        'suffix',
-        'owner_last_name',
-        'owner_first_name',
-        'owner_middle_initial',
-        'owner_suffix',
-        'corporate_name',
         'clinic_name',
-        'branch_code',
-        'tin_number',
+        'registered_name',
+        'prc_license_no',
+        'prc_expiration_date',
+        'ptr_no',
+        'ptr_date_issued',
+        'other_hmo_accreditation',
+        'tax_identification_no',
+        'tax_type',
+        'business_type',
+        'sec_registration_no',
         'clinic_address',
-        'barangay',
-        'city',
-        'province',
-        'region',
-        'landline',
-        'mobile_number',
-        'alternative_number',
-        'accreditation_status',
+        'clinic_landline',
+        'clinic_mobile',
+        'viber_no',
+        'clinic_email',
+        'alt_address',
+        'dentist_personal_no',
+        'dentist_email',
+        'clinic_staff_name',
+        'clinic_staff_mobile',
+        'clinic_staff_viber',
+        'clinic_staff_email',
         'bank_account_name',
-        'bank_branch',
         'bank_account_number',
-        'tax_registration',
-        'withholding_tax',
+        'bank_name',
+        'bank_branch',
+        'account_type',
+        'accreditation_status',
+        'associate_dentists',
     ];
 
-    protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];
+    // protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];
+
+    public function dentists()
+    {
+        return $this->hasMany(Dentist::class, 'clinic_id');
+    }
 
     public function specializations()
     {
@@ -52,17 +61,17 @@ class Clinics extends Model
     }
 
 
-    public function basicDentalServices()
-    {
-        return $this->belongsToMany(BasicDentalService::class, 'dentist_basic_dental_service')
-            ->withPivot('fee');
-    }
+    // public function basicDentalServices()
+    // {
+    //     return $this->belongsToMany(BasicDentalService::class, 'dentist_basic_dental_service')
+    //         ->withPivot('fee');
+    // }
 
-    public function planEnhancements()
-    {
-        return $this->belongsToMany(PlanEnhancement::class, 'dentist_plan_enhancement')
-            ->withPivot('fee');
-    }
+    // public function planEnhancements()
+    // {
+    //     return $this->belongsToMany(PlanEnhancement::class, 'dentist_plan_enhancement')
+    //         ->withPivot('fee');
+    // }
 
     public function accreditationStatus()
     {

@@ -17,10 +17,6 @@ return new class extends Migration
             // Clinic Info
             $table->string('clinic_name');
             $table->string('registered_name')->nullable();
-            $table->string('clinic_owner_last')->nullable();
-            $table->string('clinic_owner_first')->nullable();
-            $table->string('clinic_owner_middle')->nullable();
-            $table->string('specializations')->nullable();
 
             // PRC / PTR
             $table->string('prc_license_no')->nullable();
@@ -31,8 +27,8 @@ return new class extends Migration
             // Accreditation & Tax
             $table->string('other_hmo_accreditation')->nullable();
             $table->string('tax_identification_no')->nullable();
-            $table->enum('tax_type', ['vat', 'non_vat'])->nullable();
-            $table->enum('business_type', ['sole_proprietor', 'partnership', 'corporation'])->nullable();
+            $table->enum('tax_type', ['VAT', 'NON-VAT', '0%'])->default('NON-VAT');
+            $table->enum('business_type', ['SOLE_PROPRIETOR', 'PARTNERSHIP', 'CORPORATION'])->nullable();
             $table->string('sec_registration_no')->nullable();
 
             // Address / Contact
@@ -48,11 +44,6 @@ return new class extends Migration
             // Dentist Info
             $table->string('dentist_personal_no')->nullable();
             $table->string('dentist_email')->nullable();
-            $table->enum('clinic_schedule', ['first_come', 'by_appointment'])->nullable();
-            $table->string('schedule_days')->nullable();
-            $table->integer('number_of_chairs')->nullable();
-            $table->boolean('dental_xray_periapical')->default(false);
-            $table->boolean('dental_xray_panoramic')->default(false);
 
             // Clinic Staff
             $table->string('clinic_staff_name')->nullable();
@@ -66,11 +57,10 @@ return new class extends Migration
             $table->string('bank_name')->nullable();
             $table->string('bank_branch')->nullable();
             $table->enum('account_type', ['savings', 'current'])->nullable();
-
             // Status
-            $table->enum('status', ['active', 'inactive'])->default('active');
-
+            $table->enum('accreditation_status', ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT'])->default('INACTIVE');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

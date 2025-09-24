@@ -22,6 +22,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
+
 class ClinicsResource extends Resource
 {
     protected static ?string $model = Clinics::class;
@@ -29,231 +30,150 @@ class ClinicsResource extends Resource
     protected static ?string $navigationGroup = 'Dental Management';
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
     protected static ?string $navigationLabel = 'Clinic Details';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 2;
 
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Section::make('Clinic Information')
+                Forms\Components\Section::make('Clinic Information')
                     ->schema([
-                        TextInput::make('clinic_name')
-                            ->label('Clinic Name')
-                            ->required()
-                            ->maxLength(255),
-
-                        TextInput::make('registered_name')
-                            ->label('Registered Name (per DTI & BIR 2303)')
-                            ->maxLength(255),
-
-                        TextInput::make('clinic_owner_last')
-                            ->label('Owner Last Name')
-                            ->maxLength(255),
-                        TextInput::make('clinic_owner_first')
-                            ->label('Owner Given Name')
-                            ->maxLength(255),
-                        TextInput::make('clinic_owner_middle')
-                            ->label('Owner Middle Initial')
-                            ->maxLength(50),
-
-                        TextInput::make('specializations')
-                            ->label('Specialization/s')
-                            ->maxLength(255),
-
-                        TextInput::make('prc_license_no')
-                            ->label('PRC License No.')
-                            ->maxLength(50),
-                        DatePicker::make('prc_expiration_date')
-                            ->label('Expiration Date'),
-
-                        TextInput::make('ptr_no')
-                            ->label('PTR No.')
-                            ->maxLength(50),
-                        DatePicker::make('ptr_date_issued')
-                            ->label('Date Issued'),
-
-                        TextInput::make('other_hmo_accreditation')
-                            ->label('Other HMO Accreditation')
-                            ->maxLength(255),
-
-                        TextInput::make('tax_identification_no')
-                            ->label('Taxpayer’s Identification Number')
-                            ->maxLength(50),
-
-                        Select::make('tax_type')
-                            ->label('Tax Type')
-                            ->options([
-                                'vat' => 'VAT',
-                                'non_vat' => 'Non-VAT',
-                            ]),
-
-                        Select::make('business_type')
-                            ->label('Business Type')
-                            ->options([
-                                'sole_proprietor' => 'Sole Proprietor',
-                                'partnership' => 'Partnership',
-                                'corporation' => 'Corporation',
-                            ]),
-
-                        TextInput::make('sec_registration_no')
-                            ->label('SEC Registration No. (For Corporation/Partnership)')
-                            ->maxLength(100),
-
-                        Textarea::make('clinic_address')
-                            ->label('Clinic Address')
-                            ->rows(2)
-                            ->maxLength(500),
-
-                        TextInput::make('clinic_landline')
-                            ->label('Clinic Landline')
-                            ->maxLength(50),
-
-                        TextInput::make('clinic_mobile')
-                            ->label('Clinic Mobile Number/s')
-                            ->maxLength(100),
-
-                        TextInput::make('viber_no')
-                            ->label('Viber No.')
-                            ->maxLength(50),
-
-                        TextInput::make('clinic_email')
-                            ->label('Clinic Email Address')
-                            ->email()
-                            ->maxLength(255),
+                        Forms\Components\TextInput::make('clinic_name')->required(),
+                        Forms\Components\TextInput::make('registered_name'),
+                        Forms\Components\Textarea::make('clinic_address'),
+                        Forms\Components\TextInput::make('clinic_landline'),
+                        Forms\Components\TextInput::make('clinic_mobile'),
+                        Forms\Components\TextInput::make('viber_no'),
+                        Forms\Components\TextInput::make('clinic_email')->email(),
+                        Forms\Components\Textarea::make('alt_address')->label('Alternative Address'),
                     ])->columns(2),
 
-                Section::make('Alternative Contact Information')
+                Forms\Components\Section::make('PRC / PTR Information')
                     ->schema([
-                        Textarea::make('alt_address')
-                            ->label('Residence / Alternative Address (Required)')
-                            ->rows(2)
-                            ->maxLength(500),
-                    ]),
-
-                Section::make('Dentist Information')
-                    ->schema([
-                        TextInput::make('dentist_personal_no')
-                            ->label('Dentist Personal No. (Not to be shared to members)')
-                            ->maxLength(50),
-
-                        TextInput::make('dentist_email')
-                            ->label('Dentist Email Address')
-                            ->email()
-                            ->maxLength(255),
-
-                        Select::make('clinic_schedule')
-                            ->label('Clinic Schedule')
-                            ->options([
-                                'first_come' => 'First come first serve',
-                                'by_appointment' => 'By Appointment only',
-                            ]),
-
-                        TextInput::make('schedule_days')
-                            ->label('Indicate days to accept cardholders')
-                            ->maxLength(255),
-
-                        TextInput::make('number_of_chairs')
-                            ->label('Number of Chairs')
-                            ->numeric(),
-
-                        Checkbox::make('dental_xray_periapical')
-                            ->label('Periapical Xray'),
-                        Checkbox::make('dental_xray_panoramic')
-                            ->label('Panoramic Xray'),
+                        Forms\Components\TextInput::make('prc_license_no'),
+                        Forms\Components\DatePicker::make('prc_expiration_date'),
+                        Forms\Components\TextInput::make('ptr_no'),
+                        Forms\Components\DatePicker::make('ptr_date_issued'),
                     ])->columns(2),
 
-                Section::make('Associate Dentist/s')
+                Forms\Components\Section::make('Accreditation & Tax')
                     ->schema([
-                        Repeater::make('associate_dentists')
+                        Forms\Components\TextInput::make('other_hmo_accreditation'),
+                        Forms\Components\TextInput::make('tax_identification_no'),
+                        Forms\Components\Select::make('tax_type')
+                            ->options(['VAT' => 'VAT', 'NON-VAT' => 'NON-VAT', '0%' => '0%'])
+                            ->default('NON-VAT'),
+                        Forms\Components\Select::make('business_type')
+                            ->options([
+                                'SOLE_PROPRIETOR' => 'Sole Proprietor',
+                                'PARTNERSHIP' => 'Partnership',
+                                'CORPORATION' => 'Corporation',
+                            ]),
+                        Forms\Components\TextInput::make('sec_registration_no'),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Dentist Information')
+                    ->schema([
+                        Forms\Components\TextInput::make('dentist_personal_no'),
+                        Forms\Components\TextInput::make('dentist_email')->email(),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Clinic Staff')
+                    ->schema([
+                        Forms\Components\TextInput::make('clinic_staff_name'),
+                        Forms\Components\TextInput::make('clinic_staff_mobile'),
+                        Forms\Components\TextInput::make('clinic_staff_viber'),
+                        Forms\Components\TextInput::make('clinic_staff_email')->email(),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Bank Information')
+                    ->schema([
+                        Forms\Components\TextInput::make('bank_account_name'),
+                        Forms\Components\TextInput::make('bank_account_number'),
+                        Forms\Components\TextInput::make('bank_name'),
+                        Forms\Components\TextInput::make('bank_branch'),
+                        Forms\Components\Select::make('account_type')
+                            ->options(['savings' => 'Savings', 'current' => 'Current']),
+                    ])->columns(2),
+
+              
+
+                Forms\Components\Section::make('Associate Dentist/s')
+                    ->schema([
+                        Forms\Components\Repeater::make('dentists')
+                            ->relationship('dentists')
                             ->schema([
-                                TextInput::make('last_name')->label('Last Name')->maxLength(255),
-                                TextInput::make('first_name')->label('Given Name')->maxLength(255),
-                                TextInput::make('middle_initial')->label('M.I.')->maxLength(10),
-                                TextInput::make('prc_lic_no')->label('PRC Lic #')->maxLength(50),
-                                DatePicker::make('expiry_date')->label('Expiry Date'),
-                                TextInput::make('specialization')->label('Specialization')->maxLength(255),
-                            ])->columns(3)
-                            ->collapsible(),
+                                Forms\Components\TextInput::make('last_name')
+                                    ->label('Last Name')
+                                    ->required(),
+
+                                Forms\Components\TextInput::make('first_name')
+                                    ->label('Given Name')
+                                    ->required(),
+
+                                Forms\Components\TextInput::make('middle_initial')
+                                    ->label('M.I.')
+                                    ->maxLength(5),
+
+                                Forms\Components\TextInput::make('prc_license_number')
+                                    ->label('PRC Lic #'),
+
+                                Forms\Components\DatePicker::make('prc_expiration_date')
+                                    ->label('Expiry Date'),
+
+                                Forms\Components\Toggle::make('is_owner')
+                                    ->label('Clinic Owner')
+                                    ->reactive()
+                                    ->afterStateUpdated(function ($state, callable $set, $get) {
+                                        if ($state) {
+                                            $items = $get('../../dentists') ?? [];
+                                            $currentIndex = $get('../../_currentItem');
+
+                                            foreach ($items as $index => $dentist) {
+                                                if ($index !== $currentIndex) {
+                                                    $set("../../dentists.{$index}.is_owner", false);
+                                                }
+                                            }
+                                        }
+                                    }),
+
+                                Forms\Components\Select::make('specializations')
+                                    ->label('Specializations')
+                                    ->multiple()
+                                    ->relationship('specializations', 'name')
+                                    ->preload()
+                                    ->searchable(),
+                            ])
+                            ->columns(3)
+                            ->collapsible()
+                            ->createItemButtonLabel('Add Associate Dentist'),
                     ]),
 
-                Section::make('Clinic Staff')
+                    Forms\Components\Section::make('Status')
                     ->schema([
-                        TextInput::make('clinic_staff_name')
-                            ->label('Name')
-                            ->maxLength(255),
-                        TextInput::make('clinic_staff_mobile')
-                            ->label('Mobile No.')
-                            ->maxLength(50),
-                        TextInput::make('clinic_staff_viber')
-                            ->label('Viber No.')
-                            ->maxLength(50),
-                        TextInput::make('clinic_staff_email')
-                            ->label('Email Address')
-                            ->email()
-                            ->maxLength(255),
-                    ])->columns(2),
-
-                Section::make('Bank Information')
-                    ->schema([
-                        TextInput::make('bank_account_name')
-                            ->label('Bank Account Name')
-                            ->maxLength(255),
-                        TextInput::make('bank_account_number')
-                            ->label('Bank Account Number')
-                            ->maxLength(50),
-                        TextInput::make('bank_name')
-                            ->label('Name of Bank')
-                            ->maxLength(255),
-                        TextInput::make('bank_branch')
-                            ->label('Branch')
-                            ->maxLength(255),
-                        Select::make('account_type')
-                            ->label('Account Type')
+                        Forms\Components\Select::make('accreditation_status')
                             ->options([
-                                'savings' => 'Savings',
-                                'current' => 'Current',
-                            ]),
-                    ])->columns(2),
-
-                Section::make('Status')
-                    ->schema([
-                        Select::make('status')
-                            ->options([
-                                'active' => 'Active',
-                                'inactive' => 'Inactive',
+                                'ACTIVE' => 'Active',
+                                'INACTIVE' => 'Inactive',
+                                'SILENT' => 'Silent',
+                                'SPECIFIC ACCOUNT' => 'Specific Account',
                             ])
-                            ->default('active'),
+                            ->default('INACTIVE'),
                     ]),
             ]);
     }
-
-
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('code')->label('Code')->sortable()->searchable(),
-                TextColumn::make('name')->label('Clinic Name')->sortable()->searchable(),
-                TextColumn::make('contact_person')->label('Contact'),
-                TextColumn::make('email')->label('Email')->toggleable(),
-                TextColumn::make('phone')->label('Phone')->toggleable(),
-                TextColumn::make('status')
-                    ->badge()
-                    ->colors([
-                        'success' => 'active',
-                        'danger' => 'inactive',
-                    ])
-                    ->formatStateUsing(fn(string $state): string => ucfirst($state)),
-                TextColumn::make('created_at')->dateTime()->label('Created'),
-            ])
-            ->filters([
-                SelectFilter::make('status')
-                    ->options([
-                        'active' => 'Active',
-                        'inactive' => 'Inactive',
-                    ]),
+                Tables\Columns\TextColumn::make('clinic_name')->searchable(),
+                Tables\Columns\TextColumn::make('registered_name'),
+                Tables\Columns\TextColumn::make('clinic_mobile'),
+                Tables\Columns\TextColumn::make('clinic_email'),
+                Tables\Columns\TextColumn::make('accreditation_status'),
+                Tables\Columns\TextColumn::make('created_at')->dateTime(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -263,14 +183,6 @@ class ClinicsResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
-    }
-
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array

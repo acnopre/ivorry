@@ -4,7 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use App\Models\TaxType;
+use App\Models\BusinessType;
+use App\Models\AccountType;
+use App\Models\AccreditationStatus;
 
 class Clinics extends Model
 {
@@ -60,22 +63,26 @@ class Clinics extends Model
         );
     }
 
-
-    // public function basicDentalServices()
-    // {
-    //     return $this->belongsToMany(BasicDentalService::class, 'dentist_basic_dental_service')
-    //         ->withPivot('fee');
-    // }
-
-    // public function planEnhancements()
-    // {
-    //     return $this->belongsToMany(PlanEnhancement::class, 'dentist_plan_enhancement')
-    //         ->withPivot('fee');
-    // }
-
     public function accreditationStatus()
     {
-        return $this->belongsTo(\App\Models\AccreditationStatus::class);
+        return $this->belongsTo(AccreditationStatus::class);
     }
+
+    public function taxType()
+    {
+        return $this->belongsTo(TaxType::class);
+    }
+
+    public function businessType()
+    {
+        return $this->belongsTo(BusinessType::class);
+    }
+
+    public function accountType()
+{
+    return $this->belongsTo(AccountType::class);
+}
+
+
 }
 

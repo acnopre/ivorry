@@ -24,6 +24,7 @@ use Database\Seeders\SpecializationSeeder;
 use Database\Seeders\SuperAdminSeeder;
 use Database\Seeders\UnitsSeeder;
 use Database\Seeders\UpperManagementSeeder;
+use Database\Seeders\DropdownSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -50,6 +51,7 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             BasicDentalServicesSeeder::class,
             PlanEnhancementsSeeder::class,
+            DropdownSeeder::class,
         ]);
     }
 }

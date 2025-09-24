@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('other_hmo_accreditation')->nullable();
             $table->string('tax_identification_no')->nullable();
             $table->enum('tax_type', ['VAT', 'NON-VAT', '0%'])->default('NON-VAT');
-            $table->enum('business_type', ['SOLE_PROPRIETOR', 'PARTNERSHIP', 'CORPORATION'])->nullable();
+            $table->enum('business_type', ['SOLE PROPRIETOR', 'PARTNERSHIP', 'CORPORATION'])->nullable();
             $table->string('sec_registration_no')->nullable();
 
             // Address / Contact
@@ -56,7 +56,7 @@ return new class extends Migration
             $table->string('bank_account_number')->nullable();
             $table->string('bank_name')->nullable();
             $table->string('bank_branch')->nullable();
-            $table->enum('account_type', ['savings', 'current'])->nullable();
+            $table->enum('account_type', ['SAVINGS', 'CURRENT'])->nullable();
             // Status
             $table->enum('accreditation_status', ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT'])->default('INACTIVE');
             $table->timestamps();

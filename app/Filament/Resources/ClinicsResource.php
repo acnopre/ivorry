@@ -21,7 +21,10 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-
+use App\Models\TaxType;
+use App\Models\BusinessType;
+use App\Models\AccountType;
+use App\Models\AccreditationStatus;
 
 class ClinicsResource extends Resource
 {
@@ -62,14 +65,16 @@ class ClinicsResource extends Resource
                         Forms\Components\TextInput::make('other_hmo_accreditation'),
                         Forms\Components\TextInput::make('tax_identification_no'),
                         Forms\Components\Select::make('tax_type')
-                            ->options(['VAT' => 'VAT', 'NON-VAT' => 'NON-VAT', '0%' => '0%'])
-                            ->default('NON-VAT'),
-                        Forms\Components\Select::make('business_type')
-                            ->options([
-                                'SOLE_PROPRIETOR' => 'Sole Proprietor',
-                                'PARTNERSHIP' => 'Partnership',
-                                'CORPORATION' => 'Corporation',
-                            ]),
+                            ->label('Tax Type')
+                            ->options(TaxType::pluck('name', 'name'))
+                            ->searchable()
+                            ->required(),
+                    
+                            Forms\Components\Select::make('business_type')
+                                ->label('Business Type')
+                                ->options(BusinessType::pluck('name', 'name'))
+                                ->searchable()
+                                ->required(),
                         Forms\Components\TextInput::make('sec_registration_no'),
                     ])->columns(2),
 
@@ -94,7 +99,11 @@ class ClinicsResource extends Resource
                         Forms\Components\TextInput::make('bank_name'),
                         Forms\Components\TextInput::make('bank_branch'),
                         Forms\Components\Select::make('account_type')
-                            ->options(['savings' => 'Savings', 'current' => 'Current']),
+                        ->label('Account Type')
+                        ->options(AccountType::pluck('name', 'name')) 
+                        ->searchable()
+                        ->required(),
+                    
                     ])->columns(2),
 
               
@@ -153,13 +162,10 @@ class ClinicsResource extends Resource
                     Forms\Components\Section::make('Status')
                     ->schema([
                         Forms\Components\Select::make('accreditation_status')
-                            ->options([
-                                'ACTIVE' => 'Active',
-                                'INACTIVE' => 'Inactive',
-                                'SILENT' => 'Silent',
-                                'SPECIFIC ACCOUNT' => 'Specific Account',
-                            ])
-                            ->default('INACTIVE'),
+                        ->label('Accreditation Status')
+                        ->options(AccreditationStatus::pluck('name', 'name'))
+                        ->searchable()
+                        ->required(),
                     ]),
             ]);
     }
@@ -172,7 +178,15 @@ class ClinicsResource extends Resource
                 Tables\Columns\TextColumn::make('registered_name'),
                 Tables\Columns\TextColumn::make('clinic_mobile'),
                 Tables\Columns\TextColumn::make('clinic_email'),
-                Tables\Columns\TextColumn::make('accreditation_status'),
+                Tables\Columns\TextColumn::make('accreditation_status')
+                ->badge()
+                ->colors([
+                    'success' => 'ACTIVE',
+                    'danger'  => 'INACTIVE',
+                    'warning' => 'SILENT',
+                    'info'    => 'SPECIFIC ACCOUNT',
+                ])
+                ->label('Accreditation'),
                 Tables\Columns\TextColumn::make('created_at')->dateTime(),
             ])
             ->actions([

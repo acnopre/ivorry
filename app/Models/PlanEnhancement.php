@@ -15,12 +15,14 @@ class PlanEnhancement extends Model
         'name',
     ];
     public function accounts()
-    {
-        return $this->belongsToMany(Account::class, 'account_plan_enhancement');
-    }
+{
+    return $this->belongsToMany(Account::class, 'account_plan_enhancement')
+        ->withPivot('quantity')
+        ->withTimestamps();
+}
 
     public function dentists()
     {
-        return $this->belongsToMany(Dentist::class, 'account_plan_enhancement');
+        return $this->belongsToMany(Dentist::class, 'dentist_plan_enhancement');
     }
 }

@@ -17,11 +17,13 @@ class BasicDentalService extends Model
 
     public function accounts()
     {
-        return $this->belongsToMany(Account::class, 'account_basic_dental_service');
+        return $this->belongsToMany(Account::class, 'account_basic_dental_service')
+            ->withPivot('quantity')
+            ->withTimestamps();
     }
 
     public function dentists()
     {
-        return $this->belongsToMany(Dentist::class, 'account_basic_dental_service');
+        return $this->belongsToMany(Dentist::class, 'dentist_basic_dental_service');
     }
 }

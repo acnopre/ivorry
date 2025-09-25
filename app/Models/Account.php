@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Models\BasicDentalService;
+use App\Models\PlanEnhancement;
 
 class Account extends Model
 {
@@ -22,6 +24,8 @@ class Account extends Model
         'status'
     ];
 
+    protected $with = ['basicDentalServices', 'planEnhancements'];
+
     public function members()
     {
         return $this->hasMany(Member::class);
@@ -33,19 +37,29 @@ class Account extends Model
 
     public function basicDentalServices()
     {
-        return $this->belongsToMany(\App\Models\BasicDentalService::class, 'account_basic_dental_service');
+        return $this->belongsToMany(
+            BasicDentalService::class,
+            'account_basic_dental_service',
+            'account_id',
+            'basic_dental_service_id'
+        )->withPivot('quantity')->withTimestamps();
     }
-
+    
     public function planEnhancements()
     {
-        return $this->belongsToMany(\App\Models\PlanEnhancement::class, 'account_plan_enhancement');
+        return $this->belongsToMany(
+            PlanEnhancement::class,
+            'account_plan_enhancement',
+            'account_id',
+            'plan_enhancement_id'
+        )->withPivot('quantity')->withTimestamps();
     }
-
+    
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logAll() // log all attributes
             ->logOnlyDirty() // log only changed values
-            ->useLogName('post');
+            ->useLogName('Account');
     }
 }

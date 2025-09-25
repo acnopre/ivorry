@@ -21,6 +21,16 @@ return new class extends Migration
             $table->id();
             $table->foreignId('account_id')->constrained()->cascadeOnDelete();
             $table->foreignId('basic_dental_service_id')->constrained()->cascadeOnDelete();
+            $table->integer('quantity')->default(1);
+            $table->timestamps();
+        });
+
+        Schema::create('dentist_basic_dental_service', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('dentist_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('basic_dental_service_id')->constrained()->cascadeOnDelete();
+            $table->decimal('fee', 10, 2)->nullable();
+            $table->timestamps();
         });
     }
 
@@ -31,5 +41,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('account_basic_dental_service');
         Schema::dropIfExists('basic_dental_services');
+        Schema::dropIfExists('dentist_basic_dental_service');
+
     }
 };

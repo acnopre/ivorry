@@ -26,6 +26,13 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Actions\ViewAction;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\MultiSelect;
+use App\Models\BasicDentalService;
+use App\Models\PlanEnhancement;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 
 class AccountResource extends Resource
 {
@@ -79,20 +86,75 @@ class AccountResource extends Resource
                             ->required(),
                     ])->columns(3),
 
-                Section::make('Dental Coverage')
-                    ->schema([
-                        CheckboxList::make('basicDentalServices')
-                            ->label('Basic Dental Services')
-                            ->relationship('basicDentalServices', 'name')
-                            ->columns(2)
-                            ->searchable(), // allows typing to filter options
+              
+                        Section::make('Dental Converage')->schema(function (Forms\Get $get, $operation, $record) {
+                        $services = BasicDentalService::all();
 
-                        CheckboxList::make('planEnhancements')
-                            ->label('Plan Enhancements')
-                            ->relationship('planEnhancements', 'name')
-                            ->columns(2)
-                            ->searchable(),
-                    ])
+                        return $services->map(function ($service) use ($record) {
+                            $quantity = null;
+
+                            if ($record) {
+                                $pivot = $record->basicDentalServices()
+                                    ->where('basic_dental_service_id', $service->id)
+                                    ->first();
+                                $quantity = $pivot?->pivot?->quantity;
+                            }
+
+                            return Grid::make(12)->schema([
+                                Placeholder::make("label_{$service->id}")
+                                    ->label('')
+                                    ->content($service->name)
+                                    ->columnSpan(6),
+
+                                Placeholder::make("current_quantity_{$service->id}")
+                                    ->label('Current quantity')
+                                    ->content($quantity ? $quantity : '—')
+                                    ->visible((bool) $record)
+                                    ->columnSpan(3),
+
+                                TextInput::make("basic_dental_services.{$service->id}")
+                                    ->label('Quantity')
+                                    ->numeric()
+                                    ->default($quantity)
+                                    ->columnSpan($record ? 3 : 6),
+                            ]);
+                        })->toArray();
+                 }),
+
+                // Plan Enhancements
+                Section::make('Plan Enhancements Rate')->schema(function (Forms\Get $get, $operation, $record) {
+                    $enhancements = PlanEnhancement::all();
+
+                    return $enhancements->map(function ($enhancement) use ($record) {
+                        $quantity = null;
+
+                        if ($record) {
+                            $pivot = $record->planEnhancements()
+                                ->where('plan_enhancement_id', $enhancement->id)
+                                ->first();
+                            $quantity = $pivot?->pivot?->quantity;
+                        }
+
+                        return Grid::make(12)->schema([
+                            Placeholder::make("label_{$enhancement->id}")
+                                ->label('')
+                                ->content($enhancement->name)
+                                ->columnSpan(6),
+
+                            Placeholder::make("current_quantity_{$enhancement->id}")
+                                ->label('Current Quantity')
+                                ->content($quantity ? $quantity : '—')
+                                ->visible((bool) $record)
+                                ->columnSpan(3),
+
+                            TextInput::make("plan_enhancements.{$enhancement->id}")
+                                ->label('Quantity')
+                                ->numeric()
+                                ->default($quantity)
+                                ->columnSpan($record ? 3 : 6),
+                        ]);
+                    })->toArray();
+                }),
             ]);
     }
 
@@ -105,7 +167,6 @@ class AccountResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                // display endorsement type name instead of ID
                 TextColumn::make('endorsement_type')
                     ->label('Endorsement')
                     ->badge()

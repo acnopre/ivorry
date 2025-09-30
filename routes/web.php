@@ -1,9 +1,13 @@
 <?php
 
-use App\Filament\Pages\Auth\SetPassword;
+use App\Filament\Pages\SetPassword;
 use Illuminate\Support\Facades\Route;
 
 // Route::get('/', function () {
 //     return view('welcome');
 // });
-Route::get('/reset-password/{token}', SetPassword::class)->name('password.reset');
+
+
+    Route::get('/set-password/{token}', SetPassword::class)
+        ->name('set-password')
+        ->middleware('guest'); // important, avoid auth redirect

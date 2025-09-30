@@ -1,69 +1,122 @@
 <?php
 
-// app/Filament/Pages/Auth/SetPassword.php
-namespace App\Filament\Pages\Auth;
+namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
-use Filament\Forms;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Filament\Forms;
+use Filament\Pages\Page;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\ValidationException;
+use Filament\Notifications\Notification;
 
 class SetPassword extends Page implements Forms\Contracts\HasForms
 {
     use Forms\Concerns\InteractsWithForms;
-    protected static ?string $navigationIcon = null;
-    protected static bool $shouldRegisterNavigation = false;
+
+    // points to your blade view
     protected static string $view = 'filament.pages.set-password';
-    protected static ?string $title = 'Set Your Password';
 
-    public $email;
-    public $token;
-    public $password;
-    public $password_confirmation;
+    // hide from sidebar/navigation
+    protected static bool $shouldRegisterNavigation = false;
 
-    public function mount()
+    public ?array $data = [];
+    public ?string $email = null;
+    public ?string $token = null;
+
+    public function mount(string $token): void
     {
-        $this->email = request('email');
-        $this->token = request()->route('token');
+        $this->email = request()->query('email');
+        $this->token = $token;
+
+        $this->form->fill();
     }
 
     public function form(Forms\Form $form): Forms\Form
     {
-        return $form->schema([
-            Forms\Components\TextInput::make('password')
-                ->label('New Password')
-                ->password()
-                ->required()
-                ->confirmed(),
-            Forms\Components\TextInput::make('password_confirmation')
-                ->label('Confirm Password')
-                ->password()
-                ->required(),
-        ]);
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('current_password')
+                    ->label('Temporary Password')
+                    ->password()
+                    ->required(),
+
+                Forms\Components\TextInput::make('password')
+                    ->label('New Password')
+                    ->password()
+                    ->required()
+                    ->minLength(8)
+                    ->confirmed(),
+
+                Forms\Components\TextInput::make('password_confirmation')
+                    ->label('Confirm New Password')
+                    ->password()
+                    ->required(),
+            ])
+            ->statePath('data');
     }
 
-    public function submit()
+    public function save()
     {
-        $status = Password::reset(
-            [
-                'email'                 => $this->email,
-                'password'              => $this->password,
-                'password_confirmation' => $this->password_confirmation,
-                'token'                 => $this->token,
-            ],
-            function (User $user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->save();
-            }
-        );
+        $this->validate([
+            'data.current_password' => ['required'],
+            'data.password' => ['required', 'min:8', 'confirmed'],
+        ]);
 
-        if ($status === Password::PASSWORD_RESET) {
-            session()->flash('success', 'Password set successfully! You may now log in.');
-            return redirect()->route('filament.admin.auth.login');
+        $user = User::where('email', $this->email)->firstOrFail();
+
+        if (! $user) {
+            Notification::make()
+                ->title('Invalid email address.')
+                ->danger()
+                ->send();
+            return;
         }
+        
+        if (! Password::broker()->tokenExists($user, $this->token)) {
+            Notification::make()
+                ->title('This password reset link is invalid or expired.')
+                ->danger()
+                ->send();
+            return;
+        }
+        
+        if (! Hash::check($this->data['current_password'], $user->password)) {
+            Notification::make()
+                ->title('The provided temporary password is incorrect.')
+                ->danger()
+                ->send();
+            return;
+        }
+        
 
-        $this->addError('email', __($status));
+        $user->update([
+            'password' => Hash::make($this->data['password']),
+            'must_change_password' => false,
+        ]);
+
+        Password::broker()->deleteToken($user);
+        Auth::login($user);
+        // store a flash session variable
+        session()->flash('password_updated', true);
+
+        $this->redirectRoute('filament.admin.pages.dashboard');
     }
+
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    public static function isAccessibleWithoutAuthentication(): bool
+    {
+        return true;
+    }
+      /**
+     * Override default layout (removes sidebar + topbar).
+     */
+    protected static string $layout = 'filament-panels::components.layout.base';
+
 }

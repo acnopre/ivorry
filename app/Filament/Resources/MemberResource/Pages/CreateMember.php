@@ -1,6 +1,5 @@
 <?php
 
-// app/Filament/Resources/MemberResource/Pages/CreateMember.php
 namespace App\Filament\Resources\MemberResource\Pages;
 
 use App\Filament\Resources\MemberResource;
@@ -8,6 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 use App\Models\User;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class CreateMember extends CreateRecord
 {
@@ -16,16 +16,23 @@ class CreateMember extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $memberRole = 'Member';
+        $plainPassword = Str::random(12);
+
         $user = User::firstOrCreate(
             ['email' => $data['email']],
             [
                 'name'     => $data['name'],
-                'password' => bcrypt(Str::random(16)),
+                'password' => Hash::make($plainPassword),
+                'must_change_password' => true,
             ]
         );
 
-        // Send password reset link to email
-        Password::sendResetLink(['email' => $user->email]);
+        // Generate password reset token
+        $token = Password::broker()->createToken($user);
+
+        // Send email with reset link + generated password
+        $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+
 
         // Link user to member
         $data['user_id'] = $user->id;

@@ -37,7 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Dashboard::class,
-                \App\Filament\Pages\Auth\SetPassword::class,
+                \App\Filament\Pages\SetPassword::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
@@ -64,7 +64,10 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                \App\Http\Middleware\MustSetPassword::class,
                 'web',
+                // \App\Http\Middleware\ForceSetPassword::class,
+
             ])
             ->authMiddleware([
                 Authenticate::class,

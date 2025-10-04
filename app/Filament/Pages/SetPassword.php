@@ -13,13 +13,9 @@ use Filament\Notifications\Notification;
 
 class SetPassword extends Page implements Forms\Contracts\HasForms
 {
-    use Forms\Concerns\InteractsWithForms;
 
-    // points to your blade view
     protected static string $view = 'filament.pages.set-password';
-
-    // hide from sidebar/navigation
-    protected static bool $shouldRegisterNavigation = false;
+    protected static string $layout = 'filament-panels::components.layout.simple';
 
     public ?array $data = [];
     public ?string $email = null;
@@ -57,7 +53,7 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
             ->statePath('data');
     }
 
-    public function save()
+    public function submit()
     {
         $this->validate([
             'data.current_password' => ['required'],
@@ -114,9 +110,10 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
     {
         return true;
     }
-      /**
-     * Override default layout (removes sidebar + topbar).
-     */
-    protected static string $layout = 'filament-panels::components.layout.base';
+
+    public function hasLogo(): bool
+    {
+        return false;
+    }
 
 }

@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -19,40 +18,26 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-class AdminPanelProvider extends PanelProvider
+class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->default()
-            ->id('admin')
-            ->path('admin')
-            ->brandLogo(asset('images/logo.png'))
-            ->login()
-            ->brandLogoHeight('80px')
+            ->id('app')
+            ->path('app')
             ->colors([
                 'primary' => '#8B1C52'
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources') // 👈 this is important
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->login()
+            ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
+            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
             ->pages([
-                Dashboard::class,
-               
+                \App\Filament\Pages\MemberLogin::class,
+                \App\Filament\Pages\SetPassword::class,
+                \App\Filament\Pages\SetEmail::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/App/Widgets'), for: 'App\\Filament\\App\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
-                \App\Filament\Widgets\ActivityTimeline::class,
-            ])
-            ->navigationGroups([
-                'Accounts & Members',
-                'Dental Management',
-                'Claims Management',
-                'Reports',
-                'Lookup Tables',
-                'Settings',
-                'System'  
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -64,13 +49,8 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                \App\Http\Middleware\MustSetPassword::class,
-                'web',
-                // \App\Http\Middleware\ForceSetPassword::class,
-
             ])
             ->authMiddleware([
-                Authenticate::class,
             ]);
     }
 }

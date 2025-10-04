@@ -30,7 +30,7 @@ class SendGeneratedPassword extends Notification
             ->markdown('emails.member.generated-password', [
                 'name'     => $notifiable->name,
                 'password' => $this->password,
-                'loginUrl' => route('set-password', ['token' => $token, 'email' => $notifiable->email]),
+                'loginUrl' => route('app/set-password', ['token' => $token, 'email' => $notifiable->email]),
             ]);
     }
 }

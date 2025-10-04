@@ -7,7 +7,11 @@ use Illuminate\Support\Facades\Route;
 //     return view('welcome');
 // });
 
+    // Route::get('/set-email', SetEmail::class)
+    // ->name('set-email')
+    // ->middleware('guest');
 
-    Route::get('/set-password/{token}', SetPassword::class)
-        ->name('set-password')
-        ->middleware('guest'); // important, avoid auth redirect
+    Route::get('app/set-password/{token}', SetPassword::class)
+        ->name('app/set-password');
+
+  

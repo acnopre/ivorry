@@ -40,81 +40,14 @@ class DentistResource extends Resource
                     Forms\Components\TextInput::make('middle_initial')->maxLength(3),
                     Forms\Components\TextInput::make('prc_license_number')->label('PRC License No.'),
                     Forms\Components\DatePicker::make('prc_expiration_date')->label('PRC Expiration Date'),
-
                     Forms\Components\Toggle::make('is_owner')->label('Is Owner'),
+                    Forms\Components\Select::make('specializations')
+                    ->label('Specializations')
+                    ->multiple()
+                    ->relationship('specializations', 'name')
+                    ->preload()
+                    ->searchable(),
                 ])->columns(2),
-
-                // Basic Dental Services
-                Section::make('Basic Dental Services Rate')->schema(function (Forms\Get $get, $operation, $record) {
-                    $services = BasicDentalService::all();
-
-                    return $services->map(function ($service) use ($record) {
-                        $fee = null;
-
-                        if ($record) {
-                            $pivot = $record->basicDentalServices()
-                                ->where('basic_dental_service_id', $service->id)
-                                ->first();
-                            $fee = $pivot?->pivot?->fee;
-                        }
-
-                        return Grid::make(12)->schema([
-                            Placeholder::make("label_{$service->id}")
-                                ->label('')
-                                ->content($service->name)
-                                ->columnSpan(6),
-
-                            Placeholder::make("current_fee_{$service->id}")
-                                ->label('Current Fee')
-                                ->content($fee ? "₱" . number_format($fee, 2) : '—')
-                                ->visible((bool) $record)
-                                ->columnSpan(3),
-
-                            TextInput::make("basic_dental_services.{$service->id}")
-                                ->label('Fee')
-                                ->numeric()
-                                ->prefix('₱')
-                                ->default($fee)
-                                ->columnSpan($record ? 3 : 6),
-                        ]);
-                    })->toArray();
-                }),
-
-                // Plan Enhancements
-                Section::make('Plan Enhancements Rate')->schema(function (Forms\Get $get, $operation, $record) {
-                    $enhancements = PlanEnhancement::all();
-
-                    return $enhancements->map(function ($enhancement) use ($record) {
-                        $fee = null;
-
-                        if ($record) {
-                            $pivot = $record->planEnhancements()
-                                ->where('plan_enhancement_id', $enhancement->id)
-                                ->first();
-                            $fee = $pivot?->pivot?->fee;
-                        }
-
-                        return Grid::make(12)->schema([
-                            Placeholder::make("label_{$enhancement->id}")
-                                ->label('')
-                                ->content($enhancement->name)
-                                ->columnSpan(6),
-
-                            Placeholder::make("current_fee_{$enhancement->id}")
-                                ->label('Current Fee')
-                                ->content($fee ? "₱" . number_format($fee, 2) : '—')
-                                ->visible((bool) $record)
-                                ->columnSpan(3),
-
-                            TextInput::make("plan_enhancements.{$enhancement->id}")
-                                ->label('Fee')
-                                ->numeric()
-                                ->prefix('₱')
-                                ->default($fee)
-                                ->columnSpan($record ? 3 : 6),
-                        ]);
-                    })->toArray();
-                }),
             ]);
     }
 
@@ -126,6 +59,13 @@ class DentistResource extends Resource
                 Tables\Columns\TextColumn::make('last_name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('first_name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('prc_license_number')->label('PRC No.'),
+                Tables\Columns\TextColumn::make('is_owner')
+                    ->label('Is Owner')
+                    ->formatStateUsing(fn($state) => $state == 1 ? 'Owner' : '')
+                    ->badge()
+                    ->colors([
+                        'success' => fn($state) => $state == 1,
+                    ]),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

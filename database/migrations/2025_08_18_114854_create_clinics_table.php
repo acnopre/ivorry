@@ -18,9 +18,7 @@ return new class extends Migration
             $table->string('clinic_name');
             $table->string('registered_name')->nullable();
 
-            // PRC / PTR
-            $table->string('prc_license_no')->nullable();
-            $table->date('prc_expiration_date')->nullable();
+            // PTR
             $table->string('ptr_no')->nullable();
             $table->date('ptr_date_issued')->nullable();
 
@@ -40,10 +38,6 @@ return new class extends Migration
 
             // Alternative Contact
             $table->text('alt_address')->nullable();
-
-            // Dentist Info
-            $table->string('dentist_personal_no')->nullable();
-            $table->string('dentist_email')->nullable();
 
             // Clinic Staff
             $table->string('clinic_staff_name')->nullable();

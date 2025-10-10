@@ -20,7 +20,7 @@ class Dentist extends Model
         'is_owner',
     ];
 
-    protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];
+    protected $with = ['specializations'];
 
     protected $casts = [
         'prc_expiration_date' => 'date',
@@ -42,12 +42,6 @@ class Dentist extends Model
             'specialization_id'
         );
     }
-
-    public function services()
-    {
-        return $this->belongsToMany(Service::class, 'dentist_service')->withPivot('fee')->withTimestamps();
-    }
-
 
     public function accreditationStatus()
     {

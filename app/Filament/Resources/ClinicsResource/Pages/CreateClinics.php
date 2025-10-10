@@ -8,37 +8,49 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateClinics extends CreateRecord
 {
     protected static string $resource = ClinicsResource::class;
+    protected array $servicesData = [];
 
-    // protected array $basicDentalServicesData = [];
-    // protected array $planEnhancementsData = [];
+    /**
+     * Prepare data before creating the account record.
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        // Store services (basic + enhancement) temporarily
+        $this->servicesData = $data['services'] ?? [];
 
-    // protected function mutateFormDataBeforeCreate(array $data): array
-    // {
-    //     // Grab pivot data then remove from main data
-    //     $this->basicDentalServicesData = $data['basic_dental_services'] ?? [];
-    //     $this->planEnhancementsData = $data['plan_enhancements'] ?? [];
+        // Remove 'services' from main account data (pivot data)
+        unset($data['services']);
 
-    //     unset($data['basic_dental_services'], $data['plan_enhancements']);
+        return $data;
+    }
+    /**
+     * Handle services pivot table after account creation.
+     */
+    protected function afterCreate(): void
+    {
+        // Merge basic + enhancement arrays safely
+        $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'] ;
 
-    //     return $data;
-    // }
+        if (empty($mergedServices)) {
+            return;
+        }
 
-    // protected function afterCreate(): void
-    // {
-    //     // Sync Basic Dental Services
-    //     $basicSync = collect($this->basicDentalServicesData)
-    //         ->filter(fn ($fee) => $fee !== null && $fee !== '')
-    //         ->mapWithKeys(fn ($fee, $id) => [$id => ['fee' => $fee]])
-    //         ->toArray();
-    //     $this->record->basicDentalServices()->sync($basicSync);
-
-    //     // Sync Plan Enhancements
-    //     $enhSync = collect($this->planEnhancementsData)
-    //         ->filter(fn ($fee) => $fee !== null && $fee !== '')
-    //         ->mapWithKeys(fn ($fee, $id) => [$id => ['fee' => $fee]])
-    //         ->toArray();
-    //     $this->record->planEnhancements()->sync($enhSync);
-    // }
+        $filtered = collect($mergedServices)
+            ->filter(fn($fee, $serviceId) => $serviceId)
+            ->mapWithKeys(fn($fee, $serviceId) => [
+                $serviceId => ['fee' => $fee],
+            ])
+            ->toArray();
+        if (! empty($filtered)) {
+            $this->record->services()->sync($filtered);
+        } else {
+            Notification::make()
+                ->title('No valid services found')
+                ->body('The selected services were not found in the services table.')
+                ->danger()
+                ->send();
+        }
+    }
 
     protected function getRedirectUrl(): string
     {

@@ -5,65 +5,57 @@ namespace App\Filament\Resources\ClinicsResource\Pages;
 use App\Filament\Resources\ClinicsResource;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
+use Filament\Actions;
 
 class EditClinics extends EditRecord
 {
     protected static string $resource = ClinicsResource::class;
 
-    // protected function mutateFormDataBeforeSave(array $data): array
-    // {
-    //     unset($data['basic_dental_services'], $data['plan_enhancements']);
-    //     return $data;
-    // }
+    protected array $servicesData = [];
 
-    // protected function afterSave(): void
-    // {
-    //     $dentist = $this->record;
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make(),
+        ];
+    }
 
-    //     // Update only changed Basic Dental Services
-    //     $basicServices = $this->form->getState()['basic_dental_services'] ?? [];
-    //     foreach ($basicServices as $serviceId => $fee) {
-    //         if ($fee !== null && $fee !== '') {
-    //             $currentFee = DB::table('dentist_basic_dental_service')
-    //                 ->where('dentist_id', $dentist->id)
-    //                 ->where('basic_dental_service_id', $serviceId)
-    //                 ->value('fee');
+    /**
+     * Remove service fields from the main table data.
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Store all services (basic + enhancement)
+        $this->servicesData = $data['services'] ?? [];
 
-    //             if ($currentFee != $fee) {
-    //                 DB::table('dentist_basic_dental_service')->updateOrInsert(
-    //                     [
-    //                         'dentist_id' => $dentist->id,
-    //                         'basic_dental_service_id' => $serviceId,
-    //                     ],
-    //                     [
-    //                         'fee' => $fee,
-    //                     ]
-    //                 );
-    //             }
-    //         }
-    //     }
+        // Remove from main record fields (pivot only)
+        unset($data['services']);
 
-    //     // Update only changed Plan Enhancements
-    //     $planEnhancements = $this->form->getState()['plan_enhancements'] ?? [];
-    //     foreach ($planEnhancements as $enhancementId => $fee) {
-    //         if ($fee !== null && $fee !== '') {
-    //             $currentFee = DB::table('dentist_plan_enhancement')
-    //                 ->where('dentist_id', $dentist->id)
-    //                 ->where('plan_enhancement_id', $enhancementId)
-    //                 ->value('fee');
+        return $data;
+    }
 
-    //             if ($currentFee != $fee) {
-    //                 DB::table('dentist_plan_enhancement')->updateOrInsert(
-    //                     [
-    //                         'dentist_id' => $dentist->id,
-    //                         'plan_enhancement_id' => $enhancementId,
-    //                     ],
-    //                     [
-    //                         'fee' => $fee,
-    //                     ]
-    //                 );
-    //             }
-    //         }
-    //     }
-    // }
-}
+    /**
+     * After saving the Account, sync related services with pivot table.
+     */
+    protected function afterSave(): void
+    {
+        $account = $this->record;
+    
+        $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'] ;
+
+        if (empty($mergedServices)) {
+            return;
+        }
+
+        $filtered = collect($mergedServices)
+            ->filter(fn($fee, $serviceId) => $serviceId)
+            ->mapWithKeys(fn($fee, $serviceId) => [
+                $serviceId => ['fee' => $fee],
+            ])
+            ->toArray();
+    
+        // Sync to pivot table (account_service)
+        $account->services()->sync($filtered);
+    }
+}    
+

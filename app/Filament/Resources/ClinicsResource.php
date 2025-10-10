@@ -13,6 +13,8 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -25,6 +27,7 @@ use App\Models\TaxType;
 use App\Models\BusinessType;
 use App\Models\AccountType;
 use App\Models\AccreditationStatus;
+use App\Models\Service;
 
 class ClinicsResource extends Resource
 {
@@ -52,10 +55,8 @@ class ClinicsResource extends Resource
                         Forms\Components\Textarea::make('alt_address')->label('Alternative Address'),
                     ])->columns(2),
 
-                Forms\Components\Section::make('PRC / PTR Information')
+                Forms\Components\Section::make('PTR Information')
                     ->schema([
-                        Forms\Components\TextInput::make('prc_license_no'),
-                        Forms\Components\DatePicker::make('prc_expiration_date'),
                         Forms\Components\TextInput::make('ptr_no'),
                         Forms\Components\DatePicker::make('ptr_date_issued'),
                     ])->columns(2),
@@ -76,12 +77,6 @@ class ClinicsResource extends Resource
                                 ->searchable()
                                 ->required(),
                         Forms\Components\TextInput::make('sec_registration_no'),
-                    ])->columns(2),
-
-                Forms\Components\Section::make('Dentist Information')
-                    ->schema([
-                        Forms\Components\TextInput::make('dentist_personal_no'),
-                        Forms\Components\TextInput::make('dentist_email')->email(),
                     ])->columns(2),
 
                 Forms\Components\Section::make('Clinic Staff')
@@ -158,6 +153,66 @@ class ClinicsResource extends Resource
                             ->collapsible()
                             ->createItemButtonLabel('Add Associate Dentist'),
                     ]),
+
+                     // BASIC SERVICES
+            Section::make('Basic Dental Services')
+            ->schema(function (Forms\Get $get, $operation, $record) {
+                $services = Service::where('type', 'basic')->get();
+
+                return $services->map(function ($service) use ($record) {
+                    return Grid::make(12)->schema([
+                        Placeholder::make("label_{$service->id}")
+                            ->label('')
+                            ->content($service->name)
+                            ->columnSpan(6),
+
+                        TextInput::make("services.basic.{$service->id}")
+                            ->label('Fee')
+                            ->numeric()
+                            ->columnSpan(6)
+                            ->formatStateUsing(function ($state, $record) use ($service) {
+                                // Hydrate the current fee value from pivot table
+                                if (! $record) {
+                                    return $state; // for create mode
+                                }
+
+                                return $record->services()
+                                    ->where('service_id', $service->id)
+                                    ->value('fee');
+                            }),
+                    ]);
+                })->toArray();
+            }),
+
+            // PLAN ENHANCEMENTS
+            Section::make('Plan Enhancements')
+            ->schema(function (Forms\Get $get, $operation, $record) {
+                $enhancements = Service::where('type', 'enhancement')->get();
+
+                return $enhancements->map(function ($enhancement) use ($record) {
+                    return Grid::make(12)->schema([
+                        Placeholder::make("label_{$enhancement->id}")
+                            ->label('')
+                            ->content($enhancement->name)
+                            ->columnSpan(6),
+
+                        TextInput::make("services.enhancement.{$enhancement->id}")
+                            ->label('Fee')
+                            ->numeric()
+                            ->columnSpan(6)
+                            ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                if (! $record) {
+                                    return $state;
+                                }
+
+                                return $record->services()
+                                    ->where('service_id', $enhancement->id)
+                                    ->value('fee');
+                            }),
+                    ]);
+                })->toArray();
+            }),
+
 
                     Forms\Components\Section::make('Status')
                     ->schema([

@@ -79,9 +79,13 @@ class Clinics extends Model
     }
 
     public function accountType()
-{
-    return $this->belongsTo(AccountType::class);
-}
+    {
+        return $this->belongsTo(AccountType::class);
+    }
+    public function services()
+    {
+        return $this->belongsToMany(Service::class, 'clinic_service')->withPivot('fee')->withTimestamps();
+    }
 
 
 }

@@ -26,4 +26,5 @@ class BasicDentalService extends Model
     {
         return $this->belongsToMany(Dentist::class, 'dentist_basic_dental_service');
     }
+    
 }

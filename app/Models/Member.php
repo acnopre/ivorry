@@ -43,4 +43,10 @@ class Member extends Model
     {
         return "{$this->first_name} {$this->middle_initial} {$this->last_name}";
     }
+
+    public function procedures()
+    {
+        return $this->hasMany(Procedure::class);
+    }
+
 }

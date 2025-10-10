@@ -24,7 +24,7 @@ class Account extends Model
         'status'
     ];
 
-    protected $with = ['basicDentalServices', 'planEnhancements'];
+    protected $with = ['services'];
 
     public function members()
     {
@@ -35,26 +35,11 @@ class Account extends Model
         return $this->belongsTo(EndorsementType::class);
     }
 
-    public function basicDentalServices()
+    public function services()
     {
-        return $this->belongsToMany(
-            BasicDentalService::class,
-            'account_basic_dental_service',
-            'account_id',
-            'basic_dental_service_id'
-        )->withPivot('quantity')->withTimestamps();
+        return $this->belongsToMany(Service::class, 'account_service')->withPivot('quantity')->withTimestamps();
     }
-    
-    public function planEnhancements()
-    {
-        return $this->belongsToMany(
-            PlanEnhancement::class,
-            'account_plan_enhancement',
-            'account_id',
-            'plan_enhancement_id'
-        )->withPivot('quantity')->withTimestamps();
-    }
-    
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

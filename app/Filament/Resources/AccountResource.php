@@ -6,33 +6,24 @@ use App\Filament\Resources\AccountResource\Pages;
 use App\Imports\AccountImport;
 use App\Models\Account;
 use App\Models\EndorsementType;
+use App\Models\Service;
 use Filament\Forms;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Notifications\Notification;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Actions\Action as TableAction;
+use Illuminate\Database\Eloquent\Model;
+use Filament\Forms\Components\{
+    Section, Grid, TextInput, Select, DatePicker, FileUpload, Placeholder
+};
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Table;
-use Maatwebsite\Excel\Facades\Excel;
-use Filament\Tables\Actions\Action;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
-use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action as TableAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\MultiSelect;
-use App\Models\BasicDentalService;
-use App\Models\PlanEnhancement;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Placeholder;
 
 class AccountResource extends Resource
 {
@@ -71,90 +62,74 @@ class AccountResource extends Resource
 
                 Section::make('Contract Information')
                     ->schema([
-                        DatePicker::make('effective_date')
-                            ->label('Effective Date'),
-
-                        DatePicker::make('expiration_date')
-                            ->label('Expiration Date'),
-
-                        // dynamic from endorsement_types table
+                        DatePicker::make('effective_date')->label('Effective Date'),
+                        DatePicker::make('expiration_date')->label('Expiration Date'),
                         Select::make('endorsement_type')
                             ->label('Endorsement Type')
-                            ->options(
-                                \App\Models\EndorsementType::pluck('name', 'name')
-                            )
+                            ->options(EndorsementType::pluck('name', 'name'))
                             ->required(),
                     ])->columns(3),
 
-              
-                        Section::make('Dental Converage')->schema(function (Forms\Get $get, $operation, $record) {
-                        $services = BasicDentalService::all();
+              // BASIC SERVICES
+            Section::make('Basic Dental Services')
+            ->schema(function (Forms\Get $get, $operation, $record) {
+                $services = Service::where('type', 'basic')->get();
 
-                        return $services->map(function ($service) use ($record) {
-                            $quantity = null;
+                return $services->map(function ($service) use ($record) {
+                    return Grid::make(12)->schema([
+                        Placeholder::make("label_{$service->id}")
+                            ->label('')
+                            ->content($service->name)
+                            ->columnSpan(6),
 
-                            if ($record) {
-                                $pivot = $record->basicDentalServices()
-                                    ->where('basic_dental_service_id', $service->id)
-                                    ->first();
-                                $quantity = $pivot?->pivot?->quantity;
-                            }
+                        TextInput::make("services.basic.{$service->id}")
+                            ->label('Quantity')
+                            ->numeric()
+                            ->columnSpan(6)
+                            ->formatStateUsing(function ($state, $record) use ($service) {
+                                // Hydrate the current quantity value from pivot table
+                                if (! $record) {
+                                    return $state; // for create mode
+                                }
 
-                            return Grid::make(12)->schema([
-                                Placeholder::make("label_{$service->id}")
-                                    ->label('')
-                                    ->content($service->name)
-                                    ->columnSpan(6),
+                                return $record->services()
+                                    ->where('service_id', $service->id)
+                                    ->value('quantity');
+                            }),
+                    ]);
+                })->toArray();
+            }),
 
-                                Placeholder::make("current_quantity_{$service->id}")
-                                    ->label('Current quantity')
-                                    ->content($quantity ? $quantity : '—')
-                                    ->visible((bool) $record)
-                                    ->columnSpan(3),
+            // PLAN ENHANCEMENTS
+            Section::make('Plan Enhancements')
+            ->schema(function (Forms\Get $get, $operation, $record) {
+                $enhancements = Service::where('type', 'enhancement')->get();
 
-                                TextInput::make("basic_dental_services.{$service->id}")
-                                    ->label('Quantity')
-                                    ->numeric()
-                                    ->default($quantity)
-                                    ->columnSpan($record ? 3 : 6),
-                            ]);
-                        })->toArray();
-                 }),
+                return $enhancements->map(function ($enhancement) use ($record) {
+                    return Grid::make(12)->schema([
+                        Placeholder::make("label_{$enhancement->id}")
+                            ->label('')
+                            ->content($enhancement->name)
+                            ->columnSpan(6),
 
-                // Plan Enhancements
-                Section::make('Plan Enhancements Rate')->schema(function (Forms\Get $get, $operation, $record) {
-                    $enhancements = PlanEnhancement::all();
+                        TextInput::make("services.enhancement.{$enhancement->id}")
+                            ->label('Quantity')
+                            ->numeric()
+                            ->columnSpan(6)
+                            ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                if (! $record) {
+                                    return $state;
+                                }
 
-                    return $enhancements->map(function ($enhancement) use ($record) {
-                        $quantity = null;
+                                return $record->services()
+                                    ->where('service_id', $enhancement->id)
+                                    ->value('quantity');
+                            }),
+                    ]);
+                })->toArray();
+            }),
 
-                        if ($record) {
-                            $pivot = $record->planEnhancements()
-                                ->where('plan_enhancement_id', $enhancement->id)
-                                ->first();
-                            $quantity = $pivot?->pivot?->quantity;
-                        }
 
-                        return Grid::make(12)->schema([
-                            Placeholder::make("label_{$enhancement->id}")
-                                ->label('')
-                                ->content($enhancement->name)
-                                ->columnSpan(6),
-
-                            Placeholder::make("current_quantity_{$enhancement->id}")
-                                ->label('Current Quantity')
-                                ->content($quantity ? $quantity : '—')
-                                ->visible((bool) $record)
-                                ->columnSpan(3),
-
-                            TextInput::make("plan_enhancements.{$enhancement->id}")
-                                ->label('Quantity')
-                                ->numeric()
-                                ->default($quantity)
-                                ->columnSpan($record ? 3 : 6),
-                        ]);
-                    })->toArray();
-                }),
             ]);
     }
 
@@ -162,10 +137,7 @@ class AccountResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('company_name')
-                    ->label('Company Name')
-                    ->sortable()
-                    ->searchable(),
+                TextColumn::make('company_name')->label('Company Name')->sortable()->searchable(),
 
                 TextColumn::make('endorsement_type')
                     ->label('Endorsement')
@@ -182,20 +154,17 @@ class AccountResource extends Resource
                     ->badge()
                     ->colors([
                         'success' => fn($state) => $state === 1,
-                        'warning'  => fn($state) => $state === 0,
+                        'warning' => fn($state) => $state === 0,
                     ]),
 
                 TextColumn::make('effective_date')->label('Effective')->date(),
                 TextColumn::make('expiration_date')->label('Expiration')->date(),
-                TextColumn::make('created_at')->dateTime()->label('Created'),
+                TextColumn::make('created_at')->label('Created')->dateTime(),
             ])
             ->filters([
-                // filter dynamically from DB
                 SelectFilter::make('endorsement_type')
                     ->label('Endorsement Type')
-                    ->options(
-                        \App\Models\EndorsementType::pluck('name', 'name')
-                    )
+                    ->options(EndorsementType::pluck('name', 'name')),
             ])
             ->headerActions([
                 Action::make('importXls')
@@ -213,16 +182,15 @@ class AccountResource extends Resource
                     ])
                     ->action(function (array $data): void {
                         $relativePath = $data['file'];
-                        $disk = Storage::disk('public'); // use the public disk
+                        $disk = Storage::disk('public');
                         $absolutePath = $disk->path($relativePath);
 
-                        if (! $disk->exists($relativePath)) {
+                        if (!$disk->exists($relativePath)) {
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
 
                         Excel::import(new AccountImport, $absolutePath);
                     }),
-
             ])
             ->actions([
                 ViewAction::make()
@@ -235,19 +203,17 @@ class AccountResource extends Resource
                             ->requiresConfirmation()
                             ->action(function (Model $record) {
                                 $record->update(['status' => 1]);
-
                                 Notification::make()
                                     ->success()
                                     ->title('Account approved')
                                     ->send();
                             })
-                            ->cancelParentActions(), // ← closes the view modal
+                            ->cancelParentActions(),
                     ]),
 
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
-
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);

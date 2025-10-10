@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        // main procedure record
+        Schema::create('procedures', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('member_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('procedure_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
+            $table->string('tooth_number')->nullable();
+            $table->string('quantity')->nullable();
+            $table->date('availment_date')->nullable();
+            $table->enum('status', ['pending', 'approved', 'denied'])->default('pending');
+            $table->timestamps();
+        });
+
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('procedures');
+    }
+};

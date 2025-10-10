@@ -43,17 +43,11 @@ class Dentist extends Model
         );
     }
 
-    public function basicDentalServices()
+    public function services()
     {
-        return $this->belongsToMany(BasicDentalService::class, 'dentist_basic_dental_service')
-            ->withPivot('fee');
+        return $this->belongsToMany(Service::class, 'dentist_service')->withPivot('fee')->withTimestamps();
     }
 
-    public function planEnhancements()
-    {
-        return $this->belongsToMany(PlanEnhancement::class, 'dentist_plan_enhancement')
-            ->withPivot('fee');
-    }
 
     public function accreditationStatus()
     {

@@ -24,6 +24,7 @@ use Database\Seeders\SpecializationSeeder;
 use Database\Seeders\SuperAdminSeeder;
 use Database\Seeders\UnitsSeeder;
 use Database\Seeders\UpperManagementSeeder;
+use Database\Seeders\ServicesSeeder;
 use Database\Seeders\DropdownSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -49,8 +50,7 @@ class DatabaseSeeder extends Seeder
             EndorsementTypeSeeder::class,
             UnitsSeeder::class,
             AccountSeeder::class,
-            BasicDentalServicesSeeder::class,
-            PlanEnhancementsSeeder::class,
+            ServicesSeeder::class,
             DropdownSeeder::class,
         ]);
     }

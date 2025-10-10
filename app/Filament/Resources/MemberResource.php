@@ -140,10 +140,7 @@ class MemberResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
+    
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -163,6 +160,14 @@ class MemberResource extends Resource
             'index' => Pages\ListMembers::route('/'),
             'create' => Pages\CreateMember::route('/create'),
             'edit' => Pages\EditMember::route('/{record}/edit'),
+            'view' => Pages\ViewMember::route('/{record}'), // Ensure view page exists
         ];
     }
+    public static function getRelations(): array
+{
+    return [
+        \App\Filament\Resources\MemberResource\RelationManagers\ProceduresRelationManager::class,
+    ];
+}
+
 }

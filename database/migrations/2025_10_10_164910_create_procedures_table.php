@@ -11,9 +11,12 @@ return new class extends Migration {
         Schema::create('procedures', function (Blueprint $table) {
             $table->id();
             $table->foreignId('member_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('clinics_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
             $table->date('availment_date')->nullable();
+            $table->string('approval_code')->nullable();
             $table->enum('status', ['pending', 'approved', 'denied'])->default('pending');
+            $table->longText('remarks')->nullable();
             $table->timestamps();
         });
     }

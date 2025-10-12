@@ -14,6 +14,7 @@ class Clinics extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'user_id',
         'clinic_name',
         'registered_name',
         'prc_license_no',
@@ -86,7 +87,10 @@ class Clinics extends Model
     {
         return $this->belongsToMany(Service::class, 'clinic_service')->withPivot('fee')->withTimestamps();
     }
-
+    public function user()
+    {
+        return $this->belongsTo(User::class)->withDefault();
+    }
 
 }
 

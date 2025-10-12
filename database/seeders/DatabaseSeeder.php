@@ -54,6 +54,8 @@ class DatabaseSeeder extends Seeder
             DropdownSeeder::class,
             UnitTypeSeeder::class,
             UnitSeeder::class,
+            // ClinicSeeder::class,
+            DentistSeeder::class,
         ]);
     }
 }

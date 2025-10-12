@@ -13,23 +13,40 @@ class Procedure extends Model
     protected $fillable = [
         'member_id',
         'service_id',
+        'clinic_id',
         'availment_date',
         'status',
+        'approval_code',
+        'remarks',
     ];
 
+    /**
+     * Get the member associated with the procedure.
+     */
     public function member()
     {
         return $this->belongsTo(Member::class);
     }
-
+     /**
+     * Get the clinic associated with the procedure.
+     */
+    public function clinic()
+    {
+        return $this->belongsTo(Clinic::class);
+    }
+    /**
+     * Get the service associated with the procedure.
+     */
     public function service()
-{
-    return $this->belongsTo(Service::class);
-}
+    {
+        return $this->belongsTo(Service::class);
+    }
 
+    /**
+     * Get the units linked to this procedure.
+     */
     public function units(): HasMany
     {
         return $this->hasMany(ProcedureUnit::class);
     }
-
 }

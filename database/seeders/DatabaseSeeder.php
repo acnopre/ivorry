@@ -22,10 +22,11 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SpecializationSeeder;
 use Database\Seeders\SuperAdminSeeder;
-use Database\Seeders\UnitsSeeder;
 use Database\Seeders\UpperManagementSeeder;
 use Database\Seeders\ServicesSeeder;
 use Database\Seeders\DropdownSeeder;
+use Database\Seeders\UnitSeeder;
+use Database\Seeders\UnitTypeSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -42,16 +43,17 @@ class DatabaseSeeder extends Seeder
             AccountManagerSeeder::class,
             AccreditationSeeder::class,
             MiddleManagementSeeder::class,
-            MemberSeeder::class,
             DentistAccountSeeder::class,
             UpperManagementSeeder::class,
             AccreditationStatusSeeder::class,
             SpecializationSeeder::class,
             EndorsementTypeSeeder::class,
-            UnitsSeeder::class,
             AccountSeeder::class,
+            MemberSeeder::class,
             ServicesSeeder::class,
             DropdownSeeder::class,
+            UnitTypeSeeder::class,
+            UnitSeeder::class,
         ]);
     }
 }

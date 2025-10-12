@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Filament\Notifications\Notification;
-use Filament\Support\Exceptions\Halt; // 👈 important
+use Filament\Support\Exceptions\Halt;
 
 class CreateMember extends CreateRecord
 {

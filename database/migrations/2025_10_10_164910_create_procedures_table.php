@@ -11,15 +11,11 @@ return new class extends Migration {
         Schema::create('procedures', function (Blueprint $table) {
             $table->id();
             $table->foreignId('member_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('procedure_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
-            $table->string('tooth_number')->nullable();
-            $table->string('quantity')->nullable();
             $table->date('availment_date')->nullable();
             $table->enum('status', ['pending', 'approved', 'denied'])->default('pending');
             $table->timestamps();
         });
-
     }
 
     public function down(): void

@@ -55,6 +55,7 @@ class ClinicsResource extends Resource
                         Forms\Components\Textarea::make('alt_address')->label('Alternative Address'),
                     ])->columns(2),
 
+
                 Forms\Components\Section::make('PTR Information')
                     ->schema([
                         Forms\Components\TextInput::make('ptr_no'),

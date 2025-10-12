@@ -30,7 +30,7 @@ class CreateAccount extends CreateRecord
      */
     protected function afterCreate(): void
     {
-        // Merge basic + enhancement arrays safely
+        // Merge basic + enhancement arrays 
         $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'] ;
 
         if (empty($mergedServices)) {

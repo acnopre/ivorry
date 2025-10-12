@@ -4,6 +4,12 @@ namespace App\Filament\Resources\ClinicsResource\Pages;
 
 use App\Filament\Resources\ClinicsResource;
 use Filament\Resources\Pages\CreateRecord;
+use App\Models\User;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
+use Filament\Notifications\Notification;
+use Filament\Support\Exceptions\Halt; 
 
 class CreateClinics extends CreateRecord
 {
@@ -28,6 +34,44 @@ class CreateClinics extends CreateRecord
      */
     protected function afterCreate(): void
     {
+        $data = $this->record;
+        //TODO:: fix the toggle in the UI part.
+        // get the first dentist that is owner
+        $ownerDentist = $data->dentists()->where('is_owner', true)->first();
+
+        if ($ownerDentist) {
+            if (! empty($data['clinic_email']) && User::where('email', $data['clinic_email'])->exists()) {
+                    Notification::make()
+                        ->title('This email is already registered.')
+                        ->danger()
+                        ->send();
+        
+                    // Stop the create process without crashing
+                    throw new Halt();
+                }
+
+            $dentistRole = 'Dentist';
+            $plainPassword = Str::random(12);
+
+            $user = User::create([
+                    'name'     => $ownerDentist['first_name'] . ' ' . $ownerDentist['last_name'],
+                    'email'    => $data['clinic_email'] ?? null, // accept null
+                    'password' => Hash::make($plainPassword),
+                    'must_change_password' => true,
+            ]);
+
+                // Generate password reset token only if email exists
+            if (! empty($data['clinic_email'])) {
+                    $token = Password::broker()->createToken($user);
+
+                    // Send clinic_email with reset link + generated password
+                    $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+            }
+
+                // Link user to member
+            $user->assignRole($dentistRole);
+        }
+
         // Merge basic + enhancement arrays safely
         $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'] ;
 

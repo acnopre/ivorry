@@ -149,7 +149,6 @@ class MemberResource extends Resource
                 'Super Admin',
                 'Account Manager',
                 'Upper Management',
-                'Dentist',
                 'CSR'
             ]);
     }

@@ -143,4 +143,13 @@ class SearchMember extends Page
             ])
             ->toArray();
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole([
+                'Super Admin',
+                'Dentist',
+            ]);
+    }
 }

@@ -149,8 +149,10 @@ class ClaimResource extends Resource
                             'units.unitType',
                             'units.unit',
                             'member',
+                            'clinic',
                             'service.clinic.dentists',
                         ]);
+                        dd($record);
 
                         $ownerDentist = optional($record->service->clinic?->dentists->firstWhere('is_owner', true));
 

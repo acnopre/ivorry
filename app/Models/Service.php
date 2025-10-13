@@ -8,9 +8,12 @@ class Service extends Model
 {
     //
 
+ 
     public function accounts()
     {
-        return $this->belongsToMany(Account::class, 'account_service')->withPivot('quantity')->withTimestamps();
+        return $this->belongsToMany(Account::class, 'account_service')
+            ->withPivot('quantity', 'remarks', 'is_unlimited') // <-- ADDED FIELDS
+            ->withTimestamps();
     }
 
     public function clinic()

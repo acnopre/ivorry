@@ -22,6 +22,8 @@ return new class extends Migration
             $table->foreignId('account_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
             $table->integer('quantity')->default(1);
+            $table->longText('remarks')->nullable();
+            $table->boolean('is_unlimited')->default(false);
             $table->timestamps();
         });
 

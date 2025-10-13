@@ -54,6 +54,11 @@ class Clinics extends Model
         return $this->hasMany(Dentist::class, 'clinic_id');
     }
 
+    public function procedures()
+    {
+        return $this->hasMany(Procedure::class);
+    }
+
     public function specializations()
     {
         return $this->belongsToMany(

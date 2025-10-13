@@ -20,8 +20,9 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\{
-    Section, Grid, TextInput, Select, DatePicker, FileUpload, Placeholder
+    Section, Grid, TextInput, Select, DatePicker, FileUpload, Placeholder, Toggle
 };
+
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 
@@ -76,27 +77,48 @@ class AccountResource extends Resource
                 $services = Service::where('type', 'basic')->get();
 
                 return $services->map(function ($service) use ($record) {
+                    // Changed Grid::make(12) to ensure a 4-field layout
                     return Grid::make(12)->schema([
                         Placeholder::make("label_{$service->id}")
                             ->label('')
                             ->content($service->name)
-                            ->columnSpan(6),
+                            ->columnSpan(4), // 4/12
 
-                        TextInput::make("services.basic.{$service->id}")
+                        TextInput::make("services.basic.{$service->id}.quantity") // Added .quantity suffix
                             ->label('Quantity')
                             ->numeric()
-                            ->columnSpan(6)
+                            ->columnSpan(2) // 2/12
                             ->formatStateUsing(function ($state, $record) use ($service) {
                                 // Hydrate the current quantity value from pivot table
-                                if (! $record) {
-                                    return $state; // for create mode
-                                }
-
+                                if (! $record) { return $state; }
                                 return $record->services()
                                     ->where('service_id', $service->id)
                                     ->value('quantity');
                             }),
-                    ]);
+
+                        
+                        TextInput::make("services.basic.{$service->id}.remarks") // NEW
+                            ->label('Remarks')
+                            ->columnSpan(4) // 4/12
+                            ->maxLength(255)
+                            ->formatStateUsing(function ($state, $record) use ($service) {
+                                if (! $record) { return $state; }
+                                return $record->services()
+                                    ->where('service_id', $service->id)
+                                    ->value('remarks'); // hydrate remarks
+                            }),
+
+                            Toggle::make("services.basic.{$service->id}.is_unlimited") // NEW
+                            ->label('Unlimited')
+                            ->columnSpan(2) // 2/12
+                            ->inline(false)
+                            ->formatStateUsing(function ($state, $record) use ($service) {
+                                if (! $record) { return $state; }
+                                return $record->services()
+                                    ->where('service_id', $service->id)
+                                    ->value('is_unlimited'); // hydrate is_unlimited
+                            }),
+                    ])->columns(12);
                 })->toArray();
             }),
 
@@ -110,22 +132,43 @@ class AccountResource extends Resource
                         Placeholder::make("label_{$enhancement->id}")
                             ->label('')
                             ->content($enhancement->name)
-                            ->columnSpan(6),
+                            ->columnSpan(4), // 4/12
 
-                        TextInput::make("services.enhancement.{$enhancement->id}")
+                        TextInput::make("services.enhancement.{$enhancement->id}.quantity") // Added .quantity suffix
                             ->label('Quantity')
                             ->numeric()
-                            ->columnSpan(6)
+                            ->columnSpan(2) // 2/12
                             ->formatStateUsing(function ($state, $record) use ($enhancement) {
-                                if (! $record) {
-                                    return $state;
-                                }
+                                if (! $record) { return $state; }
 
                                 return $record->services()
                                     ->where('service_id', $enhancement->id)
                                     ->value('quantity');
                             }),
-                    ]);
+
+                        
+
+                        TextInput::make("services.enhancement.{$enhancement->id}.remarks") // NEW
+                            ->label('Remarks')
+                            ->columnSpan(4) // 4/12
+                            ->maxLength(255)
+                            ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                if (! $record) { return $state; }
+                                return $record->services()
+                                    ->where('service_id', $enhancement->id)
+                                    ->value('remarks'); // hydrate remarks
+                            }),
+                            Toggle::make("services.enhancement.{$enhancement->id}.is_unlimited") // NEW
+                            ->label('Unlimited')
+                            ->columnSpan(2) // 2/12
+                            ->inline(false)
+                            ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                if (! $record) { return $state; }
+                                return $record->services()
+                                    ->where('service_id', $enhancement->id)
+                                    ->value('is_unlimited'); // hydrate is_unlimited
+                            }),
+                    ])->columns(12);
                 })->toArray();
             }),
 

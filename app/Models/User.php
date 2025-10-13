@@ -48,6 +48,12 @@ class User extends Authenticatable
         ];
     }
 
+    public function clinic()
+    {
+    return $this->hasOne(Clinics::class, 'user_id');
+    }
+
+
     public function member()
     {
         return $this->hasOne(Member::class);

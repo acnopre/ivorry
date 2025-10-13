@@ -12,7 +12,7 @@ use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
-
+use Auth;
 class SearchMember extends Page
 {
     protected static ?string $title = 'Search Member';
@@ -70,9 +70,11 @@ class SearchMember extends Page
 
     public function saveProcedure(): void
     {
+        // dd(Auth::id(), \App\Models\Clinics::where('user_id', Auth::id())->first());
         $data = $this->procedureFormData;
-
+        $clinicId = Auth::user()->clinic->id;
         $procedure = Procedure::create([
+            'clinics_id' => $clinicId,
             'member_id' => $this->selectedMemberId,
             'service_id' => $data['service_id'],
             'availment_date' => $data['availment_date'] ?? null,

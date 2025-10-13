@@ -13,9 +13,9 @@ class Service extends Model
         return $this->belongsToMany(Account::class, 'account_service')->withPivot('quantity')->withTimestamps();
     }
 
-    public function dentists()
+    public function clinic()
     {
-        return $this->belongsToMany(Dentist::class, 'dentist_service')->withPivot('fee')->withTimestamps();
+        return $this->belongsTo(Clinics::class, 'clinic_id');
     }
     public function procedures()
     {

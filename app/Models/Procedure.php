@@ -13,7 +13,7 @@ class Procedure extends Model
     protected $fillable = [
         'member_id',
         'service_id',
-        'clinic_id',
+        'clinics_id',
         'availment_date',
         'status',
         'approval_code',
@@ -32,7 +32,7 @@ class Procedure extends Model
      */
     public function clinic()
     {
-        return $this->belongsTo(Clinic::class);
+        return $this->belongsTo(Clinics::class);
     }
     /**
      * Get the service associated with the procedure.
@@ -48,5 +48,25 @@ class Procedure extends Model
     public function units(): HasMany
     {
         return $this->hasMany(ProcedureUnit::class);
+    }
+    
+    public function getClinicNameAttribute()
+    {
+        // Get clinic from the service
+        return $this->service->clinic->clinic_name ?? '—';
+    }
+
+    public function getDentistNameAttribute()
+    {
+        // Option 1: If procedure has a direct dentist relationship, use it
+        if ($this->clinic?->dentists) {
+            // If multiple dentists, just get the owner
+            $ownerDentist = $this->clinic->dentists->firstWhere('is_owner', true);
+            return $ownerDentist
+                ? ($ownerDentist->user?->name ?? $ownerDentist->first_name . ' ' . $ownerDentist->last_name)
+                : '—';
+        }
+
+        return '—';
     }
 }

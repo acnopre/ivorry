@@ -24,7 +24,6 @@ class ClaimResource extends Resource
     {
         return static::getModel()::where('status', 'pending')->count() ?: null;
     }
-    
 
     public static function getNavigationBadgeColor(): ?string
     {
@@ -60,7 +59,6 @@ class ClaimResource extends Resource
                     ->disabled()
                     ->formatStateUsing(fn (string $state): string => ucfirst($state))
                     ->label('Current Status'),
-             
             ])->columns(3),
 
             Forms\Components\Section::make('Units Involved')
@@ -112,9 +110,7 @@ class ClaimResource extends Resource
                         default => 'warning',
                     }),
             ])
-    
             ->filters([
-                // ✅ Filter by Status
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
@@ -122,8 +118,7 @@ class ClaimResource extends Resource
                         'denied' => 'Denied',
                     ])
                     ->label('Claim Status'),
-    
-                // ✅ Filter by Availment Date Range
+
                 Tables\Filters\Filter::make('availment_date')
                     ->form([
                         Forms\Components\DatePicker::make('from')->label('From Date'),
@@ -136,151 +131,162 @@ class ClaimResource extends Resource
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-    
                         if ($data['from'] ?? null) {
                             $indicators['from'] = 'From: ' . \Carbon\Carbon::parse($data['from'])->format('M d, Y');
                         }
-    
                         if ($data['until'] ?? null) {
                             $indicators['until'] = 'To: ' . \Carbon\Carbon::parse($data['until'])->format('M d, Y');
                         }
-    
                         return $indicators;
                     }),
             ])
-    
             ->actions([
                 Tables\Actions\ViewAction::make()
-    ->modalHeading('Claim Details')
-    ->modalWidth('4xl')
-    ->mutateRecordDataUsing(function (Procedure $record, array $data): array {
-        $record->load(['units.unitType', 'units.unit', 'member', 'service', 'service.dentist.clinic']);
+                    ->modalHeading('Claim Details')
+                    ->modalWidth('4xl')
+                    ->mutateRecordDataUsing(function (Procedure $record, array $data): array {
+                        $record->load([
+                            'units.unitType',
+                            'units.unit',
+                            'member',
+                            'service.clinic.dentists',
+                        ]);
 
-        return [
-            ...$record->toArray(),
-            'dentist_name' => $record->service->dentist->name ?? '—',
-            'clinic_name' => $record->service->dentist->clinic->clinic_name ?? '—',
-            'units' => $record->units->map(fn ($unit) => [
-                'quantity' => $unit->quantity,
-                'unit' => [
-                    'name' => $unit->unit->name ?? '-',
-                ],
-                'unitType' => [
-                    'name' => $unit->unitType->name ?? '-',
-                ],
-            ])->toArray(),
-        ];
-    })
-    ->form([
-        Forms\Components\Group::make()
-            ->schema([
-                Forms\Components\TextInput::make('member.name')
-                    ->label('Member Name')
-                    ->disabled(),
-                Forms\Components\TextInput::make('service.name')
-                    ->label('Service Claimed')
-                    ->disabled(),
-                Forms\Components\TextInput::make('dentist_name')
-                    ->label('Dentist Name')
-                    ->disabled(),
-                Forms\Components\TextInput::make('clinic_name')
-                    ->label('Clinic Name')
-                    ->disabled(),
-                Forms\Components\DatePicker::make('availment_date')
-                    ->label('Date of Availment')
-                    ->disabled(),
-                Forms\Components\TextInput::make('status')
-                    ->label('Current Status')
-                    ->disabled(),
-                Forms\Components\Textarea::make('remarks')
-                    ->label('Remarks')
-                    ->placeholder('Enter remarks...')
-                    ->visible(fn ($record) => in_array($record->status, ['denied', 'approved']))
-                    ->disabled(fn ($record) => $record->status !== 'denied')
-                    ->afterStateUpdated(function (callable $set, callable $get, $state, $record) {
-                        if ($record && $record->status === 'denied') {
-                            $record->update(['remarks' => $state]);
-                        }
-                    }),
-            ])
-            ->columns(2),
-    ])
-    ->modalFooterActions([
-        Tables\Actions\Action::make('approve')
-            ->label('Approve')
-            ->color('success')
-            ->icon('heroicon-o-check-circle')
-            ->visible(fn (Procedure $record): bool => $record->status === 'pending')
-            ->requiresConfirmation()
-            ->action(function (Procedure $record) {
-                $approvalCode = Str::upper(Str::random(8));
-                $record->update([
-                    'status' => 'approved',
-                    'approval_code' => $approvalCode,
-                ]);
-                Notification::make()
-                    ->title('Claim Approved')
-                    ->body("Approval Code: **{$approvalCode}**")
-                    ->success()
-                    ->send();
-            }),
+                        $ownerDentist = optional($record->service->clinic?->dentists->firstWhere('is_owner', true));
 
-        Tables\Actions\Action::make('reject')
-            ->label('Reject')
-            ->color('danger')
-            ->icon('heroicon-o-x-circle')
-            ->visible(fn (Procedure $record): bool => $record->status === 'pending')
-            ->form([
-                Forms\Components\Textarea::make('remarks')
-                    ->label('Rejection Remarks')
-                    ->required()
-                    ->placeholder('Enter reason for denial...'),
-            ])
-            ->requiresConfirmation()
-            ->action(function (Procedure $record, array $data) {
-                $record->update([
-                    'status' => 'denied',
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
-                Notification::make()
-                    ->title('Claim Rejected')
-                    ->body('The claim has been denied with remarks.')
-                    ->danger()
-                    ->send();
-            }),
+                        $units = $record->units->map(fn($unit) => [
+                            'unit' => ['name' => $unit->unit?->name ?? '-'],
+                            'unitType' => ['name' => $unit->unitType?->name ?? '-'],
+                            'quantity' => $unit->quantity,
+                        ])->toArray();
 
-        Tables\Actions\Action::make('editRemarks')
-            ->label('Edit Remarks')
-            ->color('warning')
-            ->icon('heroicon-o-pencil-square')
-            ->visible(fn (Procedure $record): bool => $record->status === 'denied')
-            ->form([
-                Forms\Components\Textarea::make('remarks')
-                    ->label('Edit Remarks')
-                    ->placeholder('Update remarks here...')
-                    ->required(),
-            ])
-            ->action(function (Procedure $record, array $data) {
-                $record->update(['remarks' => $data['remarks']]);
-                Notification::make()
-                    ->title('Remarks Updated')
-                    ->body('Remarks have been successfully updated.')
-                    ->success()
-                    ->send();
-            }),
+                        return [
+                            ...$record->toArray(),
+                            'dentist_name' => $ownerDentist?->full_name ?? '-',
+                            'clinic_name' => $record->service->clinic?->clinic_name ?? '-',
+                            'units' => $units,
+                        ];
+                    })
+                    ->form([
+                        Forms\Components\Group::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('member.name')
+                                    ->label('Member Name')
+                                    ->disabled(),
+                                Forms\Components\TextInput::make('service.name')
+                                    ->label('Service Claimed')
+                                    ->disabled(),
+                                Forms\Components\TextInput::make('dentist_name')
+                                    ->label('Dentist Name')
+                                    ->disabled(),
+                                Forms\Components\TextInput::make('clinic_name')
+                                    ->label('Clinic Name')
+                                    ->disabled(),
+                                Forms\Components\DatePicker::make('availment_date')
+                                    ->label('Date of Availment')
+                                    ->disabled(),
+                                Forms\Components\TextInput::make('status')
+                                    ->label('Current Status')
+                                    ->disabled(),
+                                Forms\Components\Textarea::make('remarks')
+                                    ->label('Remarks')
+                                    ->placeholder('Enter remarks...')
+                                    ->visible(fn ($record) => in_array($record->status, ['denied', 'approved']))
+                                    ->disabled(fn ($record) => $record->status !== 'denied')
+                                    ->afterStateUpdated(function (callable $set, callable $get, $state, $record) {
+                                        if ($record && $record->status === 'denied') {
+                                            $record->update(['remarks' => $state]);
+                                        }
+                                    }),
+                                Forms\Components\Repeater::make('units')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('unit.name')->label('Unit Name')->disabled(),
+                                        Forms\Components\TextInput::make('unitType.name')->label('Unit Type')->disabled(),
+                                        Forms\Components\TextInput::make('quantity')->label('Quantity')->disabled(),
+                                    ])
+                                    ->columns(3)
+                                    ->disableItemCreation()
+                                    ->disableItemDeletion()
+                                    ->disableItemMovement(),
+                            ])
+                            ->columns(2),
+                    ])
+                    ->modalFooterActions([
+                        Tables\Actions\Action::make('approve')
+                            ->label('Approve')
+                            ->color('success')
+                            ->icon('heroicon-o-check-circle')
+                            ->visible(fn (Procedure $record): bool => $record->status === 'pending')
+                            ->requiresConfirmation()
+                            ->action(function (Procedure $record) {
+                                $approvalCode = Str::upper(Str::random(8));
+                                $record->update([
+                                    'status' => 'approved',
+                                    'approval_code' => $approvalCode,
+                                ]);
+                                Notification::make()
+                                    ->title('Claim Approved')
+                                    ->body("Approval Code: **{$approvalCode}**")
+                                    ->success()
+                                    ->send();
+                            }),
 
-        Tables\Actions\Action::make('close')
-            ->label('Close')
-            ->color('gray')
-            ->close(),
-    ]),
+                        Tables\Actions\Action::make('reject')
+                            ->label('Reject')
+                            ->color('danger')
+                            ->icon('heroicon-o-x-circle')
+                            ->visible(fn (Procedure $record): bool => $record->status === 'pending')
+                            ->form([
+                                Forms\Components\Textarea::make('remarks')
+                                    ->label('Rejection Remarks')
+                                    ->required()
+                                    ->placeholder('Enter reason for denial...'),
+                            ])
+                            ->requiresConfirmation()
+                            ->action(function (Procedure $record, array $data) {
+                                $record->update([
+                                    'status' => 'denied',
+                                    'remarks' => $data['remarks'] ?? null,
+                                ]);
+                                Notification::make()
+                                    ->title('Claim Rejected')
+                                    ->body('The claim has been denied with remarks.')
+                                    ->danger()
+                                    ->send();
+                            }),
 
+                        Tables\Actions\Action::make('editRemarks')
+                            ->label('Edit Remarks')
+                            ->color('warning')
+                            ->icon('heroicon-o-pencil-square')
+                            ->visible(fn (Procedure $record): bool => $record->status === 'denied')
+                            ->form([
+                                Forms\Components\Textarea::make('remarks')
+                                    ->label('Edit Remarks')
+                                    ->placeholder('Update remarks here...')
+                                    ->required(),
+                            ])
+                            ->action(function (Procedure $record, array $data) {
+                                $record->update(['remarks' => $data['remarks']]);
+                                Notification::make()
+                                    ->title('Remarks Updated')
+                                    ->body('Remarks have been successfully updated.')
+                                    ->success()
+                                    ->send();
+                            }),
+
+                        Tables\Actions\Action::make('close')
+                            ->label('Close')
+                            ->color('gray')
+                            ->close(),
+                    ]),
             ]);
     }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'CSR']);
+            && auth()->user()->hasAnyRole(['Super Admin', 'Claims Processor']);
     }
 
     public static function getPages(): array

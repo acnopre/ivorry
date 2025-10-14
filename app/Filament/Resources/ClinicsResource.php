@@ -28,6 +28,11 @@ use App\Models\BusinessType;
 use App\Models\AccountType;
 use App\Models\AccreditationStatus;
 use App\Models\Service;
+use App\Imports\ClinicImport; 
+use Filament\Tables\Actions\Action;
+use Filament\Notifications\Notification;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ClinicsResource extends Resource
 {
@@ -227,14 +232,11 @@ class ClinicsResource extends Resource
     }
 
     public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('clinic_name')->searchable(),
-                Tables\Columns\TextColumn::make('registered_name'),
-                Tables\Columns\TextColumn::make('clinic_mobile'),
-                Tables\Columns\TextColumn::make('clinic_email'),
-                Tables\Columns\TextColumn::make('accreditation_status')
+{
+    return $table
+        ->columns([
+            Tables\Columns\TextColumn::make('clinic_name')->searchable(),
+            Tables\Columns\TextColumn::make('accreditation_status')
                 ->badge()
                 ->colors([
                     'success' => 'ACTIVE',
@@ -242,18 +244,41 @@ class ClinicsResource extends Resource
                     'warning' => 'SILENT',
                     'info'    => 'SPECIFIC ACCOUNT',
                 ])
-                ->label('Accreditation'),
-                Tables\Columns\TextColumn::make('created_at')->dateTime(),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+                ->label('Accreditation Status'),
+            Tables\Columns\TextColumn::make('created_at')->dateTime(),
+        ])
+        ->headerActions([
+            Action::make('importXls')
+                ->label('Import XLS')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('success')
+                ->form([
+                    \Filament\Forms\Components\FileUpload::make('file')
+                        ->label('Upload Excel File')
+                        ->required()
+                        ->acceptedFileTypes(['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
+                ])
+                ->action(function (array $data): void {
+                    $file = $data['file'];
+
+                    // Use Laravel Excel to import
+                    Excel::import(new ClinicImport, $file->getRealPath());
+
+                    Notification::make()
+                        ->title('Clinics Imported Successfully!')
+                        ->success()
+                        ->send();
+                }),
+        ])
+        ->actions([
+            Tables\Actions\ViewAction::make(),
+            Tables\Actions\EditAction::make(),
+            Tables\Actions\DeleteAction::make(),
+        ])
+        ->bulkActions([
+            Tables\Actions\DeleteBulkAction::make(),
+        ]);
+}
 
     public static function shouldRegisterNavigation(): bool
     {

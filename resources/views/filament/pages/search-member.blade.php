@@ -46,10 +46,6 @@
                         <div class="font-medium text-gray-500 dark:text-gray-400">Phone</div>
                         <div class="text-gray-900 dark:text-white truncate">{{ $member->phone }}</div>
                     </div>
-                    <div class="col-span-2 lg:col-span-4">
-                        <div class="font-medium text-gray-500 dark:text-gray-400">Address</div>
-                        <div class="text-gray-900 dark:text-white">{{ $member->address }}</div>
-                    </div>
                 </div>
 
 

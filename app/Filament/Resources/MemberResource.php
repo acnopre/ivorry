@@ -69,7 +69,7 @@ class MemberResource extends Resource
                     ->schema([
                         TextInput::make('email')->email(),
                         TextInput::make('phone')->tel(),
-                        Textarea::make('address')->rows(2),
+                        // Textarea::make('address')->rows(2),
                     ])->columns(2),
             ]);
     }

@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use Filament\Pages\Dashboard as BaseDashboard;
 use App\Filament\Widgets\ActivityTimeline;
+use App\Filament\Widgets\DashboardStats;
+use App\Filament\Widgets\RecentClaimsTable;
 use Filament\Notifications\Notification;
 
 class Dashboard extends BaseDashboard
@@ -21,6 +23,8 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            DashboardStats::class,
+            RecentClaimsTable::class,
             ActivityTimeline::class,
         ];
     }

@@ -16,6 +16,10 @@ return new class extends Migration
             $table->foreignId('account_id')->constrained()->cascadeOnDelete(); // linked to Accounts
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('middle_name')->nullable();
+            $table->string('suffix')->nullable();
             $table->enum('member_type', ['PRINCIPAL', 'DEPENDENT'])->nullable();
             $table->string('card_number');
             $table->date('birthdate')->nullable();

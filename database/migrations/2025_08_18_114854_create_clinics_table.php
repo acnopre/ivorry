@@ -29,9 +29,12 @@ return new class extends Migration
             $table->enum('tax_type', ['VAT', 'NON-VAT', '0%'])->default('NON-VAT');
             $table->enum('business_type', ['SOLE PROPRIETOR', 'PARTNERSHIP', 'CORPORATION'])->nullable();
             $table->string('sec_registration_no')->nullable();
-
+            $table->enum('vat_type', ['VAT', 'NON VAT', 'ZERO VAT'])->nullable();
             // Address / Contact
-            $table->text('clinic_address')->nullable();
+            $table->string('street')->nullable()->comment('Street address or barangay');
+            $table->string('city')->nullable();
+            $table->string('province')->nullable();
+            $table->string('region')->nullable();
             $table->string('clinic_landline')->nullable();
             $table->string('clinic_mobile')->nullable();
             $table->string('viber_no')->nullable();
@@ -54,6 +57,7 @@ return new class extends Migration
             $table->enum('account_type', ['SAVINGS', 'CURRENT'])->nullable();
             // Status
             $table->enum('accreditation_status', ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT'])->default('INACTIVE');
+            $table->longText('remarks')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

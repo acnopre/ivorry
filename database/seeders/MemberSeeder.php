@@ -43,6 +43,8 @@ class MemberSeeder extends Seeder
                     'account_id'  => $accountId,
                     'user_id'     => $user->id,
                     'name'        => $memberName,
+                    'first_name'  => 'Test First name',
+                    'last_name'   => 'Test Last name',
                     'member_type' => $i === 1 ? 'PRINCIPAL' : 'DEPENDENT',
                     'card_number' => 'CARD-' . rand(1000, 9999),
                     'birthdate'   => $faker->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),

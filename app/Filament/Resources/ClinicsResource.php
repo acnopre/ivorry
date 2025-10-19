@@ -50,7 +50,7 @@ class ClinicsResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Clinic Information')
                     ->schema([
-                        Forms\Components\TextInput::make('clinic_name')->required(),
+                        Forms\Components\TextInput::make('clinic_name')->label('Name on signage')->required(),
                         Forms\Components\TextInput::make('registered_name'),
                         Forms\Components\Textarea::make('clinic_address'),
                         Forms\Components\TextInput::make('clinic_landline'),

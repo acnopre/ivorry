@@ -44,26 +44,37 @@ class DentistSeeder extends Seeder
 
             // Create the clinic (linked to the owner)
             $clinic = Clinics::create([
-                'user_id' => $ownerUser->id,
+                'user_id' => $ownerUser->id ?? 1,
                 'clinic_name' => $clinicName,
                 'registered_name' => $registeredName,
                 'ptr_no' => 'PTR-' . $faker->numerify('####'),
                 'ptr_date_issued' => $faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
-                'other_hmo_accreditation' => implode(', ', $faker->randomElements(['Maxicare', 'Intellicare', 'MedCard', 'PhilCare'], 2)),
+                'other_hmo_accreditation' => implode(', ', $faker->randomElements(
+                    ['Maxicare', 'Intellicare', 'MedCard', 'PhilCare'],
+                    $faker->numberBetween(1, 3)
+                )),
                 'tax_identification_no' => $faker->numerify('###-###-###'),
                 'tax_type' => $faker->randomElement(['VAT', 'NON-VAT']),
                 'business_type' => $faker->randomElement(['SOLE PROPRIETOR', 'PARTNERSHIP', 'CORPORATION']),
                 'sec_registration_no' => 'SEC-' . $faker->numerify('2024-###'),
-                'clinic_address' => $faker->address,
+
+                // ✅ Proper address fields
+                'street' => $faker->streetAddress,
+                'city' => $faker->city,
+                'province' => $faker->state,
+                'region' => 'Region ' . $faker->numberBetween(1, 13),
+
                 'clinic_landline' => $faker->numerify('02-8###-####'),
                 'clinic_mobile' => $faker->numerify('09#########'),
                 'viber_no' => $faker->numerify('09#########'),
                 'clinic_email' => $faker->unique()->companyEmail,
                 'alt_address' => $faker->secondaryAddress,
+
                 'clinic_staff_name' => $faker->name,
                 'clinic_staff_mobile' => $faker->numerify('09#########'),
                 'clinic_staff_viber' => $faker->numerify('09#########'),
                 'clinic_staff_email' => $faker->unique()->safeEmail,
+
                 'bank_account_name' => $clinicName,
                 'bank_account_number' => $faker->numerify('##########'),
                 'bank_name' => $faker->randomElement(['BPI', 'BDO', 'Metrobank', 'UnionBank']),

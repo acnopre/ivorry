@@ -33,6 +33,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\VatType;
 
 class ClinicsResource extends Resource
 {
@@ -74,6 +75,12 @@ class ClinicsResource extends Resource
                         Forms\Components\Select::make('tax_type')
                             ->label('Tax Type')
                             ->options(TaxType::pluck('name', 'name'))
+                            ->searchable()
+                            ->required(),
+
+                            Forms\Components\Select::make('vat_type')
+                            ->label('Vat Type')
+                            ->options(VatType::pluck('name', 'name'))
                             ->searchable()
                             ->required(),
                     

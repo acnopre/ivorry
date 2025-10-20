@@ -30,9 +30,8 @@ class CreateMember extends CreateRecord
 
         $memberRole = 'Member';
         $plainPassword = Str::random(12);
-
         $user = User::create([
-            'name'     => $data['name'],
+            'name'     => $data['first_name'] . ' ' . $data['last_name'],
             'email'    => $data['email'] ?? null, // accept null
             'password' => Hash::make($plainPassword),
             'must_change_password' => true,

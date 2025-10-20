@@ -5,8 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use App\Models\BasicDentalService;
-use App\Models\PlanEnhancement;
 
 class Account extends Model
 {
@@ -37,7 +35,11 @@ class Account extends Model
 
     public function services()
     {
-        return $this->belongsToMany(Service::class, 'account_service')->withPivot('quantity')->withTimestamps();
+        return $this->belongsToMany(Service::class, 'account_service')
+        ->withPivot('quantity')
+        ->withPivot('is_unlimited')
+        ->withPivot('remarks')
+        ->withTimestamps();
     }
 
     public function getActivitylogOptions(): LogOptions

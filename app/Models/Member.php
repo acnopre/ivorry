@@ -8,7 +8,10 @@ class Member extends Model
 {
     protected $fillable = [
         'account_id',
-        'name',
+        'first_name',
+        'last_name',
+        'middle_name',
+        'suffix',
         'member_type',
         'card_number',
         'birthdate',

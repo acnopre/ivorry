@@ -13,6 +13,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->enum('type', ['basic', 'enhancement'])->default('basic');
+            $table->enum('unit_type', ['Session', 'Quadrant', 'Tooth', 'Arch', 'Surface']);
             $table->timestamps();
         });
 

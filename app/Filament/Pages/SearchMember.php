@@ -103,38 +103,72 @@ class SearchMember extends Page
     {
         return $this->makeForm()
             ->schema([
+                // 🦷 Select Service
                 Forms\Components\Select::make('service_id')
                     ->label('Service')
                     ->options($this->getGroupedServices())
+                    ->reactive()
+                    ->afterStateUpdated(function ($state, callable $set, callable $get, $component) {
+                        // Reset dependent fields first
+                        $set('unit_type_id', null);
+                        $set('unit_id', null);
+    
+                        if (!$state) {
+                            return;
+                        }
+    
+                        // Fetch the service and match its unit_type
+                        $service = \App\Models\Service::find($state);
+    
+                        if ($service && $service->unit_type) {
+                            $unitType = \App\Models\UnitType::where('name', $service->unit_type)->first();
+    
+                            if ($unitType) {
+                                // ✅ Set value AND trigger re-render for unit_type_id
+                                $set('unit_type_id', $unitType->id);
+                                $component
+                                    ->getContainer()
+                                    ->getComponent('unit_type_id')
+                                    ?->state($unitType->id)
+                                    ?->reactive();
+                            }
+                        }
+                    })
                     ->required(),
-
+    
+                // ⚙️ Unit Type (auto-filled & locked)
                 Forms\Components\Select::make('unit_type_id')
                     ->label('Unit Type')
-                    ->options(UnitType::pluck('name', 'id'))
-                    ->reactive()
-                    ->afterStateUpdated(fn (callable $set) => $set('unit_id', null))
+                    ->options(\App\Models\UnitType::pluck('name', 'id'))
+                    ->reactive() // ✅ ensure reactivity for auto-refresh
+                    ->disabled() // no need to conditionally disable, it's auto-filled
                     ->required(),
-
+    
+                // 📏 Unit (depends on Unit Type)
                 Forms\Components\Select::make('unit_id')
                     ->label('Unit')
                     ->options(fn (callable $get) => $get('unit_type_id')
-                        ? Unit::where('unit_type_id', $get('unit_type_id'))->pluck('name', 'id')
+                        ? \App\Models\Unit::where('unit_type_id', $get('unit_type_id'))->pluck('name', 'id')
                         : [])
                     ->reactive()
                     ->disabled(fn (callable $get) => blank($get('unit_type_id')))
                     ->required(),
-
+    
+                // 🔢 Quantity
                 Forms\Components\TextInput::make('quantity')
                     ->label('Quantity')
                     ->numeric()
                     ->nullable(),
-
+    
+                // 📅 Availment Date
                 Forms\Components\DatePicker::make('availment_date')
                     ->label('Availment Date')
                     ->nullable(),
             ])
             ->statePath('procedureFormData');
     }
+    
+
 
     protected function getGroupedServices(): array
     {

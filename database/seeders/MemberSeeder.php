@@ -27,11 +27,14 @@ class MemberSeeder extends Seeder
         foreach ($accountIds as $accountId) {
             for ($i = 1; $i <= 3; $i++) {
                 // Generate a random full name
-                $memberName = $faker->name;
+                $firstName = $faker->firstName;
+                $lastName = $faker->lastName;
+                $middleName = $faker->firstName;
+                $suffix = $faker->optional()->randomElement(['Jr.', 'Sr.', 'III', 'IV']);
 
                 // Create a new user for this member
                 $user = User::create([
-                    'name'     => $memberName,
+                    'name'     => $firstName . ' ' . $lastName,
                     'email'    => $faker->unique()->safeEmail,
                     'password' => Hash::make('password'),
                 ]);
@@ -42,9 +45,10 @@ class MemberSeeder extends Seeder
                 DB::table('members')->insert([
                     'account_id'  => $accountId,
                     'user_id'     => $user->id,
-                    'name'        => $memberName,
-                    'first_name'  => 'Test First name',
-                    'last_name'   => 'Test Last name',
+                    'first_name'  => $firstName,
+                    'last_name'   => $lastName,
+                    'middle_name' => $middleName,
+                    'suffix'      => $suffix,
                     'member_type' => $i === 1 ? 'PRINCIPAL' : 'DEPENDENT',
                     'card_number' => 'CARD-' . rand(1000, 9999),
                     'birthdate'   => $faker->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),

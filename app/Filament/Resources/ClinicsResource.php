@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClinicsResource\Pages;
 use App\Filament\Resources\ClinicsResource\RelationManagers;
-use App\Models\Clinics;
+use App\Models\Clinic;
 use Filament\Forms;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -37,7 +37,7 @@ use App\Models\VatType;
 
 class ClinicsResource extends Resource
 {
-    protected static ?string $model = Clinics::class;
+    protected static ?string $model = Clinic::class;
 
     protected static ?string $navigationGroup = 'Dental Management';
     protected static ?string $navigationIcon = 'heroicon-o-building-library';

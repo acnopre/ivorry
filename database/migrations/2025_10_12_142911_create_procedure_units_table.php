@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::create('procedure_units', function (Blueprint $table) {
             $table->id();
             $table->foreignId('procedure_id')->constrained('procedures')->cascadeOnDelete();
-            $table->foreignId('unit_type_id')->constrained('unit_types')->cascadeOnDelete();
             $table->foreignId('unit_id')->constrained('units')->cascadeOnDelete();
             $table->string('quantity')->nullable();
             $table->timestamps();

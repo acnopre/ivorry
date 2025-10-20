@@ -9,7 +9,7 @@ use App\Models\BusinessType;
 use App\Models\AccountType;
 use App\Models\AccreditationStatus;
 
-class Clinics extends Model
+class Clinic extends Model
 {
     use SoftDeletes;
 

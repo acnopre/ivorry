@@ -16,7 +16,7 @@ class Service extends Model
 
     public function clinic()
     {
-        return $this->belongsTo(Clinics::class, 'clinic_id');
+        return $this->belongsTo(Clinic::class, 'clinic_id');
     }
     public function procedures()
     {

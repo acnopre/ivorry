@@ -8,7 +8,6 @@ class ProcedureUnit extends Model
 {
     protected $fillable = [
         'procedure_id',
-        'unit_type_id',
         'unit_id',
         'quantity',
     ];

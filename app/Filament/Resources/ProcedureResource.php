@@ -24,7 +24,7 @@ class ProcedureResource extends Resource
             $clinicId = $user->clinic->id;
 
             return parent::getEloquentQuery()
-                ->whereHas('service', fn($q) => $q->where('clinics_id', $clinicId))
+                ->whereHas('service', fn($q) => $q->where('clinic_id', $clinicId))
                 ->orderByDesc('availment_date');
         }
 

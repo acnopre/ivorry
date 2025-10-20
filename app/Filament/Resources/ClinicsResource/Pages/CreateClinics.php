@@ -37,7 +37,7 @@ class CreateClinics extends CreateRecord
         $data = $this->record;
         //TODO:: fix the toggle in the UI part.
         // get the first dentist that is owner
-        $ownerDentist = $data->dentists()->where('is_owner', true)->first();
+        $ownerDentist = $data->dentists()->where('is_owner', false)->first();
 
         if ($ownerDentist) {
             if (! empty($data['clinic_email']) && User::where('email', $data['clinic_email'])->exists()) {

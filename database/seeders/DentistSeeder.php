@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\Clinics;
+use App\Models\Clinic;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +43,7 @@ class DentistSeeder extends Seeder
             $ownerUser->assignRole($role);
 
             // Create the clinic (linked to the owner)
-            $clinic = Clinics::create([
+            $clinic = Clinic::create([
                 'user_id' => $ownerUser->id ?? 1,
                 'clinic_name' => $clinicName,
                 'registered_name' => $registeredName,

@@ -21,6 +21,10 @@ class Account extends Model
         'endorsement_type',
         'status'
     ];
+    protected $casts = [
+        'effective_date' => 'date',
+        'expiration_date' => 'date',
+    ];
 
     protected $with = ['services'];
 
@@ -34,13 +38,12 @@ class Account extends Model
     }
 
     public function services()
-    {
-        return $this->belongsToMany(Service::class, 'account_service')
-        ->withPivot('quantity')
-        ->withPivot('is_unlimited')
-        ->withPivot('remarks')
+{
+    return $this->belongsToMany(Service::class, 'account_service')
+        ->using(AccountService::class) // use pivot model
+        ->withPivot(['quantity', 'is_unlimited', 'remarks'])
         ->withTimestamps();
-    }
+}
 
     public function getActivitylogOptions(): LogOptions
     {

@@ -13,7 +13,7 @@ class Procedure extends Model
     protected $fillable = [
         'member_id',
         'service_id',
-        'clinics_id',
+        'clinic_id',
         'availment_date',
         'status',
         'approval_code',
@@ -32,7 +32,7 @@ class Procedure extends Model
      */
     public function clinic()
     {
-        return $this->belongsTo(Clinics::class);
+        return $this->belongsTo(Clinic::class);
     }
     /**
      * Get the service associated with the procedure.
@@ -45,9 +45,12 @@ class Procedure extends Model
     /**
      * Get the units linked to this procedure.
      */
-    public function units(): HasMany
+    public function units()
     {
-        return $this->hasMany(ProcedureUnit::class);
+        return $this->belongsToMany(Unit::class, 'procedure_units', 'procedure_id', 'unit_id')
+                    ->withPivot('quantity')
+                    ->with('unitType') // eager-load the type for convenience
+                    ->withTimestamps();
     }
     
     public function getClinicNameAttribute()

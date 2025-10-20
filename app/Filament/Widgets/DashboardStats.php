@@ -4,7 +4,7 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\{Account, Member, Clinics, Dentist, Claim, Procedure};
+use App\Models\{Account, Member, Clinic, Dentist, Claim, Procedure};
 
 class DashboardStats extends BaseWidget
 {
@@ -21,7 +21,7 @@ class DashboardStats extends BaseWidget
                 ->icon('heroicon-o-users')
                 ->color('success'),
 
-            Stat::make('Clinics', Clinics::count())
+            Stat::make('Clinic', Clinic::count())
                 ->description('Partner dental clinics')
                 ->icon('heroicon-o-building-office')
                 ->color('info'),

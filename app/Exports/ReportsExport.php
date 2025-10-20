@@ -3,7 +3,7 @@
 namespace App\Exports;
 
 use App\Models\User;
-use App\Models\Clinics;
+use App\Models\Clinic;
 use App\Models\Claim;
 use App\Models\Procedure;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +27,7 @@ class ReportsExport implements FromCollection, WithHeadings
                 ->select('name', 'email', 'status', 'created_at'),
             'dentists' => User::whereHas('roles', fn($q) => $q->where('name', 'Dentist'))
                 ->select('name', 'specialization', 'status', 'created_at'),
-            'clinics' => Clinics::select('clinic_name', 'registered_name', 'accreditation_status', 'created_at'),
+            'clinics' => Clinic::select('clinic_name', 'registered_name', 'accreditation_status', 'created_at'),
             'claims' => Claim::select('claim_number', 'status', 'amount', 'created_at'),
             'soa' => DB::table('statements')->select('statement_number', 'total_amount', 'status', 'created_at'),
             'csr' => Procedure::select('procedure_name', 'status', 'created_at'),

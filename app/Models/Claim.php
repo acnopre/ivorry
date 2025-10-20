@@ -23,7 +23,7 @@ class Claim extends Model
 
     public function clinic()
     {
-        return $this->belongsTo(Clinics::class);
+        return $this->belongsTo(Clinic::class);
     }
 
     public function dentist()

@@ -70,11 +70,10 @@ class SearchMember extends Page
 
     public function saveProcedure(): void
     {
-        // dd(Auth::id(), \App\Models\Clinics::where('user_id', Auth::id())->first());
         $data = $this->procedureFormData;
-        $clinicId = Auth::user()->clinic->id;
+        $clinicId = Auth::user()->clinic->id;Auth::user()->clinic->id;
         $procedure = Procedure::create([
-            'clinics_id' => $clinicId,
+            'clinic_id' => $clinicId,
             'member_id' => $this->selectedMemberId,
             'service_id' => $data['service_id'],
             'availment_date' => $data['availment_date'] ?? null,
@@ -83,7 +82,6 @@ class SearchMember extends Page
 
         ProcedureUnit::create([
             'procedure_id' => $procedure->id,
-            'unit_type_id' => $data['unit_type_id'],
             'unit_id' => $data['unit_id'],
             'quantity' => $data['quantity'] ?? null,
         ]);

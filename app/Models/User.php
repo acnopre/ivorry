@@ -50,7 +50,7 @@ class User extends Authenticatable
 
     public function clinic()
     {
-    return $this->hasOne(Clinics::class, 'user_id');
+    return $this->hasOne(Clinic::class, 'user_id');
     }
 
 

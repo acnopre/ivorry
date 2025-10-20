@@ -13,7 +13,7 @@ use Filament\Forms\Components\{DatePicker, Repeater, Select, TextInput};
 
 class ProceduresRelationManager extends RelationManager
 {
-    protected static string $relationship = 'procedures';
+    protected static string $relationship = 'procedure';
 
    public function form(Form $form): Form
 {

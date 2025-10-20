@@ -31,7 +31,7 @@ return new class extends Migration
         // pivot for dentist ↔ services
         Schema::create('clinic_service', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('clinics_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
             $table->decimal('fee', 10, 2)->nullable();
             $table->timestamps();

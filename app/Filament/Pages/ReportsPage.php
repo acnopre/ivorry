@@ -12,7 +12,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use App\Models\User;
-use App\Models\Clinics;
+use App\Models\Clinic;
 use App\Models\Claim;
 use App\Models\Procedure;
 use Carbon\Carbon;
@@ -77,7 +77,7 @@ class ReportsPage extends Page implements Forms\Contracts\HasForms, Tables\Contr
         $query = match ($this->reportType) {
             'members' => User::query()->whereHas('roles', fn($q) => $q->where('name', 'Member')),
             'dentists' => User::query()->whereHas('roles', fn($q) => $q->where('name', 'Dentist')),
-            'clinics' => Clinics::query(),
+            'clinics' => Clinic::query(),
             'claims' => Claim::query(),
             'soa' => DB::table('statements'),
             'csr' => Procedure::query(),

@@ -111,6 +111,10 @@ class ClinicsResource extends Resource
                         ->options(AccountType::pluck('name', 'name')) 
                         ->searchable()
                         ->required(),
+                        Forms\Components\Textarea::make('remarks')
+                        ->label('Remarks')
+                        ->rows(3)
+                        ->placeholder('Enter any remarks related to the bank information...'),
                     
                     ])->columns(2),
 
@@ -235,6 +239,13 @@ class ClinicsResource extends Resource
                         ->searchable()
                         ->required(),
                     ]),
+                    // Forms\Components\Section::make('Remarks')
+    // ->schema([
+    //     Forms\Components\Textarea::make('remarks')
+    //         ->label('Remarks')
+    //         ->rows(3)
+    //         ->placeholder('Enter any remarks here...'),
+    // ]),
             ]);
     }
 

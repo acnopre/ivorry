@@ -13,6 +13,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SearchClaims extends Page implements HasForms, HasTable
 {
@@ -79,9 +80,13 @@ class SearchClaims extends Page implements HasForms, HasTable
                             ->label('Claim Status')
                             ->placeholder('Any Status'),
 
-                        Forms\Components\DatePicker::make('availment_date')
-                            ->label('Availment Date')
-                            ->placeholder('Filter by date'),
+                            Forms\Components\DatePicker::make('availment_from')
+                            ->label('Availment From')
+                            ->placeholder('Start Date'),
+                    
+                        Forms\Components\DatePicker::make('availment_to')
+                            ->label('Availment To')
+                            ->placeholder('End Date'),
                     ]),
                 ])
                 ->footerActions([
@@ -128,18 +133,16 @@ class SearchClaims extends Page implements HasForms, HasTable
                         fn(Builder $q, $status) => $q->where('status', $status)
                     )
                     ->when(
-                        $searchData['availment_date'] ?? null,
-                        fn(Builder $q, $date) => $q->whereDate('availment_date', $date)
+                        isset($searchData['availment_from'], $searchData['availment_to']),
+                        fn(Builder $q) => $q->whereBetween('availment_date', [
+                            $searchData['availment_from'],
+                            $searchData['availment_to'],
+                        ])
                     )
-                    ->orderByDesc('availment_date')
                     ->limit(1);
             })
             ->columns([
-                Tables\Columns\TextColumn::make('member.name')
-                    ->label('Member Name')
-                    ->searchable()
-                    ->sortable(),
-
+              
                 Tables\Columns\TextColumn::make('clinic.clinic_name')
                     ->label('Clinic Name')
                     ->sortable(),
@@ -165,6 +168,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 Tables\Actions\ViewAction::make()
                 ->modalHeading('Claim Details')
                 ->modalContent(function (Procedure $record) {
+
                     $account = $record->member->account;
                     $services = $record->member->account->services ?? collect();
                     $member = $record->member;
@@ -223,7 +227,61 @@ class SearchClaims extends Page implements HasForms, HasTable
                             ->send();
                     }),
             ])
+            ->headerActions([
+                Tables\Actions\Action::make('generate_soa')
+                    ->label('Download SOA')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Generate Statement of Account')
+                    ->modalDescription('Download SOA as PDF based on the selected filters and date range.')
+                    ->action('generateSOA'),
+            ])
             ->defaultSort('availment_date', 'desc');
+    }
+
+    public function generateSOA()
+    {
+        $data = $this->data;
+
+        if (empty($data['availment_from']) || empty($data['availment_to'])) {
+            Notification::make()
+                ->title('Date Range Required')
+                ->body('Please select both start and end dates before generating an SOA.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $claims = Procedure::query()
+            ->with(['member', 'clinic', 'service'])
+            ->whereBetween('availment_date', [
+                $data['availment_from'],
+                $data['availment_to'],
+            ])
+            ->where('status', 'approved')
+            ->get();
+
+        if ($claims->isEmpty()) {
+            Notification::make()
+                ->title('No Valid Claims')
+                ->body('No approved claims found within the selected period.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $pdf = Pdf::loadView('pdf.soa', [
+            'claims' => $claims,
+            'from' => $data['availment_from'],
+            'to' => $data['availment_to'],
+        ]);
+
+        $filename = 'Statement_of_Account_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, $filename);
     }
 
     public static function shouldRegisterNavigation(): bool

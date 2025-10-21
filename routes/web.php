@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
     Route::get('app/set-password/{token}', SetPassword::class)
         ->name('app/set-password');
 
+ Route::get('/soa/generate', [SOAController::class, 'generate'])->name('soa.generate');
     // Route::get('/admin/member-search', SearchMember::class)
     //     ->middleware(['auth', 'verified']);
 

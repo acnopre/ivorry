@@ -185,8 +185,13 @@ class ReportsPage extends Page implements Forms\Contracts\HasForms, Tables\Contr
                     ]);
 
                     $filename = ucfirst($this->reportType) . '_Report_' . now()->format('Ymd_His') . '.pdf';
-                    return response()->streamDownload(fn () => print($pdf->output()), $filename);
+                    return response()->streamDownload(fn() => print($pdf->output()), $filename);
                 }),
         ];
+    }
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
     }
 }

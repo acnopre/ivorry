@@ -28,7 +28,7 @@ use App\Models\BusinessType;
 use App\Models\AccountType;
 use App\Models\AccreditationStatus;
 use App\Models\Service;
-use App\Imports\ClinicImport; 
+use App\Imports\ClinicImport;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -51,46 +51,87 @@ class ClinicsResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Clinic Information')
                     ->schema([
-                        Forms\Components\TextInput::make('clinic_name')->label('Name on signage')->required(),
+                        Forms\Components\TextInput::make('clinic_name')
+                            ->label('Name on signage')
+                            ->required(),
+
                         Forms\Components\TextInput::make('registered_name'),
-                        Forms\Components\Textarea::make('clinic_address'),
-                        Forms\Components\TextInput::make('clinic_landline'),
-                        Forms\Components\TextInput::make('clinic_mobile'),
-                        Forms\Components\TextInput::make('viber_no'),
+
+                        // REGION
+                        Forms\Components\Select::make('region_id')
+                            ->label('Region')
+                            ->options(\App\Models\Region::pluck('name', 'id'))
+                            ->searchable()
+                            ->reactive()
+                            ->afterStateUpdated(
+                                fn($state, callable $set) =>
+                                $set('province_id', null)
+                            )
+                            ->required(),
+
+                        // PROVINCE (depends on region)
+                        Forms\Components\Select::make('province_id')
+                            ->label('Province')
+                            ->options(
+                                fn(callable $get) =>
+                                $get('region_id')
+                                    ? \App\Models\Province::where('region_id', $get('region_id'))
+                                    ->pluck('name', 'id')
+                                    : collect()
+                            )
+                            ->searchable()
+                            ->reactive()
+                            ->afterStateUpdated(
+                                fn($state, callable $set) =>
+                                $set('municipality_id', null)
+                            )
+                            ->required(),
+
+                        // MUNICIPALITY / CITY (depends on province)
+                        Forms\Components\Select::make('municipality_id')
+                            ->label('City / Municipality')
+                            ->options(
+                                fn(callable $get) =>
+                                $get('province_id')
+                                    ? \App\Models\Municipality::where('province_id', $get('province_id'))
+                                    ->pluck('name', 'id')
+                                    : collect()
+                            )
+                            ->searchable()
+                            ->reactive()
+                            ->afterStateUpdated(
+                                fn($state, callable $set) =>
+                                $set('barangay_id', null)
+                            )
+                            ->required(),
+
+                        // BARANGAY (depends on municipality)
+                        Forms\Components\Select::make('barangay_id')
+                            ->label('Barangay')
+                            ->options(
+                                fn(callable $get) =>
+                                $get('municipality_id')
+                                    ? \App\Models\Barangay::where('municipality_id', $get('municipality_id'))
+                                    ->pluck('name', 'id')
+                                    : collect()
+                            )
+                            ->searchable()
+                            ->required(),
+
+                        // STREET / HOUSE NO.
+                        Forms\Components\TextInput::make('street')
+                            ->label('Street / House No.')
+                            ->placeholder('e.g., 123 Mabini St.')
+                            ->required(),
+
+                        Forms\Components\TextInput::make('clinic_landline')->label('Landline'),
+                        Forms\Components\TextInput::make('clinic_mobile')->label('Mobile'),
+                        Forms\Components\TextInput::make('viber_no')->label('Viber No.'),
                         Forms\Components\TextInput::make('clinic_email')->email(),
                         Forms\Components\Textarea::make('alt_address')->label('Alternative Address'),
-                    ])->columns(2),
+                    ])
+                    ->columns(2),
 
-
-                Forms\Components\Section::make('PTR Information')
-                    ->schema([
-                        Forms\Components\TextInput::make('ptr_no'),
-                        Forms\Components\DatePicker::make('ptr_date_issued'),
-                    ])->columns(2),
-
-                Forms\Components\Section::make('Accreditation & Tax')
-                    ->schema([
-                        Forms\Components\TextInput::make('other_hmo_accreditation'),
-                        Forms\Components\TextInput::make('tax_identification_no'),
-                        Forms\Components\Select::make('tax_type')
-                            ->label('Tax Type')
-                            ->options(TaxType::pluck('name', 'name'))
-                            ->searchable()
-                            ->required(),
-
-                            Forms\Components\Select::make('vat_type')
-                            ->label('Vat Type')
-                            ->options(VatType::pluck('name', 'name'))
-                            ->searchable()
-                            ->required(),
-                    
-                            Forms\Components\Select::make('business_type')
-                                ->label('Business Type')
-                                ->options(BusinessType::pluck('name', 'name'))
-                                ->searchable()
-                                ->required(),
-                        Forms\Components\TextInput::make('sec_registration_no'),
-                    ])->columns(2),
 
                 Forms\Components\Section::make('Clinic Staff')
                     ->schema([
@@ -107,18 +148,18 @@ class ClinicsResource extends Resource
                         Forms\Components\TextInput::make('bank_name'),
                         Forms\Components\TextInput::make('bank_branch'),
                         Forms\Components\Select::make('account_type')
-                        ->label('Account Type')
-                        ->options(AccountType::pluck('name', 'name')) 
-                        ->searchable()
-                        ->required(),
+                            ->label('Account Type')
+                            ->options(AccountType::pluck('name', 'name'))
+                            ->searchable()
+                            ->required(),
                         Forms\Components\Textarea::make('remarks')
-                        ->label('Remarks')
-                        ->rows(3)
-                        ->placeholder('Enter any remarks related to the bank information...'),
-                    
+                            ->label('Remarks')
+                            ->rows(3)
+                            ->placeholder('Enter any remarks related to the bank information...'),
+
                     ])->columns(2),
 
-              
+
 
                 Forms\Components\Section::make('Associate Dentist/s')
                     ->schema([
@@ -135,7 +176,7 @@ class ClinicsResource extends Resource
 
                                 Forms\Components\TextInput::make('middle_initial')
                                     ->label('M.I.')
-                                    ->maxLength(5),
+                                    ->maxLength(1),
 
                                 Forms\Components\TextInput::make('prc_license_number')
                                     ->label('PRC Lic #'),
@@ -146,14 +187,24 @@ class ClinicsResource extends Resource
                                 Forms\Components\Toggle::make('is_owner')
                                     ->label('Clinic Owner')
                                     ->reactive()
-                                    ->afterStateUpdated(function ($state, callable $set, $get) {
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                         if ($state) {
-                                            $items = $get('../../dentists') ?? [];
-                                            $currentIndex = $get('../../_currentItem');
+                                            $dentists = $get('../../dentists') ?? [];
 
-                                            foreach ($items as $index => $dentist) {
-                                                if ($index !== $currentIndex) {
-                                                    $set("../../dentists.{$index}.is_owner", false);
+                                            // Find the current item's data
+                                            $currentItem = $get(); // gets this dentist’s data
+                                            $currentIndex = collect($dentists)
+                                                ->search(
+                                                    fn($dentist) =>
+                                                    $dentist['last_name'] === $currentItem['last_name'] &&
+                                                        $dentist['first_name'] === $currentItem['first_name']
+                                                );
+
+                                            if ($currentIndex !== false) {
+                                                foreach ($dentists as $index => $dentist) {
+                                                    if ($index !== $currentIndex) {
+                                                        $set("../../dentists.{$index}.is_owner", false);
+                                                    }
                                                 }
                                             }
                                         }
@@ -171,132 +222,126 @@ class ClinicsResource extends Resource
                             ->createItemButtonLabel('Add Associate Dentist'),
                     ]),
 
-                     // BASIC SERVICES
-            Section::make('Basic Dental Services')
-            ->schema(function (Forms\Get $get, $operation, $record) {
-                $services = Service::where('type', 'basic')->get();
 
-                return $services->map(function ($service) use ($record) {
-                    return Grid::make(12)->schema([
-                        Placeholder::make("label_{$service->id}")
-                            ->label('')
-                            ->content($service->name)
-                            ->columnSpan(6),
+                // BASIC SERVICES
+                Section::make('Basic Dental Services')
+                    ->schema(function (Forms\Get $get, $operation, $record) {
+                        $services = Service::where('type', 'basic')->get();
 
-                        TextInput::make("services.basic.{$service->id}")
-                            ->label('Fee')
-                            ->numeric()
-                            ->columnSpan(6)
-                            ->formatStateUsing(function ($state, $record) use ($service) {
-                                // Hydrate the current fee value from pivot table
-                                if (! $record) {
-                                    return $state; // for create mode
-                                }
+                        return $services->map(function ($service) use ($record) {
+                            return Grid::make(12)->schema([
+                                Placeholder::make("label_{$service->id}")
+                                    ->label('')
+                                    ->content($service->name)
+                                    ->columnSpan(6),
 
-                                return $record->services()
-                                    ->where('service_id', $service->id)
-                                    ->value('fee');
-                            }),
-                    ]);
-                })->toArray();
-            }),
+                                TextInput::make("services.basic.{$service->id}")
+                                    ->label('Fee')
+                                    ->numeric()
+                                    ->columnSpan(6)
+                                    ->formatStateUsing(function ($state, $record) use ($service) {
+                                        // Hydrate the current fee value from pivot table
+                                        if (! $record) {
+                                            return $state; // for create mode
+                                        }
 
-            // PLAN ENHANCEMENTS
-            Section::make('Plan Enhancements')
-            ->schema(function (Forms\Get $get, $operation, $record) {
-                $enhancements = Service::where('type', 'enhancement')->get();
+                                        return $record->services()
+                                            ->where('service_id', $service->id)
+                                            ->value('fee');
+                                    }),
+                            ]);
+                        })->toArray();
+                    }),
 
-                return $enhancements->map(function ($enhancement) use ($record) {
-                    return Grid::make(12)->schema([
-                        Placeholder::make("label_{$enhancement->id}")
-                            ->label('')
-                            ->content($enhancement->name)
-                            ->columnSpan(6),
+                // PLAN ENHANCEMENTS
+                Section::make('Plan Enhancements')
+                    ->schema(function (Forms\Get $get, $operation, $record) {
+                        $enhancements = Service::where('type', 'enhancement')->get();
 
-                        TextInput::make("services.enhancement.{$enhancement->id}")
-                            ->label('Fee')
-                            ->numeric()
-                            ->columnSpan(6)
-                            ->formatStateUsing(function ($state, $record) use ($enhancement) {
-                                if (! $record) {
-                                    return $state;
-                                }
+                        return $enhancements->map(function ($enhancement) use ($record) {
+                            return Grid::make(12)->schema([
+                                Placeholder::make("label_{$enhancement->id}")
+                                    ->label('')
+                                    ->content($enhancement->name)
+                                    ->columnSpan(6),
 
-                                return $record->services()
-                                    ->where('service_id', $enhancement->id)
-                                    ->value('fee');
-                            }),
-                    ]);
-                })->toArray();
-            }),
+                                TextInput::make("services.enhancement.{$enhancement->id}")
+                                    ->label('Fee')
+                                    ->numeric()
+                                    ->columnSpan(6)
+                                    ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                        if (! $record) {
+                                            return $state;
+                                        }
+
+                                        return $record->services()
+                                            ->where('service_id', $enhancement->id)
+                                            ->value('fee');
+                                    }),
+                            ]);
+                        })->toArray();
+                    }),
 
 
-                    Forms\Components\Section::make('Status')
+                Forms\Components\Section::make('Status')
                     ->schema([
                         Forms\Components\Select::make('accreditation_status')
-                        ->label('Accreditation Status')
-                        ->options(AccreditationStatus::pluck('name', 'name'))
-                        ->searchable()
-                        ->required(),
+                            ->label('Accreditation Status')
+                            ->options(AccreditationStatus::pluck('name', 'name'))
+                            ->searchable()
+                            ->required(),
                     ]),
-                    // Forms\Components\Section::make('Remarks')
-    // ->schema([
-    //     Forms\Components\Textarea::make('remarks')
-    //         ->label('Remarks')
-    //         ->rows(3)
-    //         ->placeholder('Enter any remarks here...'),
-    // ]),
             ]);
     }
 
     public static function table(Table $table): Table
-{
-    return $table
-        ->columns([
-            Tables\Columns\TextColumn::make('clinic_name')->searchable(),
-            Tables\Columns\TextColumn::make('accreditation_status')
-                ->badge()
-                ->colors([
-                    'success' => 'ACTIVE',
-                    'danger'  => 'INACTIVE',
-                    'warning' => 'SILENT',
-                    'info'    => 'SPECIFIC ACCOUNT',
-                ])
-                ->label('Accreditation Status'),
-            Tables\Columns\TextColumn::make('created_at')->dateTime(),
-        ])
-        ->headerActions([
-            Action::make('importXls')
-                ->label('Import XLS')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('success')
-                ->form([
-                    \Filament\Forms\Components\FileUpload::make('file')
-                        ->label('Upload Excel File')
-                        ->required()
-                        ->acceptedFileTypes(['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
-                ])
-                ->action(function (array $data): void {
-                    $file = $data['file'];
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('clinic_name')->searchable(),
+                Tables\Columns\TextColumn::make('accreditation_status')
+                    ->badge()
+                    ->colors([
+                        'success' => 'ACTIVE',
+                        'danger'  => 'INACTIVE',
+                        'warning' => 'SILENT',
+                        'info'    => 'SPECIFIC ACCOUNT',
+                    ])
+                    ->label('Accreditation Status'),
+                Tables\Columns\TextColumn::make('created_at')->dateTime(),
+            ])
+            ->headerActions([
+                Action::make('importXls')
+                    ->label('Import XLS')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('success')
+                    ->form([
+                        \Filament\Forms\Components\FileUpload::make('file')
+                            ->label('Upload Excel File')
+                            ->required()
+                            ->acceptedFileTypes(['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
+                    ])
+                    ->action(function (array $data): void {
+                        $file = $data['file'];
 
-                    // Use Laravel Excel to import
-                    Excel::import(new ClinicImport, $file->getRealPath());
+                        // Use Laravel Excel to import
+                        Excel::import(new ClinicImport, $file->getRealPath());
 
-                    Notification::make()
-                        ->title('Clinics Imported Successfully!')
-                        ->success()
-                        ->send();
-                }),
-        ])
-        ->actions([
-            Tables\Actions\ViewAction::make(),
-            Tables\Actions\EditAction::make(),
-            Tables\Actions\DeleteAction::make(),
-        ])
-        ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
-        ]);
-}
+                        Notification::make()
+                            ->title('Clinics Imported Successfully!')
+                            ->success()
+                            ->send();
+                    }),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make(),
+            ]);
+    }
 
     public static function shouldRegisterNavigation(): bool
     {

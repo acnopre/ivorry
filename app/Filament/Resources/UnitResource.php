@@ -14,7 +14,7 @@ class UnitResource extends Resource
 {
     protected static ?string $model = Unit::class;
     protected static ?string $navigationIcon = 'heroicon-o-cube-transparent';
-    protected static ?string $navigationGroup = 'Clinic Setup';
+    public static ?string $navigationGroup = 'Lookup Tables';
 
     public static function form(Form $form): Form
     {
@@ -56,6 +56,12 @@ class UnitResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
     }
 
     public static function getPages(): array

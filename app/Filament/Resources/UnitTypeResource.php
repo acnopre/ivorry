@@ -14,7 +14,7 @@ class UnitTypeResource extends Resource
 {
     protected static ?string $model = UnitType::class;
     protected static ?string $navigationIcon = 'heroicon-o-cube';
-    protected static ?string $navigationGroup = 'Clinic Setup';
+    public static ?string $navigationGroup = 'Lookup Tables';
 
     public static function form(Form $form): Form
     {
@@ -61,6 +61,12 @@ class UnitTypeResource extends Resource
         return [
             UnitTypeResource\RelationManagers\UnitsRelationManager::class,
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
     }
 
     public static function getPages(): array

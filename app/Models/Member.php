@@ -51,5 +51,6 @@ class Member extends Model
     {
         return $this->hasMany(Procedure::class);
     }
+    
 
 }

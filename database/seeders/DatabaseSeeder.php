@@ -27,6 +27,7 @@ use Database\Seeders\ServicesSeeder;
 use Database\Seeders\DropdownSeeder;
 use Database\Seeders\UnitSeeder;
 use Database\Seeders\UnitTypeSeeder;
+use Database\Seeders\AddressSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -56,6 +57,7 @@ class DatabaseSeeder extends Seeder
             UnitSeeder::class,
             // ClinicSeeder::class,
             DentistSeeder::class,
+            AddressSeeder::class,
         ]);
     }
 }

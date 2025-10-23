@@ -2,14 +2,9 @@
     <div class="space-y-6">
 
         {{-- 🔍 Search Form --}}
-        <div class="bg-primary-50 dark:bg-gray-800 shadow-xl rounded-xl p-6 lg:p-8">
-            <h2 class="text-2xl font-extrabold text-primary-900 dark:text-white mb-6">Find Member Records</h2>
+        <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+
             {{ $this->form }}
-            <div class="mt-6">
-                <x-filament::button wire:click="search" class="w-full sm:w-auto" icon="heroicon-o-magnifying-glass" size="lg">
-                    Search Member
-                </x-filament::button>
-            </div>
         </div>
 
         {{-- 🧍 Member Results --}}
@@ -173,7 +168,7 @@
                                     <td class="px-4 py-2 text-gray-800 dark:text-gray-200">{{ $procedure->service->name ?? 'N/A' }}</td>
                                     <td class="px-4 py-2">{{ $unit->unitType->name ?? '-' }}</td>
                                     <td class="px-4 py-2">{{ $unit->unit->name ?? '-' }}</td>
-                                    <td class="px-4 py-2">{{ \Illuminate\Support\Str::random(8) }}</td>
+                                    <td class="px-4 py-2">{{ $procedure->approval_code }}</td>
                                     <td class="px-4 py-2 font-mono">{{ $unit->quantity ?? '-' }}</td>
                                     <td class="px-4 py-2">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '-' }}</td>
                                     <td class="px-4 py-2">
@@ -229,4 +224,33 @@
             </div>
         </div>
     </div>
+    {{-- ✅ Approval Code Modal --}}
+    <div x-data x-show="$wire.showApprovalModal" x-cloak x-trap.noscroll @click.away="$wire.showApprovalModal = false" x-on:keydown.escape.window="$wire.showApprovalModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md relative text-center">
+
+            <h2 class="text-2xl font-bold text-primary-600 mb-4">Procedure Approved</h2>
+
+            <p class="text-gray-600 dark:text-gray-300 mb-3">
+                The procedure has been approved successfully.<br>
+                Here’s your unique approval code:
+            </p>
+
+            <div class="bg-primary-50 dark:bg-primary-900/30 rounded-lg py-4 px-6 mt-3">
+                <span class="text-3xl font-extrabold tracking-widest text-primary-700 dark:text-primary-400">
+                    {{ $approvalCode }}
+                </span>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-3">
+                Please provide this code to the member for reference and verification.
+            </p>
+
+            <div class="mt-6">
+                <x-filament::button color="primary" wire:click="$set('showApprovalModal', false)">
+                    Close
+                </x-filament::button>
+            </div>
+        </div>
+    </div>
+
 </x-filament-panels::page>

@@ -1,0 +1,150 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\Clinic;
+use App\Models\Dentist;
+use App\Models\Region;
+use App\Models\Province;
+use App\Models\Municipality;
+use App\Models\Specializations;
+use Filament\Forms;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+
+class SearchClinics extends Page
+{
+    protected static ?string $title = 'Search Clinics';
+    protected static string $view = 'filament.pages.search-clinics';
+    protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
+
+    public ?int $region = null;
+    public ?int $province = null;
+    public ?int $city = null;
+    public ?string $dentist_last_name = null;
+    public array $specialization = [];
+
+    public EloquentCollection $clinics;
+    public bool $hasSearched = false;
+
+    public function mount(): void
+    {
+        $this->clinics = new EloquentCollection();
+    }
+
+    protected function getFormSchema(): array
+    {
+        return [
+            Forms\Components\Section::make('Search Clinics')
+                ->schema([
+                    Forms\Components\Grid::make(3)->schema([
+                        // REGION
+                        Forms\Components\Select::make('region')
+                            ->label('Region')
+                            ->options(Region::pluck('name', 'id'))
+                            ->searchable()
+                            ->reactive()
+                            ->afterStateUpdated(fn($state) => $this->reset(['province', 'city'])),
+
+                        // PROVINCE (depends on region)
+                        Forms\Components\Select::make('province')
+                            ->label('Province')
+                            ->options(
+                                fn(callable $get) =>
+                                $get('region')
+                                    ? Province::where('region_id', $get('region'))->pluck('name', 'id')
+                                    : collect()
+                            )
+                            ->reactive()
+                            ->searchable()
+                            ->afterStateUpdated(fn($state) => $this->reset('city')),
+
+                        // CITY (depends on province)
+                        Forms\Components\Select::make('city')
+                            ->label('City / Municipality')
+                            ->options(
+                                fn(callable $get) =>
+                                $get('province')
+                                    ? Municipality::where('province_id', $get('province'))->pluck('name', 'id')
+                                    : collect()
+                            )
+                            ->searchable(),
+
+                        // DENTIST LAST NAME
+                        Forms\Components\TextInput::make('dentist_last_name')
+                            ->label('Dentist Last Name')
+                            ->placeholder('Enter Dentist Last Name'),
+
+                        // SPECIALIZATION
+                        Forms\Components\Select::make('specialization')
+                            ->label('Specialization')
+                            ->multiple()
+                            ->options(Specializations::pluck('name', 'id'))
+                            ->searchable(),
+                    ]),
+                ])
+                ->footerActions([
+                    Forms\Components\Actions\Action::make('search_action')
+                        ->label('Search Clinics')
+                        ->icon('heroicon-o-magnifying-glass')
+                        ->color('primary')
+                        ->action('search'),
+                ]),
+        ];
+    }
+
+    public function search(): void
+    {
+        if (! $this->region && ! $this->province && ! $this->city && ! $this->dentist_last_name && empty($this->specialization)) {
+            Notification::make()
+                ->title('No Filters Applied')
+                ->body('Please enter at least one search filter before searching.')
+                ->warning()
+                ->send();
+
+            $this->clinics = collect();
+            $this->hasSearched = false;
+            return;
+        }
+
+        $query = Clinic::query()
+            ->with(['dentists.specializations', 'dentists']);
+
+        if ($this->region) {
+            $query->where('region', $this->region);
+        }
+        if ($this->province) {
+            $query->where('province', $this->province);
+        }
+        if ($this->city) {
+            $query->where('city', $this->city);
+        }
+        if ($this->dentist_last_name) {
+            $query->whereHas(
+                'dentists',
+                fn($q) =>
+                $q->where('last_name', 'like', "%{$this->dentist_last_name}%")
+            );
+        }
+        if (!empty($this->specialization)) {
+            $query->whereHas(
+                'dentists.specializations',
+                fn($q) =>
+                $q->whereIn('id', $this->specialization)
+            );
+        }
+
+        $this->clinics = $query->get();
+        $this->hasSearched = true;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole([
+                'Super Admin',
+                'Member',
+            ]);
+    }
+}

@@ -82,20 +82,47 @@ class MemberResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('account.policy_code')->label('Policy Code')->sortable()->searchable(),
-                TextColumn::make('account.company_name')->label('Company Name')->sortable()->searchable(),
-                TextColumn::make('name')->label('Full Name')->sortable()->searchable(),
-                TextColumn::make('card_number')->label('Card Number')->sortable()->searchable(),
-                TextColumn::make('member_type')->label('Member Type')->sortable()->searchable(),
+                TextColumn::make('account.policy_code')
+                    ->label('Policy Code')
+                    ->sortable()
+                    ->searchable(),
+
+                TextColumn::make('account.company_name')
+                    ->label('Company Name')
+                    ->sortable()
+                    ->searchable(),
+
+                TextColumn::make('full_name')
+                    ->label('Full Name')
+                    ->getStateUsing(fn($record) => "{$record->first_name} {$record->last_name}")
+                    ->searchable(['first_name', 'last_name'])
+                    ->sortable(
+                        query: fn($query, $direction) =>
+                        $query->orderByRaw("CONCAT(first_name, ' ', last_name) {$direction}")
+                    ),
+
+                TextColumn::make('card_number')
+                    ->label('Card Number')
+                    ->sortable()
+                    ->searchable(),
+
+                TextColumn::make('member_type')
+                    ->label('Member Type')
+                    ->sortable()
+                    ->searchable(),
+
                 TextColumn::make('account.status')
                     ->label('Status')
-                    ->formatStateUsing(fn($state) => $state === 1 ? 'Active' : 'Inactive')
                     ->badge()
                     ->colors([
                         'success' => fn($state) => $state === 1,
-                        'warning'  => fn($state) => $state === 0,
-                    ]),
-                TextColumn::make('created_at')->date(),
+                        'warning' => fn($state) => $state === 0,
+                    ])
+                    ->formatStateUsing(fn($state) => $state === 1 ? 'Active' : 'Inactive'),
+
+                TextColumn::make('created_at')
+                    ->date()
+                    ->label('Created At'),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -144,7 +171,7 @@ class MemberResource extends Resource
             ]);
     }
 
-    
+
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -163,16 +190,15 @@ class MemberResource extends Resource
             'index' => Pages\ListMembers::route('/'),
             'create' => Pages\CreateMember::route('/create'),
             'edit' => Pages\EditMember::route('/{record}/edit'),
-            'view' => Pages\ViewMember::route('/{record}'), 
+            'view' => Pages\ViewMember::route('/{record}'),
         ];
     }
 
 
     public static function getRelations(): array
     {
-    return [
-        \App\Filament\Resources\MemberResource\RelationManagers\ProceduresRelationManager::class,
-    ];
+        return [
+            \App\Filament\Resources\MemberResource\RelationManagers\ProceduresRelationManager::class,
+        ];
     }
-
 }

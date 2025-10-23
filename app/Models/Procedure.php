@@ -20,6 +20,11 @@ class Procedure extends Model
         'remarks',
     ];
 
+    protected $casts = [
+        'availment_date' => 'date',
+    ];
+
+
     /**
      * Get the member associated with the procedure.
      */
@@ -27,7 +32,7 @@ class Procedure extends Model
     {
         return $this->belongsTo(Member::class);
     }
-     /**
+    /**
      * Get the clinic associated with the procedure.
      */
     public function clinic()
@@ -48,11 +53,11 @@ class Procedure extends Model
     public function units()
     {
         return $this->belongsToMany(Unit::class, 'procedure_units', 'procedure_id', 'unit_id')
-                    ->withPivot('quantity')
-                    ->with('unitType') // eager-load the type for convenience
-                    ->withTimestamps();
+            ->withPivot('quantity')
+            ->with('unitType') // eager-load the type for convenience
+            ->withTimestamps();
     }
-    
+
     public function getClinicNameAttribute()
     {
         // Get clinic from the service

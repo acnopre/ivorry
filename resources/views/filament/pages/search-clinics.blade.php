@@ -53,8 +53,12 @@
             <svg class="w-8 h-8 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9A6 6 0 006 9c0 5 6 9 6 9s6-4 6-9zM10.5 9.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" />
             </svg>
-            <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">No clinics found</h3>
-            <p class="mt-1 text-sm text-gray-500">Please adjust your filters or contact admin.</p>
+            <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">
+                No Clinics Found
+            </h3>
+            <p class="mt-1 text-sm text-gray-500">
+                We couldn't find any clinics matching your criteria.
+            </p>
         </div>
         @endif
 

@@ -11,7 +11,7 @@ use App\Models\Specializations;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 class SearchClinics extends Page
 {
@@ -25,12 +25,12 @@ class SearchClinics extends Page
     public ?string $dentist_last_name = null;
     public array $specialization = [];
 
-    public EloquentCollection $clinics;
+    public Collection $clinics;
     public bool $hasSearched = false;
 
     public function mount(): void
     {
-        $this->clinics = new EloquentCollection();
+        $this->clinics = collect();
     }
 
     protected function getFormSchema(): array
@@ -96,17 +96,17 @@ class SearchClinics extends Page
 
     public function search(): void
     {
-        if (! $this->region && ! $this->province && ! $this->city && ! $this->dentist_last_name && empty($this->specialization)) {
-            Notification::make()
-                ->title('No Filters Applied')
-                ->body('Please enter at least one search filter before searching.')
-                ->warning()
-                ->send();
+        // if (! $this->region && ! $this->province && ! $this->city && ! $this->dentist_last_name && empty($this->specialization)) {
+        //     Notification::make()
+        //         ->title('No Filters Applied')
+        //         ->body('Please enter at least one search filter before searching.')
+        //         ->warning()
+        //         ->send();
 
-            $this->clinics = collect();
-            $this->hasSearched = false;
-            return;
-        }
+        //     $this->clinics = collect();
+        //     $this->hasSearched = false;
+        //     return;
+        // }
 
         $query = Clinic::query()
             ->with(['dentists.specializations', 'dentists']);

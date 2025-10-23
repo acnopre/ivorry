@@ -148,7 +148,7 @@
                                 <tr>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Service</th>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Unit Type</th>
-                                    <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Unit</th>
+                                    {{-- <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Unit</th> --}}
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Approval Code</th>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Date</th>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Status</th>
@@ -167,9 +167,9 @@
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                     <td class="px-4 py-2 text-gray-800 dark:text-gray-200">{{ $procedure->service->name ?? 'N/A' }}</td>
                                     <td class="px-4 py-2">{{ $unit->unitType->name ?? '-' }}</td>
-                                    <td class="px-4 py-2">{{ $unit->unit->name ?? '-' }}</td>
+                                    {{-- <td class="px-4 py-2">{{ $unit->unit->name ?? '-' }}</td> --}}
                                     <td class="px-4 py-2">{{ $procedure->approval_code }}</td>
-                                    <td class="px-4 py-2 font-mono">{{ $unit->quantity ?? '-' }}</td>
+                                    {{-- <td class="px-4 py-2 font-mono">{{ $unit->quantity ?? '-' }}</td> --}}
                                     <td class="px-4 py-2">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '-' }}</td>
                                     <td class="px-4 py-2">
                                         <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset {{ $statusClass }}">

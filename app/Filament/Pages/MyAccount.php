@@ -31,4 +31,12 @@ class MyAccount extends Page
     {
         return !is_null($this->account);
     }
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole([
+                'Super Admin',
+                'Member',
+            ]);
+    }
 }

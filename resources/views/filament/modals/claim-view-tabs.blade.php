@@ -18,6 +18,7 @@
 
                 <li><span class="font-medium">Availment Date:</span> {{ \Carbon\Carbon::parse($record->availment_date)->toFormattedDateString() }}</li>
                 <li><span class="font-medium">Service:</span> {{ $record->service?->name ?? 'N/A' }}</li>
+                <li><span class="font-medium">Approval Code:</span> {{ $record->approval_code ?? 'N/A' }}</li>
                 @if($record->remarks)
                 <li><span class="font-medium text-danger-600">Rejection Remarks:</span> {{ $record->remarks }}</li>
                 @endif
@@ -49,6 +50,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($services as $service)
+                    @if($service->pivot->quantity !=0)
                     <tr>
                         <td class="px-4 py-2">{{ $service->name ?? 'Service Name Missing' }}</td>
                         <td class="px-4 py-2">
@@ -56,15 +58,16 @@
                         </td>
                         <td class="px-4 py-2">
                             @if($service->pivot->is_unlimited)
-                            <span class="inline-flex items-center px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">Yes</span>
+                            Yes
                             @else
-                            <span class="inline-flex items-center px-2 py-1 text-xs font-semibold text-gray-700 bg-gray-100 rounded-full">No</span>
+                            No
                             @endif
                         </td>
                         <td class="px-4 py-2 text-gray-600 dark:text-gray-300">
                             {{ $service->pivot->remarks ?? '—' }}
                         </td>
                     </tr>
+                    @endif
                     @empty
                     <tr>
                         <td colspan="4" class="px-4 py-3 text-center text-gray-500">No services assigned.</td>
@@ -90,7 +93,7 @@
             <tbody>
                 @foreach($units as $unit)
                 <tr class="border-t border-gray-200 dark:border-gray-700">
-                    <td class="px-4 py-2">{{ $unit->name ?? 'N/A' }}</td>
+                    <td class="px-4 py-2">{{ $unit->unitType->name ?? 'N/A' }}</td>
                     <td class="px-4 py-2">{{ $unit->pivot->quantity ?? 'N/A' }}</td>
                 </tr>
                 @endforeach

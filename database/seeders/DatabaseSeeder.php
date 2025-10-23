@@ -4,6 +4,7 @@ use App\Models\BasicDentalService;
 use App\Models\User;
 use Database\Seeders\AccountManagerSeeder;
 use Database\Seeders\AccountSeeder;
+use Database\Seeders\AccountServicesSeeder;
 use Database\Seeders\AccreditationSeeder;
 use Database\Seeders\AccreditationStatusSeeder;
 use Database\Seeders\BasicDentalServicesSeeder;
@@ -58,6 +59,7 @@ class DatabaseSeeder extends Seeder
             // ClinicSeeder::class,
             DentistSeeder::class,
             AddressSeeder::class,
+            AccountServicesSeeder::class,
         ]);
     }
 }

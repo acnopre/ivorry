@@ -29,11 +29,12 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->brandLogo(asset('images/logo.png'))
             ->login()
+            ->profile() //TODO: once update made, update members email as well.
             ->brandLogoHeight('80px')
             ->colors([
                 'primary' => '#8B1C52'
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources') 
+            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Dashboard::class,
@@ -45,7 +46,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Widgets\ActivityTimeline::class,
                 \App\Filament\Widgets\DashboardStats::class,
                 \App\Filament\Widgets\RecentClaimsTable::class,
-                
+
             ])
             ->navigationGroups([
                 'Accounts & Members',
@@ -54,7 +55,7 @@ class AdminPanelProvider extends PanelProvider
                 'Reports',
                 'Lookup Tables',
                 'Settings',
-                'System'  
+                'System'
             ])
             ->middleware([
                 EncryptCookies::class,

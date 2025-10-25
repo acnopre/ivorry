@@ -27,6 +27,8 @@ class ReportsPage extends Page implements Forms\Contracts\HasForms, Tables\Contr
     protected static string $view = 'filament.pages.reports-page';
     protected static ?string $navigationLabel = 'Reports & Analytics';
     protected static ?string $title = 'Reports Generation';
+    protected static ?string $navigationGroup = 'Reports';
+
 
     public ?string $reportType = null;
     public ?string $status = null;

@@ -70,6 +70,21 @@ class Procedure extends Model
         return $this->service->clinic->clinic_name ?? '—';
     }
 
+    public function signatures()
+    {
+        return $this->hasMany(ProcedureSignature::class);
+    }
+
+    public function isFullySigned(): bool
+    {
+        return $this->signatures()->count() >= 3;
+    }
+    public function getSignatureUrlAttribute(): ?string
+    {
+        return $this->signature_path ? Storage::url($this->signature_path) : null;
+    }
+
+
     public function getDentistNameAttribute()
     {
         // Option 1: If procedure has a direct dentist relationship, use it

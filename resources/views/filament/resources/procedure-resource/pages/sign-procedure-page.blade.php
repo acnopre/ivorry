@@ -12,6 +12,10 @@
                 <h2 class="text-xl font-bold mb-4 border-b pb-2 text-primary-600">Procedure Details</h2>
                 <dl class="text-base">
                     <div class="py-3 flex justify-between border-b border-gray-100">
+                        <dt class="text-gray-600 font-medium">Approval Code</dt>
+                        <dd class="font-extrabold text-gray-900">{{ $record->approval_code ?? '—' }}</dd>
+                    </div>
+                    <div class="py-3 flex justify-between border-b border-gray-100">
                         <dt class="text-gray-600 font-medium">Member</dt>
                         <dd class="font-extrabold text-gray-900">{{ $record->member->full_name ?? '—' }}</dd>
                     </div>
@@ -26,7 +30,6 @@
                 </dl>
             </div>
 
-            {{-- 🔳 QR Verification (Simplified and Tighter) --}}
             <div class="flex flex-col items-center justify-center space-y-3 p-4 bg-gray-50 rounded-xl">
                 <h3 class="font-bold text-sm text-gray-700 uppercase tracking-wider">Verification Code</h3>
                 @if ($record->qr_code_path)
@@ -36,7 +39,9 @@
                     {!! QrCode::size(144)->generate(route('filament.admin.resources.procedures.sign', $record)) !!}
                 </div>
                 @endif
-                <p class="text-xs text-gray-500 text-center mt-1">Scan to verify this record.</p>
+                <p class="text-xs text-gray-500 text-center mt-1">
+                    Scan this code to open the verification page. You can share it with the member for scanning.
+                </p>
             </div>
         </div>
 

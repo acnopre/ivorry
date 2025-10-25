@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
             $table->date('availment_date')->nullable();
             $table->string('approval_code')->nullable();
-            $table->enum('status', ['approved', 'valid', 'invalid', 'returned']);
+            $table->enum('status', ['pending', 'completed', 'valid', 'invalid', 'returned']);
             $table->longText('remarks')->nullable();
             $table->timestamps();
         });

@@ -24,6 +24,12 @@ class Procedure extends Model
         'availment_date' => 'date',
     ];
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_VALID = 'valid';
+    public const STATUS_REJECT = 'rejected';
+    public const STATUS_RETURN = 'rejected';
+
 
     /**
      * Get the member associated with the procedure.

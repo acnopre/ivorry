@@ -173,76 +173,93 @@ class SearchClaims extends Page implements HasForms, HasTable
                             'member' => $member,
                         ]);
                     })
-                    ->extraModalFooterActions([
-                        // 🟢 VALID
-                        Tables\Actions\Action::make('mark_valid_modal')
-                            ->label('Valid')
-                            ->icon('heroicon-o-check-circle')
-                            ->color('success')
-                            ->requiresConfirmation()
-                            ->modalHeading('Confirm Validation')
-                            ->modalDescription('Are you sure you want to mark this claim as valid?')
-                            ->action(function (Procedure $record, Tables\Actions\Action $action) {
-                                $record->update(['status' => 'valid']);
+                    ->extraModalFooterActions(function (Procedure $record) {
+                        // Only show actions when status is 'completed'
+                        if ($record->status !== Procedure::STATUS_COMPLETED) {
+                            return [];
+                        }
 
-                                Notification::make()
-                                    ->title('Claim Marked as Valid')
-                                    ->success()
-                                    ->send();
-                                $this->dispatch('closeModal');
-                                $this->dispatch('close-modal', id: 'view-action');
-                                $this->dispatch('refreshTable'); // ✅ refresh table
-                            }),
+                        return [
+                            // 🟢 VALID
+                            Tables\Actions\Action::make('mark_valid_modal')
+                                ->label('Valid')
+                                ->icon('heroicon-o-check-circle')
+                                ->color('success')
+                                ->requiresConfirmation()
+                                ->modalHeading('Confirm Validation')
+                                ->modalDescription('Are you sure you want to mark this claim as valid?')
+                                ->action(function (Procedure $record) {
+                                    $record->update(['status' => Procedure::STATUS_VALID]);
 
-                        // 🔴 INVALID
-                        Tables\Actions\Action::make('mark_invalid_modal')
-                            ->label('Invalid')
-                            ->icon('heroicon-o-x-circle')
-                            ->color('danger')
-                            ->requiresConfirmation()
-                            ->modalHeading('Confirm Invalid')
-                            ->modalDescription('Are you sure you want to mark this claim as invalid?')
-                            ->action(function (Procedure $record, Tables\Actions\Action $action) {
-                                $record->update(['status' => 'invalid']);
+                                    Notification::make()
+                                        ->title('Claim Marked as Valid')
+                                        ->success()
+                                        ->send();
 
-                                Notification::make()
-                                    ->title('Claim Marked as Invalid')
-                                    ->danger()
-                                    ->send();
+                                    $this->dispatch('closeModal');
+                                    $this->dispatch('refreshTable');
+                                }),
 
-                                $this->dispatch('closeModal');
-                                $this->dispatch('refreshTable'); // ✅ refresh table
-                            }),
+                            // 🔴 REJECTED
+                            Tables\Actions\Action::make('mark_invalid_modal')
+                                ->label('Rejected')
+                                ->icon('heroicon-o-x-circle')
+                                ->color('danger')
+                                ->form([
+                                    Forms\Components\Textarea::make('remarks')
+                                        ->label('Remarks')
+                                        ->placeholder('Enter reason for rejection...')
+                                        ->required(),
+                                ])
+                                ->requiresConfirmation()
+                                ->modalHeading('Confirm Rejection')
+                                ->modalDescription('Are you sure you want to reject this claim?')
+                                ->action(function (Procedure $record, array $data) {
+                                    $record->update([
+                                        'status' => Procedure::STATUS_REJECT,
+                                        'remarks' => $data['remarks'],
+                                    ]);
 
-                        // 🟡 RETURN with remarks
-                        Tables\Actions\Action::make('mark_returned_modal')
-                            ->label('Return')
-                            ->icon('heroicon-o-arrow-uturn-left')
-                            ->color('warning')
-                            ->form([
-                                Forms\Components\Textarea::make('remarks')
-                                    ->label('Remarks')
-                                    ->placeholder('Enter reason for returning this claim...')
-                                    ->required(),
-                            ])
-                            ->modalHeading('Return Claim')
-                            ->modalDescription('Please provide remarks for returning this claim.')
-                            ->action(function (Procedure $record, array $data, Tables\Actions\Action $action) {
-                                $record->update([
-                                    'status' => 'return',
-                                    'remarks' => $data['remarks'],
-                                ]);
+                                    Notification::make()
+                                        ->title('Claim Rejected')
+                                        ->danger()
+                                        ->send();
 
-                                Notification::make()
-                                    ->title('Claim Returned')
-                                    ->body('This claim has been marked as returned with your remarks.')
-                                    ->warning()
-                                    ->send();
+                                    $this->dispatch('closeModal');
+                                    $this->dispatch('refreshTable');
+                                }),
 
-                                $this->dispatch('closeModal');
-                                $this->dispatch('refreshTable'); // ✅ refresh table
-                            }),
-                    ])
+                            // 🟡 RETURN
+                            Tables\Actions\Action::make('mark_returned_modal')
+                                ->label('Return')
+                                ->icon('heroicon-o-arrow-uturn-left')
+                                ->color('warning')
+                                ->form([
+                                    Forms\Components\Textarea::make('remarks')
+                                        ->label('Remarks')
+                                        ->placeholder('Enter reason for returning this claim...')
+                                        ->required(),
+                                ])
+                                ->modalHeading('Return Claim')
+                                ->modalDescription('Please provide remarks for returning this claim.')
+                                ->action(function (Procedure $record, array $data) {
+                                    $record->update([
+                                        'status' => Procedure::STATUS_RETURN,
+                                        'remarks' => $data['remarks'],
+                                    ]);
+
+                                    Notification::make()
+                                        ->title('Claim Returned')
+                                        ->body('This claim has been marked as returned with your remarks.')
+                                        ->warning()
+                                        ->send();
+
+                                    $this->dispatch('closeModal');
+                                    $this->dispatch('refreshTable');
+                                }),
+                        ];
+                    })
+
                     ->modalSubmitAction(false)
             ])
             ->headerActions([

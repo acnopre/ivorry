@@ -110,7 +110,7 @@ class SearchMember extends Page
             'member_id' => $this->selectedMemberId,
             'service_id' => $data['service_id'],
             'availment_date' => $data['availment_date'] ?? null,
-            'status' => 'approved',
+            'status' => Procedure::STATUS_PENDING,
             'approval_code' => $approvalCode,
         ]);
 

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('procedure_id')->constrained()->onDelete('cascade');
             $table->string('signer_name')->nullable();
             $table->string('signer_type')->nullable(); // e.g. 'patient', 'witness', etc.
-            $table->text('signature_path'); // store file path or base64
+            $table->text('signature_path')->nullable(); // store file path or base64
             $table->timestamps();
         });
     }

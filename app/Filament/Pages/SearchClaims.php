@@ -73,8 +73,10 @@ class SearchClaims extends Page implements HasForms, HasTable
                         Forms\Components\Select::make('status')
                             ->options([
                                 'pending' => 'Pending',
-                                'approved' => 'Approved',
-                                'denied' => 'Denied',
+                                'completed' => 'Completed',
+                                'valid' => 'Valid',
+                                'invalid' => 'Invalid',
+                                'reject' => 'Reject'
                             ])
                             ->label('Claim Status')
                             ->placeholder('Any Status'),
@@ -109,15 +111,20 @@ class SearchClaims extends Page implements HasForms, HasTable
                 if (! $this->hasSearched) {
                     return Procedure::query()->whereRaw('1 = 0'); // empty state
                 }
-
                 $searchData = $this->data;
-
-                return Procedure::query()
+                $query =  Procedure::query()
                     ->when(
                         $searchData['member_name'] ?? null,
                         fn(Builder $q, $name) =>
-                        $q->whereHas('member', fn($r) => $r->where('name', 'like', "%{$name}%"))
+                        $q->whereHas('member', function ($r) use ($name) {
+                            $r->where(function ($sub) use ($name) {
+                                $sub->where('first_name', 'like', "%{$name}%")
+                                    ->orWhere('last_name', 'like', "%{$name}%")
+                                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                            });
+                        })
                     )
+
                     ->when(
                         $searchData['approval_code'] ?? null,
                         fn(Builder $q, $code) =>
@@ -142,18 +149,32 @@ class SearchClaims extends Page implements HasForms, HasTable
                         ])
                     )
                     ->latest();
+                return $query;
             })
             ->columns([
                 Tables\Columns\TextColumn::make('clinic.clinic_name')->label('Clinic Name')->sortable(),
+                Tables\Columns\TextColumn::make('member.first_name')
+                    ->label('Member Name')
+                    ->sortable()
+                    ->formatStateUsing(function ($state, $record) {
+                        $first = $record->member?->first_name;
+                        $last = $record->member?->last_name;
+                        $suffix = $record->member?->suffix;
+
+                        return trim(ucwords("{$first} {$last}" . ($suffix ? ", {$suffix}" : '')));
+                    }),
                 Tables\Columns\TextColumn::make('approval_code')->label('Approval Code')->limit(30),
                 Tables\Columns\TextColumn::make('service.name')->label('Service Claimed')->limit(30),
                 Tables\Columns\TextColumn::make('availment_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'approved' => 'success',
-                        'denied' => 'danger',
-                        default => 'warning',
+                        'pending' => 'warning',
+                        'completed' => 'info',
+                        'valid' => 'success',
+                        'invalid' => 'danger',
+                        'reject' => 'rose',
+                        default => 'secondary',
                     }),
             ])
             ->actions([

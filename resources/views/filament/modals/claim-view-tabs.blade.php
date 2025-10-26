@@ -103,5 +103,38 @@
         <p class="text-sm text-gray-500">No procedure units found for this claim.</p>
         @endif
     </div>
+    @if ($record->signatures && $record->signatures->isNotEmpty())
+    @foreach ($record->signatures as $data)
+    <div class="mt-4 p-4 border rounded-lg bg-gray-50">
+        <h4 class="font-semibold mb-2 capitalize">
+            {{ str_replace('_', ' ', $data->signer_type) }} Signature:
+        </h4>
+
+        @if (!empty($data->signature_path))
+        <img src="{{ Storage::url($data->signature_path) }}" alt="{{ $data->signer_type }} Signature" class="h-32 border rounded shadow-sm">
+        @else
+        <p class="text-gray-500 italic">No signature image uploaded.</p>
+        @endif
+
+        {{-- Optional: show signer info if available --}}
+        @if (!empty($data->signer_name) || !empty($data->created_at))
+        <div class="mt-2 text-sm text-gray-600">
+            @if (!empty($data->signer_name))
+            <p><strong>Signed by:</strong> {{ $data->signer_name }}</p>
+            @endif
+            @if (!empty($data->created_at))
+            <p><strong>Date:</strong> {{ \Carbon\Carbon::parse($data->created_at)->format('F d, Y h:i A') }}</p>
+            @endif
+        </div>
+        @endif
+    </div>
+    @endforeach
+    @else
+    <div class="fi-section border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+        <h4 class="text-md font-semibold mb-2">Signatures</h4>
+        <p class="text-gray-500">No signatures recorded yet.</p>
+    </div>
+    @endif
+
 
 </div>

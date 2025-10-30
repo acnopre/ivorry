@@ -20,7 +20,7 @@ return new class extends Migration
             $table->date('effective_date')->nullable();       // Policy effective date
             $table->date('expiration_date')->nullable();      // Valid until
             $table->enum('endorsement_type', ['NEW', 'RENEWAL', 'AMENDMENT'])->nullable();
-            $table->boolean('status')->default(0);
+            $table->boolean('account_status')->default(0);
             $table->timestamps();
         });
     }

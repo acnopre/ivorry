@@ -21,6 +21,8 @@ return new class extends Migration
             $table->date('expiration_date')->nullable();      // Valid until
             $table->enum('endorsement_type', ['NEW', 'RENEWAL', 'AMENDMENT'])->nullable();
             $table->boolean('account_status')->default(0);
+            $table->boolean('amendment_status')->default(0);
+            $table->boolean('renewal_status')->default(0);
             $table->timestamps();
         });
     }

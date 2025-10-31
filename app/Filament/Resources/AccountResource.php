@@ -229,7 +229,7 @@ class AccountResource extends Resource
                         'info'    => fn($state) => $state === 'AMENDMENT',
                     ]),
 
-                TextColumn::make('status')
+                TextColumn::make('account_status')
                     ->label('Status')
                     ->formatStateUsing(fn($state) => $state === 1 ? 'Active' : 'Inactive')
                     ->badge()

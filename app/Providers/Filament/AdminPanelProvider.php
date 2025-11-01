@@ -3,10 +3,12 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\UserMenuItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -18,22 +20,27 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\Navigation\MenuItem;
+use Filament\Navigation\UserMenu;
+use Filament\Support\Enums\MaxWidth;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+
         return $panel
             ->default()
             ->id('admin')
             ->path('admin')
             ->brandLogo(asset('images/logo.png'))
-            ->login()
-            ->profile() //TODO: once update made, update members email as well.
             ->brandLogoHeight('80px')
+            ->login()
+            ->profile()
             ->colors([
-                'primary' => '#8B1C52'
+                'primary' => '#8B1C52',
             ])
+            ->maxContentWidth(MaxWidth::Full)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -42,11 +49,9 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-                // Widgets\FilamentInfoWidget::class,
                 \App\Filament\Widgets\ActivityTimeline::class,
                 \App\Filament\Widgets\DashboardStats::class,
                 \App\Filament\Widgets\RecentClaimsTable::class,
-
             ])
             ->navigationGroups([
                 'Accounts & Members',
@@ -55,8 +60,24 @@ class AdminPanelProvider extends PanelProvider
                 'Reports',
                 'Lookup Tables',
                 'Settings',
-                'System'
+                'System',
             ])
+
+            // ✅ Works with Filament v3 authentication
+            ->userMenuItems([
+                'profile' => MenuItem::make()
+                    ->label(fn() => Filament::auth()->user()?->name ?? 'Profile')
+                    ->icon('heroicon-o-user'),
+
+                'role' => MenuItem::make()
+                    ->label(fn() => 'Role: ' . Filament::auth()->user()?->role)
+                    ->icon('heroicon-o-identification'),
+
+                'logout' => MenuItem::make()
+                    ->label('Log out')
+                    ->icon('heroicon-o-arrow-left-on-rectangle'),
+            ])
+
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -69,8 +90,6 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
                 \App\Http\Middleware\MustSetPassword::class,
                 'web',
-                // \App\Http\Middleware\ForceSetPassword::class,
-
             ])
             ->authMiddleware([
                 Authenticate::class,

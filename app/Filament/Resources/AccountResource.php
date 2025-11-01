@@ -45,174 +45,192 @@ class AccountResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
-            ->schema([
-                Section::make('Account Information')
-                    ->schema([
-                        TextInput::make('company_name')
-                            ->label('Company Name')
-                            ->required()
-                            ->maxLength(255),
+            ->schema(function ($record) {
+                // Determine if this account is editable
+                $isAmendment = $record?->amendment_status == 1;
 
-                        TextInput::make('policy_code')
-                            ->label('Policy Code')
-                            ->unique(ignoreRecord: true)
-                            ->required()
-                            ->maxLength(50),
+                return [
+                    Section::make('Account Information')
+                        ->schema([
+                            TextInput::make('company_name')
+                                ->label('Company Name')
+                                ->required()
+                                ->maxLength(255)
+                                ->disabled(! $isAmendment),
 
-                        TextInput::make('hip')
-                            ->label('HIP')
-                            ->maxLength(255),
+                            TextInput::make('policy_code')
+                                ->label('Policy Code')
+                                ->unique(ignoreRecord: true)
+                                ->required()
+                                ->maxLength(50)
+                                ->disabled(! $isAmendment),
 
-                        TextInput::make('card_used')
-                            ->label('Card Used')
-                            ->maxLength(255),
-                    ])->columns(2),
+                            TextInput::make('hip')
+                                ->label('HIP')
+                                ->maxLength(255)
+                                ->disabled(! $isAmendment),
 
-                Section::make('Contract Information')
-                    ->schema([
-                        DatePicker::make('effective_date')->label('Effective Date'),
-                        DatePicker::make('expiration_date')->label('Expiration Date'),
-                        Select::make('endorsement_type')
-                            ->label('Endorsement Type')
-                            ->options(EndorsementType::pluck('name', 'name'))
-                            ->required(),
-                    ])->columns(3),
+                            TextInput::make('card_used')
+                                ->label('Card Used')
+                                ->maxLength(255)
+                                ->disabled(! $isAmendment),
+                        ])->columns(2),
 
-                // BASIC SERVICES
-                Section::make('Basic Dental Services')
-                    ->schema(function (Forms\Get $get, $operation, $record) {
-                        $services = Service::where('type', 'basic')->get();
+                    Section::make('Contract Information')
+                        ->schema([
+                            DatePicker::make('effective_date')
+                                ->label('Effective Date')
+                                ->disabled(! $isAmendment),
 
-                        return $services->map(function ($service) use ($record) {
-                            return Grid::make(12)->schema([
-                                Placeholder::make("label_{$service->id}")
-                                    ->label('')
-                                    ->content($service->name)
-                                    ->columnSpan(4),
+                            DatePicker::make('expiration_date')
+                                ->label('Expiration Date')
+                                ->disabled(! $isAmendment),
 
-                                TextInput::make("services.basic.{$service->id}.quantity")
-                                    ->label('Quantity')
-                                    ->numeric()
-                                    ->columnSpan(2)
-                                    ->reactive()
-                                    ->disabled(
-                                        fn(Forms\Get $get) =>
-                                        $get("services.basic.{$service->id}.is_unlimited") === true
-                                    )
-                                    ->dehydrated(true)
-                                    ->formatStateUsing(function ($state, $record) use ($service) {
-                                        if (! $record) {
-                                            return $state;
-                                        }
-                                        return $record->services()
-                                            ->where('service_id', $service->id)
-                                            ->value('quantity');
-                                    }),
+                            Select::make('endorsement_type')
+                                ->label('Endorsement Type')
+                                ->options(EndorsementType::pluck('name', 'name'))
+                                ->required()
+                                // ❗ Always enabled
+                                ->disabled(false),
+                        ])->columns(3),
 
-                                TextInput::make("services.basic.{$service->id}.remarks")
-                                    ->label('Remarks')
-                                    ->columnSpan(4)
-                                    ->maxLength(255)
-                                    ->formatStateUsing(function ($state, $record) use ($service) {
-                                        if (! $record) {
-                                            return $state;
-                                        }
-                                        return $record->services()
-                                            ->where('service_id', $service->id)
-                                            ->value('remarks');
-                                    }),
+                    Section::make('Basic Dental Services')
+                        ->schema(function () use ($record, $isAmendment) {
+                            $services = Service::where('type', 'basic')->get();
 
-                                Toggle::make("services.basic.{$service->id}.is_unlimited")
-                                    ->label('Unlimited')
-                                    ->columnSpan(2)
-                                    ->inline(false)
-                                    ->reactive()
-                                    ->afterStateUpdated(function ($state, Forms\Set $set) use ($service) {
-                                        if ($state === true) {
-                                            // Clear quantity when unlimited is turned ON
-                                            $set("services.basic.{$service->id}.quantity", null);
-                                        }
-                                    })
-                                    ->formatStateUsing(function ($state, $record) use ($service) {
-                                        if (! $record) {
-                                            return $state;
-                                        }
-                                        return $record->services()
-                                            ->where('service_id', $service->id)
-                                            ->value('is_unlimited');
-                                    }),
-                            ])->columns(12);
-                        })->toArray();
-                    }),
+                            return $services->map(function ($service) use ($record, $isAmendment) {
+                                return Grid::make(12)->schema([
+                                    Placeholder::make("label_{$service->id}")
+                                        ->label('')
+                                        ->content($service->name)
+                                        ->columnSpan(4),
 
-                // PLAN ENHANCEMENTS
-                Section::make('Plan Enhancements')
-                    ->schema(function (Forms\Get $get, $operation, $record) {
-                        $enhancements = Service::where('type', 'enhancement')->get();
+                                    TextInput::make("services.basic.{$service->id}.quantity")
+                                        ->label('Quantity')
+                                        ->numeric()
+                                        ->columnSpan(2)
+                                        ->reactive()
+                                        ->disabled(
+                                            fn(Forms\Get $get) =>
+                                            $get("services.basic.{$service->id}.is_unlimited") === true || ! $isAmendment
+                                        )
+                                        ->dehydrated(true)
+                                        ->formatStateUsing(function ($state, $record) use ($service) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $service->id)
+                                                ->value('quantity');
+                                        }),
 
-                        return $enhancements->map(function ($enhancement) use ($record) {
-                            return Grid::make(12)->schema([
-                                Placeholder::make("label_{$enhancement->id}")
-                                    ->label('')
-                                    ->content($enhancement->name)
-                                    ->columnSpan(4),
+                                    TextInput::make("services.basic.{$service->id}.remarks")
+                                        ->label('Remarks')
+                                        ->columnSpan(4)
+                                        ->maxLength(255)
+                                        ->disabled(! $isAmendment)
+                                        ->formatStateUsing(function ($state, $record) use ($service) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $service->id)
+                                                ->value('remarks');
+                                        }),
 
-                                TextInput::make("services.enhancement.{$enhancement->id}.quantity")
-                                    ->label('Quantity')
-                                    ->numeric()
-                                    ->columnSpan(2)
-                                    ->reactive()
-                                    ->disabled(
-                                        fn(Forms\Get $get) =>
-                                        $get("services.enhancement.{$enhancement->id}.is_unlimited") === true
-                                    )
-                                    ->dehydrated(true)
-                                    ->formatStateUsing(function ($state, $record) use ($enhancement) {
-                                        if (! $record) {
-                                            return $state;
-                                        }
-                                        return $record->services()
-                                            ->where('service_id', $enhancement->id)
-                                            ->value('quantity');
-                                    }),
+                                    Toggle::make("services.basic.{$service->id}.is_unlimited")
+                                        ->label('Unlimited')
+                                        ->columnSpan(2)
+                                        ->inline(false)
+                                        ->reactive()
+                                        ->disabled(! $isAmendment)
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) use ($service) {
+                                            if ($state === true) {
+                                                $set("services.basic.{$service->id}.quantity", null);
+                                            }
+                                        })
+                                        ->formatStateUsing(function ($state, $record) use ($service) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $service->id)
+                                                ->value('is_unlimited');
+                                        }),
+                                ])->columns(12);
+                            })->toArray();
+                        }),
 
-                                TextInput::make("services.enhancement.{$enhancement->id}.remarks")
-                                    ->label('Remarks')
-                                    ->columnSpan(4)
-                                    ->maxLength(255)
-                                    ->formatStateUsing(function ($state, $record) use ($enhancement) {
-                                        if (! $record) {
-                                            return $state;
-                                        }
-                                        return $record->services()
-                                            ->where('service_id', $enhancement->id)
-                                            ->value('remarks');
-                                    }),
+                    Section::make('Plan Enhancements')
+                        ->schema(function () use ($record, $isAmendment) {
+                            $enhancements = Service::where('type', 'enhancement')->get();
 
-                                Toggle::make("services.enhancement.{$enhancement->id}.is_unlimited")
-                                    ->label('Unlimited')
-                                    ->columnSpan(2)
-                                    ->inline(false)
-                                    ->reactive()
-                                    ->afterStateUpdated(function ($state, Forms\Set $set) use ($enhancement) {
-                                        if ($state === true) {
-                                            // Clear quantity when unlimited is turned ON
-                                            $set("services.enhancement.{$enhancement->id}.quantity", null);
-                                        }
-                                    })
-                                    ->formatStateUsing(function ($state, $record) use ($enhancement) {
-                                        if (! $record) {
-                                            return $state;
-                                        }
-                                        return $record->services()
-                                            ->where('service_id', $enhancement->id)
-                                            ->value('is_unlimited');
-                                    }),
-                            ])->columns(12);
-                        })->toArray();
-                    }),
-            ]);
+                            return $enhancements->map(function ($enhancement) use ($record, $isAmendment) {
+                                return Grid::make(12)->schema([
+                                    Placeholder::make("label_{$enhancement->id}")
+                                        ->label('')
+                                        ->content($enhancement->name)
+                                        ->columnSpan(4),
+
+                                    TextInput::make("services.enhancement.{$enhancement->id}.quantity")
+                                        ->label('Quantity')
+                                        ->numeric()
+                                        ->columnSpan(2)
+                                        ->reactive()
+                                        ->disabled(
+                                            fn(Forms\Get $get) =>
+                                            $get("services.enhancement.{$enhancement->id}.is_unlimited") === true || ! $isAmendment
+                                        )
+                                        ->dehydrated(true)
+                                        ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $enhancement->id)
+                                                ->value('quantity');
+                                        }),
+
+                                    TextInput::make("services.enhancement.{$enhancement->id}.remarks")
+                                        ->label('Remarks')
+                                        ->columnSpan(4)
+                                        ->maxLength(255)
+                                        ->disabled(! $isAmendment)
+                                        ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $enhancement->id)
+                                                ->value('remarks');
+                                        }),
+
+                                    Toggle::make("services.enhancement.{$enhancement->id}.is_unlimited")
+                                        ->label('Unlimited')
+                                        ->columnSpan(2)
+                                        ->inline(false)
+                                        ->reactive()
+                                        ->disabled(! $isAmendment)
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) use ($enhancement) {
+                                            if ($state === true) {
+                                                $set("services.enhancement.{$enhancement->id}.quantity", null);
+                                            }
+                                        })
+                                        ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $enhancement->id)
+                                                ->value('is_unlimited');
+                                        }),
+                                ])->columns(12);
+                            })->toArray();
+                        }),
+                ];
+            });
     }
+
 
     public static function table(Table $table): Table
     {
@@ -291,8 +309,8 @@ class AccountResource extends Resource
                             })
                             ->cancelParentActions(),
                     ]),
-
                 Tables\Actions\EditAction::make(),
+
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([

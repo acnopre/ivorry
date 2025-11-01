@@ -296,22 +296,75 @@ class AccountResource extends Resource
                     ->modalHeading('Account Details')
                     ->modalSubmitAction(false)
                     ->extraModalFooterActions([
-                        TableAction::make('approve')
-                            ->label('Approve')
+                        // ✅ For regular NEW or AMENDMENT approvals
+                        TableAction::make('approveAccount')
+                            ->label('Approve Account')
                             ->color('success')
+                            ->icon('heroicon-o-check-circle')
+                            ->visible(
+                                fn(Model $record) =>
+                                in_array($record->endorsement_type, ['NEW', 'AMENDMENT'])
+                            )
                             ->requiresConfirmation()
                             ->action(function (Model $record) {
-                                $record->update(['status' => 1]);
+                                $record->update(['account_status' => 1]);
                                 Notification::make()
                                     ->success()
-                                    ->title('Account approved')
+                                    ->title('Account Approved')
+                                    ->body('The account has been approved successfully.')
                                     ->send();
-                            })
-                            ->cancelParentActions(),
-                    ]),
-                Tables\Actions\EditAction::make(),
+                            }),
 
-                Tables\Actions\DeleteAction::make(),
+                        // ✅ For Renewal approvals (separate button)
+                        TableAction::make('approveRenewal')
+                            ->label('Approve Renewal')
+                            ->color('info')
+                            ->visible(
+                                fn(Model $record) =>
+                                $record->endorsement_type === 'RENEWAL'
+                            )
+                            ->requiresConfirmation()
+                            ->action(function (Model $record) {
+                                // Capture current services as JSON
+                                $snapshot = $record->services()
+                                    ->get(['service_id', 'quantity', 'is_unlimited', 'remarks'])
+                                    ->map(fn($s) => [
+                                        'service_id' => $s->service_id,
+                                        'quantity' => $s->pivot->quantity,
+                                        'is_unlimited' => $s->pivot->is_unlimited,
+                                        'remarks' => $s->pivot->remarks,
+                                    ])->toArray();
+
+                                // Save renewal history
+                                \App\Models\RenewalHistory::create([
+                                    'account_id' => $record->id,
+                                    'services_snapshot' => $snapshot,
+                                    'renewal_date' => now(),
+                                    'approved_by' => auth()->user()->name ?? 'System',
+                                    'effective_date' => $record->effective_date,
+                                    'expiration_date' => $record->expiration_date,
+                                ]);
+
+                                // Reset all services to default quantities
+                                foreach ($record->services as $service) {
+                                    $record->services()->updateExistingPivot($service->id, [
+                                        'quantity' => $service->default_quantity ?? 0,
+                                        'remarks' => null,
+                                        'is_unlimited' => false,
+                                    ]);
+                                }
+
+                                // Update status
+                                $record->update(['account_status' => 1]);
+
+                                Notification::make()
+                                    ->success()
+                                    ->title('Renewal Approved')
+                                    ->body('Renewal approved successfully. Quantities reset and history recorded.')
+                                    ->send();
+                            }),
+                    ]),
+
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
@@ -332,9 +385,10 @@ class AccountResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAccounts::route('/'),
+            'index'  => Pages\ListAccounts::route('/'),
             'create' => Pages\CreateAccount::route('/create'),
-            'edit' => Pages\EditAccount::route('/{record}/edit'),
+            'edit'   => Pages\EditAccount::route('/{record}/edit'),
+            'view'   => Pages\ViewAccount::route('/{record}'),
         ];
     }
 }

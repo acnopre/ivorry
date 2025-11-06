@@ -21,7 +21,6 @@ use Filament\Support\Enums\FontWeight;      // Added
 class ViewAccount extends ViewRecord
 {
     protected static string $resource = AccountResource::class;
-    protected static bool $hasPageContentWrapper = false;
     protected function getHeaderActions(): array
     {
         return [
@@ -29,7 +28,7 @@ class ViewAccount extends ViewRecord
                 ->label('Approve Account')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
-                ->visible(fn(Account $record) => $record->status === 'pending')
+                ->visible(fn(Account $record) => $record->account_status === 0)
                 ->requiresConfirmation()
                 ->action(function (Account $record) {
                     $record->update(['status' => 'approved']);
@@ -43,7 +42,7 @@ class ViewAccount extends ViewRecord
                 ->label('Renew Account')
                 ->color('info')
                 ->icon('heroicon-o-arrow-path')
-                ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL')
+                ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL' &&  $record->renewal_status === 1)
                 ->form([
                     \Filament\Forms\Components\DatePicker::make('effective_date')
                         ->label('Effective Date')
@@ -121,12 +120,9 @@ class ViewAccount extends ViewRecord
                                 TextEntry::make('account_status')
                                     ->label('Status')
                                     ->badge()
-                                    ->color(fn(string $state): string => match ($state) {
-                                        'pending' => 'warning',
-                                        'approved' => 'success',
-                                        'renewed' => 'info',
-                                        default => 'gray',
-                                    }),
+                                    ->formatStateUsing(fn($state) => $state == 1 ? 'Active' : 'Inactive')
+                                    ->color(fn($state): string => $state == 1 ? 'success' : 'danger'),
+
 
                                 TextEntry::make('effective_date')
                                     ->label('Effective Date')

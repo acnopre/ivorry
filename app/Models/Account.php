@@ -43,7 +43,12 @@ class Account extends Model
     {
         return $this->belongsToMany(Service::class, 'account_service')
             ->using(AccountService::class) // use pivot model
-            ->withPivot(['quantity', 'is_unlimited', 'remarks', 'default_quantity'])
+            ->withPivot([
+                'quantity',
+                'default_quantity',
+                'is_unlimited',
+                'remarks',
+            ])
             ->withTimestamps();
     }
 

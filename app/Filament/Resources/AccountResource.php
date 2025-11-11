@@ -363,7 +363,14 @@ class AccountResource extends Resource
                                     ->body('Renewal approved successfully. Quantities reset and history recorded.')
                                     ->send();
                             }),
+
                     ]),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn() => auth()->user()?->hasAnyRole('Super Admin', 'Account Manager')),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasAnyRole('Super Admin')),
+
 
             ])
             ->bulkActions([

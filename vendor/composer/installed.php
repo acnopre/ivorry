@@ -3,7 +3,7 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'b9a0b8d7af0f4e65b0781c45452b3f65e875243c',
+        'reference' => 'a5c3b85e6c7d1ad4c3a95f0d5b528238236f1fe8',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -391,6 +391,15 @@
             'aliases' => array(),
             'dev_requirement' => true,
         ),
+        'icetalker/filament-table-repeatable-entry' => array(
+            'pretty_version' => 'v1.1.0',
+            'version' => '1.1.0.0',
+            'reference' => '0201da9de39b7c974f6a71c4d22af1061367dc77',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../icetalker/filament-table-repeatable-entry',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'illuminate/auth' => array(
             'dev_requirement' => false,
             'replaced' => array(
@@ -628,7 +637,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'b9a0b8d7af0f4e65b0781c45452b3f65e875243c',
+            'reference' => 'a5c3b85e6c7d1ad4c3a95f0d5b528238236f1fe8',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

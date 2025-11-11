@@ -183,6 +183,8 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         array (
             'Illuminate\\Support\\' => 19,
             'Illuminate\\' => 11,
+            'Icetalker\\FilamentTableRepeatableEntry\\Database\\Factories\\' => 58,
+            'Icetalker\\FilamentTableRepeatableEntry\\' => 39,
         ),
         'G' => 
         array (
@@ -604,6 +606,14 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'Illuminate\\' => 
         array (
             0 => __DIR__ . '/..' . '/laravel/framework/src/Illuminate',
+        ),
+        'Icetalker\\FilamentTableRepeatableEntry\\Database\\Factories\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/icetalker/filament-table-repeatable-entry/database/factories',
+        ),
+        'Icetalker\\FilamentTableRepeatableEntry\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/icetalker/filament-table-repeatable-entry/src',
         ),
         'GuzzleHttp\\UriTemplate\\' => 
         array (
@@ -3764,6 +3774,9 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'Hamcrest\\Type\\IsString' => __DIR__ . '/..' . '/hamcrest/hamcrest-php/hamcrest/Hamcrest/Type/IsString.php',
         'Hamcrest\\Util' => __DIR__ . '/..' . '/hamcrest/hamcrest-php/hamcrest/Hamcrest/Util.php',
         'Hamcrest\\Xml\\HasXPath' => __DIR__ . '/..' . '/hamcrest/hamcrest-php/hamcrest/Hamcrest/Xml/HasXPath.php',
+        'Icetalker\\FilamentTableRepeatableEntry\\Facades\\FilamentTableRepeatableEntry' => __DIR__ . '/..' . '/icetalker/filament-table-repeatable-entry/src/Facades/FilamentTableRepeatableEntry.php',
+        'Icetalker\\FilamentTableRepeatableEntry\\FilamentTableRepeatableEntryServiceProvider' => __DIR__ . '/..' . '/icetalker/filament-table-repeatable-entry/src/FilamentTableRepeatableEntryServiceProvider.php',
+        'Icetalker\\FilamentTableRepeatableEntry\\Infolists\\Components\\TableRepeatableEntry' => __DIR__ . '/..' . '/icetalker/filament-table-repeatable-entry/src/Infolists/Components/TableRepeatableEntry.php',
         'Illuminate\\Auth\\Access\\AuthorizationException' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Auth/Access/AuthorizationException.php',
         'Illuminate\\Auth\\Access\\Events\\GateEvaluated' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Auth/Access/Events/GateEvaluated.php',
         'Illuminate\\Auth\\Access\\Gate' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Auth/Access/Gate.php',

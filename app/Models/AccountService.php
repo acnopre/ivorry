@@ -11,9 +11,15 @@ class AccountService extends Pivot
     protected $fillable = [
         'account_id',
         'service_id',
+        'default_quantity',
         'quantity',
         'is_unlimited',
         'remarks',
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**

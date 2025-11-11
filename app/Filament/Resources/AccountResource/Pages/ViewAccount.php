@@ -138,6 +138,7 @@ class ViewAccount extends ViewRecord
                     ])
                     ->columns(false), // Grid handles the columns
                 ViewEntry::make('full_width_tabs_wrapper')
+                    ->columnSpanFull()
                     ->label(false)
                     ->view('filament.infolists.account-tabs', [
                         // Pass necessary data to the custom view

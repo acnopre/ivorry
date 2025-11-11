@@ -27,7 +27,7 @@
                     </h3>
                 </div>
 
-                <span class="text-xs font-medium px-3 py-1 rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900 dark:text-primary-300 border border-primary-200 dark:border-primary-700">
+                <span class="text-xs font-medium px-3 py-1 rounded-full bg-primary-600 text-white shadow-sm">
                     {{ count($servicesOfType) }} {{ Str::plural('Item', count($servicesOfType)) }}
                 </span>
             </div>

@@ -6,6 +6,7 @@ use App\Filament\Resources\AccountResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use DB;
+
 class EditAccount extends EditRecord
 {
     protected static string $resource = AccountResource::class;
@@ -39,8 +40,11 @@ class EditAccount extends EditRecord
     protected function afterSave(): void
     {
         $account = $this->record;
-    
-        $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'] ;
+
+        $account->update([
+            'renewal_status' => 0, // Reset renewal status to default 0;
+        ]);
+        $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'];
 
         if (empty($mergedServices)) {
             return;
@@ -86,4 +90,4 @@ class EditAccount extends EditRecord
                 ->send();
         }
     }
-}    
+}

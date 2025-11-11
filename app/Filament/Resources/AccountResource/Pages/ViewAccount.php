@@ -42,7 +42,7 @@ class ViewAccount extends ViewRecord
                 ->label('Renew Account')
                 ->color('info')
                 ->icon('heroicon-o-arrow-path')
-                ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL' &&  $record->renewal_status === 1)
+                ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL' &&  $record->renewal_status === 0)
                 ->form([
                     \Filament\Forms\Components\DatePicker::make('effective_date')
                         ->label('Effective Date')
@@ -76,7 +76,7 @@ class ViewAccount extends ViewRecord
                     $record->update([
                         'effective_date' => $data['effective_date'],
                         'expiration_date' => $data['expiry_date'],
-                        'status' => 'renewed',
+                        'renewal_status' => 1,
                     ]);
 
                     Notification::make()
@@ -113,7 +113,11 @@ class ViewAccount extends ViewRecord
                                 TextEntry::make('endorsement_type')
                                     ->label('Endorsement Type')
                                     ->badge()
-                                    ->color('info'),
+                                    ->colors([
+                                        'success' => fn($state): bool => $state === 'NEW',
+                                        'warning' => fn($state): bool => $state === 'RENEWAL',
+                                        'info'    => fn($state): bool => $state === 'AMENDMENT',
+                                    ]),
                             ]),
                         Grid::make(3)
                             ->schema([

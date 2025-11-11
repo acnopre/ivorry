@@ -69,7 +69,7 @@
                             @if ($item['quantity'] > 0)
                             <span class="text-primary-600 dark:text-primary-400">{{ $item['quantity'] }}</span>
                             @else
-                            <span class="text-danger-600 dark:text-danger-400">0</span>
+                            <span class="text-danger-600 dark:text-danger-400"></span>
                             @endif
                         </td>
 
@@ -85,8 +85,8 @@
     </x-filament::section>
     @empty
     {{-- EMPTY STATE --}}
-    <div class="p-10 text-center rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
-        <x-filament::icon icon="heroicon-o-archive-box-x-mark" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-700" />
+    <div class="p-6 text-center rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
+        <x-filament::icon icon="heroicon-o-archive-box-x-mark" class="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500" />
         <p class="mt-4 text-base font-semibold text-gray-800 dark:text-gray-200">
             No renewal history found
         </p>
@@ -94,5 +94,7 @@
             Logs will appear here when available.
         </p>
     </div>
+
+
     @endforelse
 </div>

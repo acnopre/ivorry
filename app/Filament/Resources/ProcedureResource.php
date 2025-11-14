@@ -54,12 +54,13 @@ class ProcedureResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
+                    ->formatStateUsing(fn($state) => ucfirst($state))
                     ->colors([
                         'gray'    => 'pending',
                         'success' => 'valid',
                         'danger'  => 'rejected',
                         'warning' => 'returned',
-                        'primary' => 'completed',
+                        'info' => 'completed',
                     ]),
 
                 Tables\Columns\TextColumn::make('approval_code')

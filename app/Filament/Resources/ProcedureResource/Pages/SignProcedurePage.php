@@ -33,26 +33,26 @@ class SignProcedurePage extends Page
     public function signNow(): void
     {
         $isMemberUnavailable = $this->signatures['memberUnavailable'] ?? false;
-        $dentistSignature = $this->signatures['dentist'] ?? null;
+        // $dentistSignature = $this->signatures['dentist'] ?? null;
         $memberSignature = $this->signatures['member'] ?? null;
 
         // --- 1. Server-Side Validation ---
 
         // Dentist signature is always mandatory.
-        if (empty($dentistSignature)) {
-            Notification::make()
-                ->title('Missing Signature')
-                ->body('The **Dentist** signature is required to complete the procedure.')
-                ->danger()
-                ->send();
-            return;
-        }
+        // if (empty($dentistSignature)) {
+        //     Notification::make()
+        //         ->title('Missing Signature')
+        //         ->body('The **Dentist** signature is required to complete the procedure.')
+        //         ->danger()
+        //         ->send();
+        //     return;
+        // }
 
         // Member signature is required unless the unavailable flag is checked.
         if (!$isMemberUnavailable && empty($memberSignature)) {
             Notification::make()
                 ->title('Missing Signature')
-                ->body('The **Member** signature is required, or you must check the "Member not available" box.')
+                ->body('The Member signature is required, or you must check the "Member not available" box.')
                 ->danger()
                 ->send();
             return;
@@ -62,9 +62,9 @@ class SignProcedurePage extends Page
 
         // Collect only the signatures that contain data (i.e., not null)
         $signaturesToStore = [];
-        if ($dentistSignature) {
-            $signaturesToStore['dentist'] = $dentistSignature;
-        }
+        // if ($dentistSignature) {
+        //     $signaturesToStore['dentist'] = $dentistSignature;
+        // }
         if ($memberSignature) {
             $signaturesToStore['member'] = $memberSignature;
         }

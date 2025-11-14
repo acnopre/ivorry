@@ -11,6 +11,7 @@ use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Auth;
+use Filament\Notifications\Notification;
 
 class SearchMember extends Page
 {
@@ -99,7 +100,16 @@ class SearchMember extends Page
     public function saveProcedure(): void
     {
         $data = $this->procedureFormData;
-        $clinicId = Auth::user()->clinic->id;
+        $clinicId = Auth::user()->clinic->id ?? null;
+
+        if (! $clinicId) {
+            Notification::make()
+                ->title('Clinic not found')
+                ->body('Please make sure you have a clinic assigned to your account.')
+                ->danger()
+                ->send();
+            return;
+        }
 
         // Generate approval code
         $approvalCode = strtoupper(Str::random(8));

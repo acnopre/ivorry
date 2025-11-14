@@ -105,7 +105,7 @@
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 fi-ta-row">
                                         <td class="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">{{ $service->name }}</td>
                                         <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ ucfirst($service->type) }}</td>
-                                        <td class="px-4 py-3 font-mono">{{ $service->pivot->quantity ?? '0' }}</td>
+                                        <td class="px-4 py-3 font-mono">{{ $service->pivot->quantity}}</td>
                                         {{-- Used icons instead of 'Yes'/'No' for quicker scanning --}}
                                         <td class="px-4 py-3 text-center">
                                             @if($service->pivot->is_unlimited)

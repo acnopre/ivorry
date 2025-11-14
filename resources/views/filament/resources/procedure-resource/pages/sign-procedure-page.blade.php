@@ -50,31 +50,21 @@
             <h2 class="text-xl font-bold mb-6 text-center border-b pb-3 text-primary-600">Required Signatures</h2>
 
             {{-- Member Unavailable Toggle --}}
-            <div class="flex items-center justify-end mb-6 space-x-2">
+            <div class="flex items-center justify-center mb-6 space-x-2">
                 <input type="checkbox" id="member-unavailable" class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded" onchange="toggleMemberAvailability()">
                 <label for="member-unavailable" class="text-sm font-medium text-gray-700">Member unable to sign: Dentist signs on their behalf</label>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="signature-section">
-                {{-- Dentist Signature --}}
-                <div class="space-y-3 p-4 border rounded-xl bg-white shadow-sm">
-                    <h4 class="font-bold text-lg text-center text-gray-800">Dentist Signature</h4>
-                    <p class="text-sm text-center text-gray-500">Please sign inside the box</p>
-                    <canvas id="dentist-signature" class="border-2 border-dashed border-gray-300 rounded-lg w-full h-40 bg-white cursor-crosshair"></canvas>
-                    <div class="flex justify-center">
-                        <x-filament::button color="warning" size="sm" icon="heroicon-o-arrow-path" onclick="clearSignature('dentist-signature')">
-                            Clear Signature
-                        </x-filament::button>
-                    </div>
-                </div>
 
                 {{-- Member Signature --}}
-                <div class="space-y-3 p-4 border rounded-xl bg-white shadow-sm member-signature">
+                <div class="space-y-3 p-4 border rounded-xl bg-white shadow-sm member-signature 
+                    col-span-1 md:col-span-2 mx-auto max-w-md">
                     <h4 class="font-bold text-lg text-center text-gray-800">Patient/Member Signature</h4>
                     <p class="text-sm text-center text-gray-500">Please sign inside the box</p>
                     <canvas id="member-signature" class="border-2 border-dashed border-gray-300 rounded-lg w-full h-40 bg-white cursor-crosshair"></canvas>
                     <div class="flex justify-center">
-                        <x-filament::button color="warning" size="sm" icon="heroicon-o-arrow-path" onclick="clearSignature('member-signature')">
+                        <x-filament::button color="primary" size="sm" icon="heroicon-o-arrow-path" onclick="clearSignature('member-signature')">
                             Clear Signature
                         </x-filament::button>
                     </div>
@@ -94,7 +84,6 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 <script>
-    const dentistCanvas = document.getElementById('dentist-signature');
     const memberCanvas = document.getElementById('member-signature');
     const memberUnavailableCheckbox = document.getElementById('member-unavailable');
     const submitButton = document.getElementById('submit-signatures');
@@ -116,19 +105,14 @@
     }
 
     const pads = {
-        dentist: new SignaturePad(dentistCanvas, {
+        member: new SignaturePad(memberCanvas, {
             backgroundColor: 'rgb(255, 255, 255)'
         })
-        , member: new SignaturePad(memberCanvas, {
-            backgroundColor: 'rgb(255, 255, 255)'
-        })
-    , };
+    };
 
-    resizeCanvas(dentistCanvas, pads.dentist);
     resizeCanvas(memberCanvas, pads.member);
 
     window.onresize = () => {
-        resizeCanvas(dentistCanvas, pads.dentist);
         resizeCanvas(memberCanvas, pads.member);
         validateSignatures();
     };
@@ -136,6 +120,7 @@
     // --- 2. Utility Functions ---
 
     window.clearSignature = function(id) {
+        // Now only handles 'member-signature'
         const key = id.split('-')[0];
         if (pads[key]) pads[key].clear();
         validateSignatures();
@@ -160,13 +145,11 @@
         if (!submitButton) return;
 
         const isMemberUnavailable = memberUnavailableCheckbox.checked;
-        const isDentistSigned = !pads.dentist.isEmpty();
         const isMemberSigned = !pads.member.isEmpty();
 
-        const isValid = isDentistSigned && (isMemberSigned || isMemberUnavailable);
-
-        // This console log is still useful for debugging!
-        // console.log(`Validation Check: Dentist=${isDentistSigned}, Member=${isMemberSigned}, Unavailable=${isMemberUnavailable}, Result=${isValid}`);
+        // Validation now only depends on the member signature OR the member being unavailable.
+        // We no longer check for a separate dentist signature.
+        const isValid = isMemberSigned || isMemberUnavailable;
 
         // submitButton.disabled = !isValid;
         // submitButton.style.opacity = isValid ? '1' : '0.5';
@@ -174,14 +157,10 @@
 
     // --- 4. Enhanced Event Listeners ---
 
-    // 4a. SignaturePad's internal event (Keep this, as it's the standard way)
-    pads.dentist.onEnd = validateSignatures;
+    // 4a. SignaturePad's internal event
     pads.member.onEnd = validateSignatures;
 
     // 4b. FALLBACK: Attach validation to mouse/touch release on the canvas elements
-    // This ensures the check runs even if onEnd is suppressed or delayed.
-    dentistCanvas.addEventListener('mouseup', validateSignatures);
-    dentistCanvas.addEventListener('touchend', validateSignatures);
     memberCanvas.addEventListener('mouseup', validateSignatures);
     memberCanvas.addEventListener('touchend', validateSignatures);
 
@@ -192,8 +171,7 @@
     submitButton.addEventListener('click', (e) => {
         if (!submitButton.disabled) {
             @this.set('signatures', {
-                dentist: pads.dentist.isEmpty() ? null : pads.dentist.toDataURL("image/png")
-                , member: pads.member.isEmpty() ? null : pads.member.toDataURL("image/png")
+                member: pads.member.isEmpty() ? null : pads.member.toDataURL("image/png")
                 , memberUnavailable: memberUnavailableCheckbox.checked
             });
         } else {

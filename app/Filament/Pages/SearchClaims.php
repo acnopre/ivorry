@@ -168,6 +168,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('availment_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
+                    ->formatStateUsing(fn($state) => ucfirst($state))
                     ->color(fn(string $state): string => match ($state) {
                         'pending' => 'warning',
                         'completed' => 'info',

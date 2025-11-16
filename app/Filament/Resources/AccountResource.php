@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AccountResource\Pages;
 use App\Imports\AccountImport;
 use App\Models\Account;
+use App\Models\AccountServiceHistory;
 use App\Models\EndorsementType;
 use App\Models\Service;
 use Filament\Forms;
@@ -46,8 +47,10 @@ class AccountResource extends Resource
     {
         return $form
             ->schema(function ($record) {
-                // Determine if this account is editable
-                $isAmendment = $record?->amendment_status == 1;
+                // Determine if record is new or editing
+                $isCreate = blank($record);
+                // Allow fields only on create OR if record’s amendment_status == 1
+                $isAmendment = $isCreate || ($record?->amendment_status == 1);
 
                 return [
                     Section::make('Account Information')
@@ -325,20 +328,9 @@ class AccountResource extends Resource
                             )
                             ->requiresConfirmation()
                             ->action(function (Model $record) {
-                                // Capture current services as JSON
-                                $snapshot = $record->services()
-                                    ->get(['service_id', 'quantity', 'is_unlimited', 'remarks'])
-                                    ->map(fn($s) => [
-                                        'service_id' => $s->service_id,
-                                        'quantity' => $s->pivot->quantity,
-                                        'is_unlimited' => $s->pivot->is_unlimited,
-                                        'remarks' => $s->pivot->remarks,
-                                    ])->toArray();
-
                                 // Save renewal history
-                                \App\Models\RenewalHistory::create([
+                                AccountServiceHistory::create([
                                     'account_id' => $record->id,
-                                    'services_snapshot' => $snapshot,
                                     'renewal_date' => now(),
                                     'approved_by' => auth()->user()->name ?? 'System',
                                     'effective_date' => $record->effective_date,

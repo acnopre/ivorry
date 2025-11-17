@@ -88,12 +88,21 @@ class AccountResource extends Resource
                             DatePicker::make('expiration_date')
                                 ->label('Expiration Date')
                                 ->disabled(! $isAmendment),
-
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')
-                                ->options(EndorsementType::pluck('name', 'name'))
+                                ->options(function ($record) {
+                                    // If creating → return only NEW
+                                    TODO: //Ask HPDAI if approach is good
+                                    if (blank($record)) {
+                                        return [
+                                            'NEW' => 'NEW',
+                                        ];
+                                    }
+
+                                    // If editing → return full list
+                                    return EndorsementType::pluck('name', 'name')->toArray();
+                                })
                                 ->required()
-                                // ❗ Always enabled
                                 ->disabled(false),
                         ])->columns(3),
 

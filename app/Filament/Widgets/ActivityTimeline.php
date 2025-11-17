@@ -13,7 +13,8 @@ class ActivityTimeline extends Widget
 
     public static function canView(): bool
     {
-        return true; // restrict by role if needed
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
     }
 
     public function getActivities()

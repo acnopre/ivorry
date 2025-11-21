@@ -9,7 +9,7 @@ class UnitTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        $types = ['Session', 'Quadrant', 'Tooth', 'Arch', 'Surface'];
+        $types = ['Session', 'Quadrant', 'Tooth', 'Arch', 'Surface', 'Canal'];
 
         foreach ($types as $type) {
             DB::table('unit_types')->insert([

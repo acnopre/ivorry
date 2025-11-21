@@ -32,6 +32,16 @@ class DropdownSeeder extends Seeder
             ['name' => 'NON-VAT'],
             ['name' => 'ZERO VAT'],
         ]);
+        DB::table('surfaces')->insert([
+            ['name' => 'BUCCAL'],
+            ['name' => 'CERVICAL'],
+            ['name' => 'DISTAL'],
+            ['name' => 'FACIAL'],
+            ['name' => 'INCISAL'],
+            ['name' => 'LINGUAL'],
+            ['name' => 'MESIAL'],
+            ['name' => 'OCCLUSAL'],
+            ['name' => 'PALATAL'],
+        ]);
     }
 }
-

@@ -26,4 +26,8 @@ class ProcedureUnit extends Model
     {
         return $this->belongsTo(Unit::class);
     }
+    public function surfaces()
+    {
+        return $this->hasMany(ProcedureSurface::class);
+    }
 }

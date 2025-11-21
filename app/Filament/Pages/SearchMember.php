@@ -4,8 +4,10 @@ namespace App\Filament\Pages;
 
 use App\Models\Member;
 use App\Models\Procedure;
+use App\Models\ProcedureSurface;
 use App\Models\ProcedureUnit;
 use App\Models\Service;
+use App\Models\Surface;
 use Filament\Forms;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
@@ -111,6 +113,16 @@ class SearchMember extends Page
             return;
         }
 
+        if ($data['quantity'] > 6) {
+            Notification::make()
+                ->title('Quantity Error')
+                ->body('Quantity cannot be greater than 6. Please enter a valid number.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         // Generate approval code
         $approvalCode = strtoupper(Str::random(8));
 
@@ -125,11 +137,22 @@ class SearchMember extends Page
         ]);
 
         // Create associated procedure unit
-        ProcedureUnit::create([
+        $procedureUnit = ProcedureUnit::create([
             'procedure_id' => $procedure->id,
             'unit_id' => $data['unit_id'],
             'quantity' => $data['quantity'] ?? 1,
         ]);
+
+        $selectedSurfaces = $this->procedureFormData['procedure_surface'] ?? [];
+        dd($data);
+        if (!empty($selectedSurfaces)) {
+            foreach ($selectedSurfaces as $surfaceId) {
+                ProcedureSurface::create([
+                    'procedure_unit_id' => $procedureUnit->id,
+                    'surface_id' => $surfaceId,
+                ]);
+            }
+        }
 
         // 🧮 Deduct service quantity from account_service pivot
         $member = Member::find($this->selectedMemberId);
@@ -196,7 +219,13 @@ class SearchMember extends Page
                     ->content(fn(callable $get) => Service::find($get('service_id'))?->unitType?->name ?? '—'),
 
                 Forms\Components\Select::make('unit_id')
-                    ->label('Unit')
+                    ->label(fn(callable $get) => match (Service::find($get('service_id'))?->unitType?->name) {
+                        'Tooth' => 'Tooth Number',
+                        'Quadrant' => 'Quadrant',
+                        'Canal' => 'Tooth Number',
+                        'Surface' => 'Tooth Number',
+                        default => 'Unit',
+                    })
                     ->options(
                         fn(callable $get) =>
                         Service::find($get('service_id'))
@@ -213,10 +242,28 @@ class SearchMember extends Page
                 Forms\Components\TextInput::make('quantity')
                     ->label('Quantity')
                     ->numeric()
-                    ->nullable(),
+                    ->minValue(1)
+                    ->maxValue(6)
+                    ->helperText('Enter a number between 1 and 6')
+                    ->rules(['nullable', 'integer', 'between:1,6'])
+                    ->nullable()
+                    ->reactive(),
+
+
+                Forms\Components\Select::make('procedure_surface')
+                    ->label('Surface')
+                    ->options(Surface::all()->pluck('name', 'id') ?? collect())
+                    ->reactive()
+                    ->multiple()
+                    ->required()
+                    ->visible(fn(callable $get) => $get('quantity') > 0)
+                    ->helperText(fn(callable $get) => 'You can select up to ' . $get('quantity') . ' surface(s)')
+                    ->maxItems(fn(callable $get) => $get('quantity') ?? 0),
 
                 Forms\Components\DatePicker::make('availment_date')
                     ->label('Availment Date')
+                    ->minDate(today())
+                    ->maxDate(today())
                     ->nullable(),
             ])
             ->statePath('procedureFormData');

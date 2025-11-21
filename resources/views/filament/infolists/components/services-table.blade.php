@@ -71,7 +71,7 @@
 
                         <td class="px-6 py-4 text-center">
                             @if ($service->pivot->is_unlimited)
-                            <x-filament::icon icon="heroicon-s-check-circle" class="w-5 h-5 mx-auto text-success-600 dark:text-success-500" title="Unlimited" />
+                            <x-filament::icon icon="heroicon-s-check-circle" class="w-5 h-5 mx-auto fill-green-600 dark:fill-green-500" />
                             @else
                             <x-filament::icon icon="heroicon-s-x-circle" class="w-5 h-5 mx-auto text-gray-300 dark:text-gray-700" title="Limited" />
                             @endif

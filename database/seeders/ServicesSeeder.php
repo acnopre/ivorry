@@ -29,7 +29,7 @@ class ServicesSeeder extends Seeder
             ['name' => 'Panoramic Xray', 'type' => 'enhancement', 'unit_type' => 'Session'],
             ['name' => 'Complicated/ Difficult Extraction', 'type' => 'enhancement', 'unit_type' => 'Tooth'],
             ['name' => 'Odontectomy (Removal of Impacted tooth)', 'type' => 'enhancement', 'unit_type' => 'Tooth'],
-            ['name' => 'Root Canal Treatment (per canal)', 'type' => 'enhancement', 'unit_type' => 'Tooth'],
+            ['name' => 'Root Canal Treatment (per canal)', 'type' => 'enhancement', 'unit_type' => 'Canal'],
             ['name' => 'Root Canal Treatment (per tooth)', 'type' => 'enhancement', 'unit_type' => 'Tooth'],
             ['name' => 'Jacket Crowns', 'type' => 'enhancement', 'unit_type' => 'Tooth'],
             ['name' => 'Dentures', 'type' => 'enhancement', 'unit_type' => 'Arch'],

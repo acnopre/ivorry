@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class VatType extends Model
+class UpdateInfo1903Types extends Model
 {
     //
-    protected $table = 'vat_types';
+    protected $table = 'update_info_1903_types';
 
     protected $fillable = ['name'];
 }

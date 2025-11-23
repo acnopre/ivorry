@@ -54,15 +54,21 @@ class DentistSeeder extends Seeder
                     $faker->numberBetween(1, 3)
                 )),
                 'tax_identification_no' => $faker->numerify('###-###-###'),
-                'tax_type' => $faker->randomElement(['VAT', 'NON-VAT']),
-                'business_type' => $faker->randomElement(['SOLE PROPRIETOR', 'PARTNERSHIP', 'CORPORATION']),
+                'tax_type' => $faker->randomElement(['2%', '5%', '10%', '15%']),
+                'business_type' => $faker->randomElement([
+                    'SOLE PROPRIETORSHIP',
+                    'PARTNERSHIP',
+                    'GENERAL PROFESSIONAL PARTNERSHIP',
+                    'CORPORATION',
+                    'ONE PERSON CORPORATION',
+                ]),
                 'sec_registration_no' => 'SEC-' . $faker->numerify('2024-###'),
 
                 // ✅ Proper address fields
                 'street' => $faker->streetAddress,
-                'city' => $faker->city,
-                'province' => $faker->state,
-                'region' => 'Region ' . $faker->numberBetween(1, 13),
+                // 'city' => $faker->city,
+                // 'province' => $faker->state,
+                // 'region' => 'Region ' . $faker->numberBetween(1, 13),
 
                 'clinic_landline' => $faker->numerify('02-8###-####'),
                 'clinic_mobile' => $faker->numerify('09#########'),

@@ -36,7 +36,7 @@ class MemberResource extends Resource
                             ->relationship(
                                 name: 'account',
                                 titleAttribute: 'company_name',
-                                modifyQueryUsing: fn($query) => $query->where('status', 1)
+                                modifyQueryUsing: fn($query) => $query->where('account_status', 1)
                             )
                             ->required()
                             ->searchable(),

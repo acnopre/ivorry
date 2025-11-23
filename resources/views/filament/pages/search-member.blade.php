@@ -71,7 +71,7 @@
                             <div class="font-semibold text-gray-500 dark:text-gray-400">Status</div>
 
                             @php
-                            $isActive = $member->account->status == 1;
+                            $isActive = $member->account->account_status == 1;
                             @endphp
 
                             <x-filament::badge :color="$isActive ? 'success' : 'danger'" class="mt-1 inline-flex text-xs px-2 py-0.5 rounded-full font-medium">

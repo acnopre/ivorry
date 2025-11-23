@@ -29,6 +29,7 @@ use App\Models\AccountType;
 use App\Models\AccreditationStatus;
 use App\Models\Service;
 use App\Imports\ClinicImport;
+use App\Models\UpdateInfo1903Types;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -131,6 +132,58 @@ class ClinicsResource extends Resource
                         Forms\Components\Textarea::make('alt_address')->label('Alternative Address'),
                     ])
                     ->columns(2),
+
+                Forms\Components\Section::make('PTR Information')
+                    ->schema([
+                        Forms\Components\TextInput::make('ptr_no'),
+                        Forms\Components\DatePicker::make('ptr_date_issued'),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Accreditation & Tax')
+                    ->schema([
+                        Forms\Components\TextInput::make('registered_name')
+                            ->label('Registered Name (per BIR 2303)')
+                            ->required(),
+
+                        Forms\Components\TextInput::make('tax_identification_no')
+                            ->label('TIN')
+                            ->required(),
+
+                        Forms\Components\Toggle::make('is_branch')
+                            ->label('Is this a Branch?'),
+
+                        Forms\Components\Textarea::make('complete_address')
+                            ->label('Complete Address')
+                            ->rows(3),
+
+
+                        Forms\Components\Select::make('update_info_1903')
+                            ->label('Update Information (BIR Form 1903)')
+                            ->options(UpdateInfo1903Types::pluck('name', 'name'))
+                            ->placeholder('Select update type'),
+
+
+                        Forms\Components\Select::make('vat_type')
+                            ->label('Vat Type')
+                            ->options(VatType::pluck('name', 'name')),
+
+                        Forms\Components\Select::make('withholding_tax')
+                            ->label('Withholding Tax')
+                            ->options([
+                                'Zero' => 'Zero',
+                                '2%' => '2%',
+                                '5%' => '5%',
+                                '10%' => '10%',
+                                '15%' => '15%',
+                            ]),
+                        Forms\Components\Select::make('business_type')
+                            ->label('Business Type')
+                            ->options(BusinessType::pluck('name', 'name'))
+                            ->searchable()
+                            ->required(),
+                        Forms\Components\TextInput::make('sec_registration_no')
+                            ->label('SEC Registration No.'),
+                    ])->columns(2),
 
 
                 Forms\Components\Section::make('Clinic Staff')

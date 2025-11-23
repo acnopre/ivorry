@@ -84,6 +84,11 @@ class SearchMember extends Page
         }
 
         $members = Member::query()
+            ->whereHas(
+                'account',
+                fn($q) =>
+                $q->where('account_status', 1) // ⭐ ONLY ACTIVE
+            )
             ->when($this->card_number, fn($q) => $q->where('card_number', 'like', "%{$this->card_number}%"))
             ->when($this->first_name, fn($q) => $q->where('name', 'like', "%{$this->first_name}%"))
             ->when($this->last_name, fn($q) => $q->where('name', 'like', "%{$this->last_name}%"))

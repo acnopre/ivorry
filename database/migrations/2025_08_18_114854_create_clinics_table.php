@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('clinics', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
 
             // Clinic Info
             $table->string('clinic_name');
@@ -26,15 +26,60 @@ return new class extends Migration
             // Accreditation & Tax
             $table->string('other_hmo_accreditation')->nullable();
             $table->string('tax_identification_no')->nullable();
-            $table->enum('tax_type', ['VAT', 'NON-VAT', '0%'])->default('NON-VAT');
-            $table->enum('business_type', ['SOLE PROPRIETOR', 'PARTNERSHIP', 'CORPORATION'])->nullable();
+            $table->boolean('is_branch')->default(false);
+            $table->string('complete_address')->nullable();
+
+            // UPDATE INFO PER BIR FORM 1903
+            $table->enum('update_info_1903', [
+                'CHANGE IN BUSINESS NAME',
+                'CHANGE IN ADDRESS',
+                'CHANGE IN TAX TYPE',
+            ])->nullable();
+
+            // BUSINESS TYPE
+            $table->enum('business_type', [
+                'SOLE PROPRIETORSHIP',
+                'PARTNERSHIP',
+                'GENERAL PROFESSIONAL PARTNERSHIP',
+                'CORPORATION',
+                'ONE PERSON CORPORATION',
+            ])->nullable();
+
+            // VAT TYPE
+            $table->enum('vat_type', [
+                'VAT 12%',
+                'VAT ZERO',
+                'VAT EXEMPT',
+                'NON-VAT',
+            ])->nullable();
+
+            // WITHHOLDING TAX
+            $table->enum('withholding_tax', [
+                'ZERO',
+                '2%',
+                '5%',
+                '10%',
+                '15%',
+            ])->nullable();
+
+            // TAX TYPE (original)
+            $table->enum('tax_type', [
+                '2%',
+                '5%',
+                '10%',
+                '15%'
+            ])->nullable();
+
+
+
             $table->string('sec_registration_no')->nullable();
-            $table->enum('vat_type', ['VAT', 'NON VAT', 'ZERO VAT'])->nullable();
+
             // Address / Contact
             $table->string('street')->nullable()->comment('Street address or barangay');
-            $table->string('city')->nullable();
-            $table->string('province')->nullable();
-            $table->string('region')->nullable();
+            $table->string('region_id')->nullable();
+            $table->string('province_id')->nullable();
+            $table->string('municipality_id')->nullable();
+            $table->string('barangay_id')->nullable();
             $table->string('clinic_landline')->nullable();
             $table->string('clinic_mobile')->nullable();
             $table->string('viber_no')->nullable();

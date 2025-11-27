@@ -12,6 +12,7 @@ use Filament\Infolists\Components\ViewEntry;
 use Filament\Infolists\Components\Grid;       // Added
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Actions;
+use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\Placeholder;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\TextEntry\TextEntrySize;
@@ -28,13 +29,47 @@ class ViewAccount extends ViewRecord
                 ->label('Approve Account')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
-                ->visible(fn(Account $record) => $record->account_status === 0)
+                ->visible(fn(Account $record) => $record->account_status === 0 && auth()->user()?->hasAnyRole('Super Admin', 'Upper Management'))
                 ->requiresConfirmation()
                 ->action(function (Account $record) {
-                    $record->update(['status' => 'approved']);
+                    $record->update([
+                        'account_status' => 1,
+                        'endorsement_status' => 'APPROVED'
+                    ]);
                     Notification::make()
-                        ->title('Account approved successfully.')
+                        ->title('The account has been approved successfully.')
                         ->success()
+                        ->send();
+                }),
+
+            Actions\Action::make('rejectAccount')
+                ->label('Reject Account')
+                ->color('danger')
+                ->icon('heroicon-o-x-circle')
+                ->visible(
+                    fn(Account $record) =>
+                    $record->account_status === 0 &&
+                        auth()->user()?->hasAnyRole('Super Admin', 'Upper Management')
+                )
+                ->disabled(fn(Account $record) => $record->endorsement_status === 'REJECTED')
+                ->form([
+                    Textarea::make('remarks')
+                        ->label('Remarks')
+                        ->required()
+                        ->maxLength(1000)
+                        ->placeholder('Enter reason for rejection...'),
+                ])
+                ->requiresConfirmation()
+                ->action(function (Account $record, array $data) {
+                    $record->update([
+                        'status' => 0,
+                        'endorsement_status' => 'REJECTED',
+                        'remarks' => $data['remarks'],
+                    ]);
+
+                    Notification::make()
+                        ->title('Account rejected.')
+                        ->danger()
                         ->send();
                 }),
 
@@ -42,7 +77,9 @@ class ViewAccount extends ViewRecord
                 ->label('Renew Account')
                 ->color('info')
                 ->icon('heroicon-o-arrow-path')
-                ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL' &&  $record->renewal_status === 0)
+                ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL'
+                    &&  $record->endorsement_status === 'PENDING'
+                    && auth()->user()?->hasAnyRole('Super Admin', 'Upper Management'))
                 ->form([
                     \Filament\Forms\Components\DatePicker::make('effective_date')
                         ->label('Effective Date')
@@ -121,8 +158,23 @@ class ViewAccount extends ViewRecord
                             ]),
                         Grid::make(3)
                             ->schema([
+                                TextEntry::make('endorsement_status')
+                                    ->label('Endorsement Status')
+                                    ->badge()
+                                    ->formatStateUsing(fn($state) => match ($state) {
+                                        'PENDING' => 'Pending',
+                                        'APPROVED' => 'Approved',
+                                        'REJECTED' => 'Rejected',
+                                        default => $state,
+                                    })
+                                    ->colors([
+                                        'warning' => fn($state) => $state === 'PENDING',
+                                        'success' => fn($state) => $state === 'APPROVED',
+                                        'danger' => fn($state) => $state === 'REJECTED',
+                                    ]),
+
                                 TextEntry::make('account_status')
-                                    ->label('Status')
+                                    ->label('Account Status')
                                     ->badge()
                                     ->formatStateUsing(fn($state) => $state == 1 ? 'Active' : 'Inactive')
                                     ->color(fn($state): string => $state == 1 ? 'success' : 'danger'),
@@ -137,6 +189,9 @@ class ViewAccount extends ViewRecord
                                     ->label('Expiration Date')
                                     ->date('M d, Y')
                                     ->icon('heroicon-m-calendar-days'),
+
+                                TextEntry::make('remarks')
+                                    ->label('Remarks')
 
                             ]),
                     ])

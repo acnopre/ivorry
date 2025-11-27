@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AccountResource\Pages;
+use App\Filament\Widgets\AccountStatsWidget;
 use App\Imports\AccountImport;
 use App\Models\Account;
 use App\Models\AccountServiceHistory;
@@ -90,9 +91,9 @@ class AccountResource extends Resource
                                 ->disabled(! $isAmendment),
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')
+                                ->visible($record?->account_status == 1)
                                 ->options(function ($record) {
-                                    // If creating → return only NEW
-                                    TODO: //Ask HPDAI if approach is good
+
                                     if (blank($record)) {
                                         return [
                                             'NEW' => 'NEW',
@@ -155,6 +156,7 @@ class AccountResource extends Resource
                                         ->columnSpan(2)
                                         ->inline(false)
                                         ->reactive()
+                                        ->default(true)   // ✅ New accounts default to TRUE
                                         ->disabled(! $isAmendment)
                                         ->afterStateUpdated(function ($state, Forms\Set $set) use ($service) {
                                             if ($state === true) {
@@ -162,9 +164,13 @@ class AccountResource extends Resource
                                             }
                                         })
                                         ->formatStateUsing(function ($state, $record) use ($service) {
+
+                                            // 🔹 If creating → always TRUE
                                             if (! $record) {
-                                                return $state;
+                                                return true;
                                             }
+
+                                            // 🔹 If editing → load value from pivot table
                                             return $record->services()
                                                 ->where('service_id', $service->id)
                                                 ->value('is_unlimited');
@@ -244,6 +250,7 @@ class AccountResource extends Resource
     }
 
 
+
     public static function table(Table $table): Table
     {
         return $table
@@ -251,7 +258,7 @@ class AccountResource extends Resource
                 TextColumn::make('company_name')->label('Company Name')->sortable()->searchable(),
 
                 TextColumn::make('endorsement_type')
-                    ->label('Endorsement')
+                    ->label('Endorsement Type')
                     ->badge()
                     ->colors([
                         'success' => fn($state) => $state === 'NEW',
@@ -259,13 +266,29 @@ class AccountResource extends Resource
                         'info'    => fn($state) => $state === 'AMENDMENT',
                     ]),
 
+                TextColumn::make('endorsement_status')
+                    ->label('Endorsement Status')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => match ($state) {
+                        'PENDING' => 'Pending',
+                        'APPROVED' => 'Approved',
+                        'REJECTED' => 'Rejected',
+                        default => $state,
+                    })
+                    ->colors([
+                        'warning' => fn($state) => $state === 'PENDING',
+                        'success' => fn($state) => $state === 'APPROVED',
+                        'danger' => fn($state) => $state === 'REJECTED',
+                    ]),
+
+
                 TextColumn::make('account_status')
-                    ->label('Status')
+                    ->label('Account Status')
                     ->formatStateUsing(fn($state) => $state === 1 ? 'Active' : 'Inactive')
                     ->badge()
                     ->colors([
                         'success' => fn($state) => $state === 1,
-                        'warning' => fn($state) => $state === 0,
+                        'danger' => fn($state) => $state === 0,
                     ]),
 
                 TextColumn::make('effective_date')->label('Effective')->date(),
@@ -275,8 +298,22 @@ class AccountResource extends Resource
             ->filters([
                 SelectFilter::make('endorsement_type')
                     ->label('Endorsement Type')
-                    ->options(EndorsementType::pluck('name', 'name')),
+                    ->multiple()
+                    ->options(
+                        EndorsementType::pluck('name', 'name')->toArray()
+                    ),
+
+                SelectFilter::make('endorsement_status')
+                    ->label('Endorsement Status')
+                    ->multiple()
+                    ->options([
+                        'PENDING'   => 'PENDING',
+                        'APPROVED'  => 'APPROVED',
+                        'REJECTED'  => 'REJECTED',
+                        'RETURNED'  => 'RETURNED',
+                    ]),
             ])
+
             ->headerActions([
                 Action::make('importXls')
                     ->label('Import XLS')
@@ -378,6 +415,31 @@ class AccountResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
+
+    public static function getWidgets(): array
+    {
+        return [
+            AccountStatsWidget::class
+        ];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        if (! auth()->user()?->hasAnyRole(['Super Admin', 'Upper Management'])) {
+            return null; // Do NOT show badge for other roles
+        }
+        // Count accounts where account_status = 0 (pending)
+        $pendingCount = Account::where('endorsement_status', 'PENDING')->count();
+
+        // Only show badge if there's at least one pending
+        return $pendingCount > 0 ? (string) $pendingCount : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
 
     public static function shouldRegisterNavigation(): bool
     {

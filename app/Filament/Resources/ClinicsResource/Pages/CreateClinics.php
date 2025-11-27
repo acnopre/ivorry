@@ -29,7 +29,6 @@ class CreateClinics extends CreateRecord
 
         // ✅ Find the owner dentist (where is_owner = true)
         $ownerDentist = collect($data['dentists'] ?? [])->firstWhere('is_owner', true);
-
         // ✅ Check if clinic email is provided and not duplicated
         if (!empty($data['clinic_email'])) {
             if (User::where('email', $data['clinic_email'])->exists()) {

@@ -110,9 +110,8 @@ class SearchClinics extends Page
 
         $query = Clinic::query()
             ->with(['dentists.specializations', 'dentists']);
-
         if ($this->region) {
-            $query->where('region', $this->region);
+            $query->where('region_id', $this->region);
         }
         if ($this->province) {
             $query->where('province', $this->province);

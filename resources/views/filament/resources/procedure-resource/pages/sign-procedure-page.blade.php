@@ -128,9 +128,9 @@
 
     window.toggleMemberAvailability = function() {
         const unavailable = memberUnavailableCheckbox.checked;
-        document.querySelectorAll('.member-signature').forEach(el => {
-            el.style.display = unavailable ? 'none' : 'block';
-        });
+        // document.querySelectorAll('.member-signature').forEach(el => {
+        //     el.style.display = unavailable ? 'none' : 'block';
+        // });
 
         if (unavailable) {
             pads.member.clear();

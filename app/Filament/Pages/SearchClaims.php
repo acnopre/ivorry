@@ -76,7 +76,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 'completed' => 'Completed',
                                 'valid' => 'Valid',
                                 'invalid' => 'Invalid',
-                                'reject' => 'Reject'
+                                'reject' => 'Reject',
+                                'returned' => 'Returned',
                             ])
                             ->label('Claim Status')
                             ->placeholder('Any Status'),
@@ -238,7 +239,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ->modalDescription('Are you sure you want to reject this claim?')
                                 ->action(function (Procedure $record, array $data) {
                                     $record->update([
-                                        'status' => Procedure::STATUS_REJECT,
+                                        'account_status' => Procedure::STATUS_REJECT,
                                         'remarks' => $data['remarks'],
                                     ]);
 
@@ -266,7 +267,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ->modalDescription('Please provide remarks for returning this claim.')
                                 ->action(function (Procedure $record, array $data) {
                                     $record->update([
-                                        'status' => Procedure::STATUS_RETURN,
+                                        'account_status' => Procedure::STATUS_RETURN,
                                         'remarks' => $data['remarks'],
                                     ]);
 

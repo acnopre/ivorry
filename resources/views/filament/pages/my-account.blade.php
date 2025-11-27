@@ -25,8 +25,8 @@
             </div>
             <div class="space-y-1">
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Status</p>
-                <x-filament::badge color="{{ $account->status == '1' ? 'success' : 'danger' }}" size="md" class="inline-flex">
-                    {{ $account->status == '1' ? 'Active' : 'Inactive' }}
+                <x-filament::badge color="{{ $account->account_status == '1' ? 'success' : 'danger' }}" size="md" class="inline-flex">
+                    {{ $account->account_status == '1' ? 'Active' : 'Inactive' }}
                 </x-filament::badge>
             </div>
         </div>
@@ -69,7 +69,7 @@
                             {{ $service->pivot->quantity ?? '—' }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap">
-                                {{ $service->pivot->is_unlimited ? 'Yes' : 'No' }}
+                            {{ $service->pivot->is_unlimited ? 'Yes' : 'No' }}
                         </td>
                         <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
                             {{ $service->pivot->remarks ?? 'No specific remarks.' }}

@@ -13,6 +13,12 @@ class RecentClaimsTable extends BaseWidget
     protected int | string | array $columnSpan = 'full';
     protected static ?string $heading = 'Recent Procedures / Claims';
 
+    public static function canView(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -40,19 +46,19 @@ class RecentClaimsTable extends BaseWidget
 
                 Tables\Columns\TextColumn::make('dentist_name')
                     ->label('Dentist')
-                    ->getStateUsing(fn ($record) => $record->dentist_name)
+                    ->getStateUsing(fn($record) => $record->dentist_name)
                     ->toggleable(),
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
-                        'success' => fn ($state) => in_array($state, ['approved', 'completed']),
-                        'warning' => fn ($state) => in_array($state, ['pending', 'for approval']),
-                        'danger'  => fn ($state) => in_array($state, ['denied', 'cancelled']),
+                        'success' => fn($state) => in_array($state, ['approved', 'completed']),
+                        'warning' => fn($state) => in_array($state, ['pending', 'for approval']),
+                        'danger'  => fn($state) => in_array($state, ['denied', 'cancelled']),
                     ])
                     ->icons([
-                        'heroicon-o-check-circle' => fn ($state) => in_array($state, ['approved', 'completed']),
-                        'heroicon-o-clock' => fn ($state) => in_array($state, ['pending', 'for approval']),
-                        'heroicon-o-x-circle' => fn ($state) => in_array($state, ['denied', 'cancelled']),
+                        'heroicon-o-check-circle' => fn($state) => in_array($state, ['approved', 'completed']),
+                        'heroicon-o-clock' => fn($state) => in_array($state, ['pending', 'for approval']),
+                        'heroicon-o-x-circle' => fn($state) => in_array($state, ['denied', 'cancelled']),
                     ])
                     ->sortable()
                     ->label('Status'),

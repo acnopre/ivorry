@@ -57,4 +57,9 @@ class DashboardStats extends BaseWidget
                 ->color('warning'),
         ];
     }
+    public static function canView(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+    }
 }

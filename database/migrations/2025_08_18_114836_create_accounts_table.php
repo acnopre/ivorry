@@ -19,10 +19,14 @@ return new class extends Migration
             $table->string('card_used')->nullable();          // Card used
             $table->date('effective_date')->nullable();       // Policy effective date
             $table->date('expiration_date')->nullable();      // Valid until
-            $table->enum('endorsement_type', ['NEW', 'RENEWAL', 'AMENDMENT'])->nullable();
-            $table->boolean('account_status')->default(0);
-            $table->boolean('amendment_status')->default(0);
-            $table->boolean('renewal_status')->default(0);
+
+            // endorsement workflow
+            $table->enum('endorsement_type', ['NEW', 'RENEWAL', 'AMENDMENT'])->default('NEW');
+            $table->enum('endorsement_status', ['PENDING', 'APPROVED', 'REJECTED'])->default('PENDING');
+
+            // account activation
+            $table->boolean('account_status')->default(0); // 0 = inactive, 1 = active
+            $table->longText('remarks')->nullable();
             $table->timestamps();
         });
     }

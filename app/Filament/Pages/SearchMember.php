@@ -149,7 +149,6 @@ class SearchMember extends Page
         ]);
 
         $selectedSurfaces = $this->procedureFormData['procedure_surface'] ?? [];
-        dd($data);
         if (!empty($selectedSurfaces)) {
             foreach ($selectedSurfaces as $surfaceId) {
                 ProcedureSurface::create([
@@ -261,8 +260,13 @@ class SearchMember extends Page
                     ->reactive()
                     ->multiple()
                     ->required()
-                    ->visible(fn(callable $get) => $get('quantity') > 0)
-                    ->helperText(fn(callable $get) => 'You can select up to ' . $get('quantity') . ' surface(s)')
+                    ->visible(function (callable $get) {
+                        $service = Service::find($get('service_id'));
+                        $unitType = $service?->unitType?->name;
+
+                        return $unitType === 'Surface' && ($get('quantity') > 0);
+                    })
+                    ->helperText(fn(callable $get) => 'You can select up to ' . ($get('quantity') ?? 0) . ' surface(s)')
                     ->maxItems(fn(callable $get) => $get('quantity') ?? 0),
 
                 Forms\Components\DatePicker::make('availment_date')

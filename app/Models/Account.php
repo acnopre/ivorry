@@ -20,8 +20,8 @@ class Account extends Model
         'expiration_date',
         'endorsement_type',
         'account_status',
-        'amendment_status',
-        'renewal_status'
+        'endorsement_status',
+        'remarks'
     ];
     protected $casts = [
         'effective_date' => 'date',

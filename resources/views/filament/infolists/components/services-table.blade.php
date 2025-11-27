@@ -57,16 +57,19 @@
                             @endif
                         </td>
 
-                        <td class="px-6 py-4 text-right font-mono">
+                        <td class="px-6 py-4 text-right">
                             @if ($service->pivot->is_unlimited)
                             <span class="text-gray-400 italic">N/A</span>
-                            @elseif ($service->pivot->quantity > 0)
-                            <span class="text-lg font-bold text-primary-600 dark:text-primary-400">
+                            @elseif ($service->pivot->quantity == 0)
+                            <span class="font-medium text-danger-600 dark:text-danger-400">0</span>
+                            @elseif ($service->pivot->quantity < 2) <span class="font-medium text-warning-600 dark:text-warning-400">
                                 {{ number_format($service->pivot->quantity) }}
-                            </span>
-                            @else
-                            <span class="text-lg font-bold text-danger-600 dark:text-danger-400">0</span>
-                            @endif
+                                </span>
+                                @else
+                                <span class="font-medium text-primary-600">
+                                    {{ number_format($service->pivot->quantity) }}
+                                </span>
+                                @endif
                         </td>
 
                         <td class="px-6 py-4 text-center">

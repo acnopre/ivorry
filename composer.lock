@@ -9362,16 +9362,14 @@
             "type": "library",
             "extra": {
                 "laravel": {
-                   
+                    "providers": []
                 },
                 "branch-alias": {
                     "dev-main": "1.x-dev"
                 }
             },
             "autoload": {
-                "psr-4": {
-                    "Laravel\\Pail\\": "src/"
-                }
+                
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [

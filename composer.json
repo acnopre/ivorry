@@ -9,6 +9,7 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
         "bezhansalleh/filament-shield": "^3.0",
+        "doctrine/inflector": "^2.1",
         "filament/filament": "^3.2",
         "icetalker/filament-table-repeatable-entry": "^1.1",
         "laravel/framework": "^12.0",

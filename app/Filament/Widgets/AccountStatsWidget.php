@@ -57,16 +57,12 @@ class AccountStatsWidget extends BaseWidget
                 ->color('danger')
                 ->description('Accounts currently inactive'),
 
-            // NOTE: The 'Pending Status' at the end overlaps with the specific 'Renewal/Amendment Pending'.
-            // It's better to show the total pending count as a key metric.
             Stat::make('Total Pending Endorsements', $baseQuery->clone()->when($pendingQuery)->count())
                 ->icon('heroicon-o-clock') // Better icon for pending
                 ->color('warning')
                 ->description('Total accounts awaiting any endorsement decision'),
         ];
     }
-
-
 
 
     // public static function canView(): bool

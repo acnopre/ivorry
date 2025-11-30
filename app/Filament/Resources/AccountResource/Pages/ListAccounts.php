@@ -11,12 +11,12 @@ class ListAccounts extends ListRecords
 {
     protected static string $resource = AccountResource::class;
 
-    protected function getHeaderWidgets(): array
-    {
-        return [
-            AccountStatsWidget::class,
-        ];
-    }
+    // protected function getHeaderWidgets(): array
+    // {
+    //     return [
+    //         AccountStatsWidget::class,
+    //     ];
+    // }
 
     protected function getHeaderActions(): array
     {

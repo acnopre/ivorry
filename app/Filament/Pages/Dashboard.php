@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\AccountStatsWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 use App\Filament\Widgets\ActivityTimeline;
 use App\Filament\Widgets\DashboardStats;
@@ -22,10 +23,16 @@ class Dashboard extends BaseDashboard
     }
     public function getWidgets(): array
     {
-        return [
-            DashboardStats::class,
-            RecentClaimsTable::class,
-            ActivityTimeline::class,
-        ];
+        if (auth()->user()?->hasAnyRole('Super Admin', 'Upper Manager')) {
+            return [
+                DashboardStats::class,
+                RecentClaimsTable::class,
+                ActivityTimeline::class,
+            ];
+        } else if (auth()->user()?->hasAnyRole('Account Manager')) {
+            return [
+                AccountStatsWidget::class,
+            ];
+        }
     }
 }

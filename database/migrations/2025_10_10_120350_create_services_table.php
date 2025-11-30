@@ -22,7 +22,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('account_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
-            $table->integer('default_quantity')->default(0);
+            $table->integer('default_quantity')->nullable();
             $table->integer('quantity')->nullable();
             $table->longText('remarks')->nullable();
             $table->boolean('is_unlimited')->default(false);

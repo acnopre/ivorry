@@ -6,6 +6,7 @@ use App\Filament\Resources\AccountResource\Pages;
 use App\Filament\Widgets\AccountStatsWidget;
 use App\Imports\AccountImport;
 use App\Models\Account;
+use App\Models\AccountService;
 use App\Models\AccountServiceHistory;
 use App\Models\EndorsementType;
 use App\Models\Service;
@@ -48,6 +49,7 @@ class AccountResource extends Resource
     {
         return $form
             ->schema(function ($record) {
+
                 // Determine if record is new or editing
                 $isCreate = blank($record);
                 // Allow fields only on create OR if record’s amendment_status == 1
@@ -84,11 +86,11 @@ class AccountResource extends Resource
                         ->schema([
                             DatePicker::make('effective_date')
                                 ->label('Effective Date')
-                                ->disabled(! $isAmendment),
+                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')),
 
                             DatePicker::make('expiration_date')
                                 ->label('Expiration Date')
-                                ->disabled(! $isAmendment),
+                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')),
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')
                                 ->visible($record?->account_status == 1)
@@ -104,6 +106,38 @@ class AccountResource extends Resource
                                     return EndorsementType::pluck('name', 'name')->toArray();
                                 })
                                 ->required()
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, Forms\Set $set, $record) {
+
+                                    if ($state !== 'RENEWAL') {
+                                        return;
+                                    }
+
+                                    // Load existing BASIC services from the account
+                                    $basicServices = AccountService::where('account_id', $record->id)
+                                        ->whereHas('service', fn($q) => $q->where('type', 'basic'))
+                                        ->with('service')
+                                        ->get();
+
+                                    foreach ($basicServices as $service) {
+                                        $set("services.basic.{$service->service_id}.is_unlimited", $service->is_unlimited);
+                                        $set("services.basic.{$service->service_id}.quantity", $service->default_quantity);
+                                        $set("services.basic.{$service->service_id}.remarks", $service->remarks);
+                                    }
+
+                                    // Load existing ENHANCEMENT services from the account
+                                    $enhancementServices = AccountService::where('account_id', $record->id)
+                                        ->whereHas('service', fn($q) => $q->where('type', 'enhancement'))
+                                        ->with('service')
+                                        ->get();
+
+                                    foreach ($enhancementServices as $service) {
+                                        $set("services.enhancement.{$service->service_id}.is_unlimited", $service->is_unlimited);
+                                        $set("services.enhancement.{$service->service_id}.quantity", $service->default_quantity);
+                                        $set("services.enhancement.{$service->service_id}.remarks", $service->remarks);
+                                    }
+                                })
+
                                 ->disabled(false),
                         ])->columns(3),
 
@@ -125,7 +159,8 @@ class AccountResource extends Resource
                                         ->reactive()
                                         ->disabled(
                                             fn(Forms\Get $get) =>
-                                            $get("services.basic.{$service->id}.is_unlimited") === true || ! $isAmendment
+                                            $get("services.basic.{$service->id}.is_unlimited") === true ||
+                                                ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
                                         )
                                         ->dehydrated(true)
                                         ->formatStateUsing(function ($state, $record) use ($service) {
@@ -141,7 +176,9 @@ class AccountResource extends Resource
                                         ->label('Remarks')
                                         ->columnSpan(4)
                                         ->maxLength(255)
-                                        ->disabled(! $isAmendment)
+                                        ->disabled(
+                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                        )
                                         ->formatStateUsing(function ($state, $record) use ($service) {
                                             if (! $record) {
                                                 return $state;
@@ -157,7 +194,9 @@ class AccountResource extends Resource
                                         ->inline(false)
                                         ->reactive()
                                         ->default(true)   // ✅ New accounts default to TRUE
-                                        ->disabled(! $isAmendment)
+                                        ->disabled(
+                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                        )
                                         ->afterStateUpdated(function ($state, Forms\Set $set) use ($service) {
                                             if ($state === true) {
                                                 $set("services.basic.{$service->id}.quantity", null);
@@ -197,7 +236,8 @@ class AccountResource extends Resource
                                         ->reactive()
                                         ->disabled(
                                             fn(Forms\Get $get) =>
-                                            $get("services.enhancement.{$enhancement->id}.is_unlimited") === true || ! $isAmendment
+                                            $get("services.enhancement.{$enhancement->id}.is_unlimited") === true ||
+                                                ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
                                         )
                                         ->dehydrated(true)
                                         ->formatStateUsing(function ($state, $record) use ($enhancement) {
@@ -213,7 +253,9 @@ class AccountResource extends Resource
                                         ->label('Remarks')
                                         ->columnSpan(4)
                                         ->maxLength(255)
-                                        ->disabled(! $isAmendment)
+                                        ->disabled(
+                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                        )
                                         ->formatStateUsing(function ($state, $record) use ($enhancement) {
                                             if (! $record) {
                                                 return $state;
@@ -228,7 +270,9 @@ class AccountResource extends Resource
                                         ->columnSpan(2)
                                         ->inline(false)
                                         ->reactive()
-                                        ->disabled(! $isAmendment)
+                                        ->disabled(
+                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                        )
                                         ->afterStateUpdated(function ($state, Forms\Set $set) use ($enhancement) {
                                             if ($state === true) {
                                                 $set("services.enhancement.{$enhancement->id}.quantity", null);
@@ -371,36 +415,40 @@ class AccountResource extends Resource
                             ->visible(
                                 fn(Model $record) =>
                                 $record->endorsement_type === 'RENEWAL'
+                                    && auth()->user()?->hasAnyRole(['Upper Management'])
                             )
                             ->requiresConfirmation()
                             ->action(function (Model $record) {
-                                // Save renewal history
-                                AccountServiceHistory::create([
+                                // Create a renewal request
+                                $renewal = \App\Models\AccountRenewal::create([
                                     'account_id' => $record->id,
-                                    'renewal_date' => now(),
-                                    'approved_by' => auth()->user()->name ?? 'System',
                                     'effective_date' => $record->effective_date,
                                     'expiration_date' => $record->expiration_date,
+                                    'requested_by' => auth()->id(),
+                                    'status' => 'PENDING',
                                 ]);
 
-                                // Reset all services to default quantities
-                                foreach ($record->services as $service) {
-                                    $record->services()->updateExistingPivot($service->id, [
-                                        'quantity' => $service->default_quantity ?? 0,
-                                        'remarks' => null,
-                                        'is_unlimited' => false,
-                                    ]);
-                                }
+                                // Save all services as part of the renewal
+                                foreach (['basic', 'enhancement'] as $type) {
+                                    $services = $record->services()->whereHas('service', fn($q) => $q->where('type', $type))->get();
 
-                                // Update status
-                                $record->update(['account_status' => 1]);
+                                    foreach ($services as $service) {
+                                        $renewal->services()->create([
+                                            'service_id' => $service->id,
+                                            'quantity' => $service->pivot->quantity,
+                                            'is_unlimited' => $service->pivot->is_unlimited,
+                                            'remarks' => $service->pivot->remarks,
+                                        ]);
+                                    }
+                                }
 
                                 Notification::make()
                                     ->success()
-                                    ->title('Renewal Approved')
-                                    ->body('Renewal approved successfully. Quantities reset and history recorded.')
+                                    ->title('Renewal Created')
+                                    ->body('Renewal request has been saved and awaits approval.')
                                     ->send();
                             }),
+
 
                     ]),
                 Tables\Actions\EditAction::make()
@@ -416,12 +464,12 @@ class AccountResource extends Resource
             ]);
     }
 
-    public static function getWidgets(): array
-    {
-        return [
-            AccountStatsWidget::class
-        ];
-    }
+    // public static function getWidgets(): array
+    // {
+    //     return [
+    //         AccountStatsWidget::class
+    //     ];
+    // }
 
     public static function getNavigationBadge(): ?string
     {

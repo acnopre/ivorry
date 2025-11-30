@@ -6,6 +6,7 @@ use App\Filament\Resources\AccountResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use DB;
+use Filament\Notifications\Notification;
 
 class EditAccount extends EditRecord
 {
@@ -35,60 +36,98 @@ class EditAccount extends EditRecord
         return $data;
     }
 
-    /**
-     * After saving the Account, sync related services with pivot table.
-     */
     protected function afterSave(): void
     {
-        $account = $this->record;
+        $record = $this->record; // The account being edited
+        $data = $this->form->getState();
+        // Only create renewal if endorsement type is RENEWAL
+        if ($record->endorsement_type === 'RENEWAL') {
 
-        $account->update([
-            'renewal_status' => 0, // Reset renewal status to default 0;
-        ]);
-        $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'];
+            // Create renewal record
+            $renewal = \App\Models\AccountRenewal::create([
+                'account_id' => $record->id,
+                'effective_date' => $data['effective_date'],
+                'expiration_date' => $data['expiration_date'],
+                'requested_by' => auth()->id(),
+                'status' => 'PENDING',
+            ]);
 
-        if (empty($mergedServices)) {
-            return;
-        }
+            // Save services attached to this renewal
+            foreach (['basic', 'enhancement'] as $type) {
+                if (isset($data['services'][$type])) {
+                    foreach ($data['services'][$type] as $serviceId => $serviceData) {
+                        $renewal->services()->create([
+                            'service_id' => $serviceId,
+                            'quantity' => $serviceData['quantity'] ?? null,
+                            'is_unlimited' => $serviceData['is_unlimited'] ?? false,
+                            'remarks' => $serviceData['remarks'] ?? null,
+                        ]);
+                    }
+                }
+            }
 
-        // The structure from the form is: [service_id => ['quantity' => X, 'is_unlimited' => Y, 'remarks' => Z]]
-        $filtered = collect($mergedServices)
-            // Filter out any entries where the quantity is null/empty and it's not marked as unlimited.
-            // We want to keep services where either quantity is set OR it's marked unlimited OR remarks are present.
-            ->filter(function ($pivotData, $serviceId) {
-                // If quantity is set AND > 0, or if is_unlimited is true, or if remarks is set, keep it.
-                return (isset($pivotData['quantity']) && (int)$pivotData['quantity'] > 0)
-                    || (isset($pivotData['is_unlimited']) && $pivotData['is_unlimited'] == true)
-                    || !empty($pivotData['remarks']);
-            })
-            ->mapWithKeys(function ($pivotData, $serviceId) {
-                // Map the pivot data to the format required by sync: [service_id => [pivot_column => value]]
-
-                // Ensure boolean conversion for `is_unlimited`
-                $isUnlimited = filter_var($pivotData['is_unlimited'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-                return [
-                    $serviceId => [
-                        // If it's unlimited, set quantity to a default (e.g., 9999) or 0, or just use the input quantity.
-                        // We'll use the provided quantity, as the flag is what matters.
-                        'quantity' => (int) ($pivotData['quantity'] ?? 0),
-                        'is_unlimited' => $isUnlimited, // Saved as boolean
-                        'remarks' => $pivotData['remarks'] ?? null, // Saved as string/null
-                    ],
-                ];
-            })
-            ->toArray();
-
-        if (! empty($filtered)) {
-            // Sync the services with the new pivot data (quantity, is_unlimited, remarks)
-            $this->record->services()->sync($filtered);
-        } else {
-            // Optional: Notify if no valid services were kept after filtering
             Notification::make()
-                ->title('No services saved')
-                ->body('All service entries were empty and filtered out.')
-                ->warning()
+                ->success()
+                ->title('Renewal Submitted')
+                ->body('The renewal has been saved and is awaiting Upper Management approval.')
                 ->send();
         }
     }
+
+    // /**
+    //  * After saving the Account, sync related services with pivot table.
+    //  */
+    // protected function afterSave(): void
+    // {
+    //     $account = $this->record;
+
+    //     $account->update([
+    //         'renewal_status' => 0, // Reset renewal status to default 0;
+    //     ]);
+    //     $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'];
+
+    //     if (empty($mergedServices)) {
+    //         return;
+    //     }
+
+    //     // The structure from the form is: [service_id => ['quantity' => X, 'is_unlimited' => Y, 'remarks' => Z]]
+    //     $filtered = collect($mergedServices)
+    //         // Filter out any entries where the quantity is null/empty and it's not marked as unlimited.
+    //         // We want to keep services where either quantity is set OR it's marked unlimited OR remarks are present.
+    //         ->filter(function ($pivotData, $serviceId) {
+    //             // If quantity is set AND > 0, or if is_unlimited is true, or if remarks is set, keep it.
+    //             return (isset($pivotData['quantity']) && (int)$pivotData['quantity'] > 0)
+    //                 || (isset($pivotData['is_unlimited']) && $pivotData['is_unlimited'] == true)
+    //                 || !empty($pivotData['remarks']);
+    //         })
+    //         ->mapWithKeys(function ($pivotData, $serviceId) {
+    //             // Map the pivot data to the format required by sync: [service_id => [pivot_column => value]]
+
+    //             // Ensure boolean conversion for `is_unlimited`
+    //             $isUnlimited = filter_var($pivotData['is_unlimited'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+    //             return [
+    //                 $serviceId => [
+    //                     // If it's unlimited, set quantity to a default (e.g., 9999) or 0, or just use the input quantity.
+    //                     // We'll use the provided quantity, as the flag is what matters.
+    //                     'quantity' => (int) ($pivotData['quantity'] ?? 0),
+    //                     'is_unlimited' => $isUnlimited, // Saved as boolean
+    //                     'remarks' => $pivotData['remarks'] ?? null, // Saved as string/null
+    //                 ],
+    //             ];
+    //         })
+    //         ->toArray();
+
+    //     if (! empty($filtered)) {
+    //         // Sync the services with the new pivot data (quantity, is_unlimited, remarks)
+    //         $this->record->services()->sync($filtered);
+    //     } else {
+    //         // Optional: Notify if no valid services were kept after filtering
+    //         Notification::make()
+    //             ->title('No services saved')
+    //             ->body('All service entries were empty and filtered out.')
+    //             ->warning()
+    //             ->send();
+    //     }
+    // }
 }

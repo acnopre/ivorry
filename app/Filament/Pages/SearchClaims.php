@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Procedure;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -365,6 +366,6 @@ class SearchClaims extends Page implements HasForms, HasTable
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasAnyRole(['Super Admin', 'Claims Processor']);
+        return auth()->check() && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::CLAIMS_PROCESSOR]);
     }
 }

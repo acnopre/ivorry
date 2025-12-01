@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Account;
+use App\Models\Role;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 
@@ -35,8 +36,8 @@ class MyAccount extends Page
     {
         return auth()->check()
             && auth()->user()->hasAnyRole([
-                'Super Admin',
-                'Member',
+                Role::SUPER_ADMIN,
+                Role::MEMBER,
             ]);
     }
 }

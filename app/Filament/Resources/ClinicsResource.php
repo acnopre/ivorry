@@ -29,6 +29,7 @@ use App\Models\AccountType;
 use App\Models\AccreditationStatus;
 use App\Models\Service;
 use App\Imports\ClinicImport;
+use App\Models\Role;
 use App\Models\UpdateInfo1903Types;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
@@ -396,10 +397,11 @@ class ClinicsResource extends Resource
             ]);
     }
 
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Accreditation', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCREDITATION]);
     }
 
     public static function getPages(): array

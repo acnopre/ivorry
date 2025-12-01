@@ -6,6 +6,7 @@ use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureSurface;
 use App\Models\ProcedureUnit;
+use App\Models\Role;
 use App\Models\Service;
 use App\Models\Surface;
 use Filament\Forms;
@@ -282,8 +283,8 @@ class SearchMember extends Page
     {
         return auth()->check()
             && auth()->user()->hasAnyRole([
-                'Super Admin',
-                'Dentist',
+                Role::SUPER_ADMIN,
+                Role::DENTIST,
             ]);
     }
 }

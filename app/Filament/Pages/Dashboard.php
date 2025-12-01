@@ -7,6 +7,7 @@ use Filament\Pages\Dashboard as BaseDashboard;
 use App\Filament\Widgets\ActivityTimeline;
 use App\Filament\Widgets\DashboardStats;
 use App\Filament\Widgets\RecentClaimsTable;
+use App\Models\Role;
 use Filament\Notifications\Notification;
 
 class Dashboard extends BaseDashboard
@@ -23,16 +24,18 @@ class Dashboard extends BaseDashboard
     }
     public function getWidgets(): array
     {
-        if (auth()->user()?->hasAnyRole('Super Admin', 'Upper Manager')) {
+        if (auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)) {
             return [
                 DashboardStats::class,
                 RecentClaimsTable::class,
                 ActivityTimeline::class,
             ];
-        } else if (auth()->user()?->hasAnyRole('Account Manager')) {
+        } else if (auth()->user()?->hasAnyRole(Role::ACCOUNT_MANAGER)) {
             return [
                 AccountStatsWidget::class,
             ];
+        } else {
+            return [];
         }
     }
 }

@@ -4,7 +4,7 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\{Account, Member, Clinic, Dentist, Procedure};
+use App\Models\{Account, Member, Clinic, Dentist, Procedure, Role};
 
 class DashboardStats extends BaseWidget
 {
@@ -60,6 +60,6 @@ class DashboardStats extends BaseWidget
     public static function canView(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
     }
 }

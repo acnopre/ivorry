@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AccountResource\Pages;
 
 use App\Filament\Resources\AccountResource;
+use App\Models\Account;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use DB;
@@ -43,6 +44,9 @@ class EditAccount extends EditRecord
         // Only create renewal if endorsement type is RENEWAL
         if ($record->endorsement_type === 'RENEWAL') {
 
+            //Update Account endorsement status to Pending
+            $record->endorsement_status = 'PENDING';
+            $record->save();
             // Create renewal record
             $renewal = \App\Models\AccountRenewal::create([
                 'account_id' => $record->id,

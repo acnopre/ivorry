@@ -7,6 +7,7 @@ use App\Models\Dentist;
 use App\Models\Region;
 use App\Models\Province;
 use App\Models\Municipality;
+use App\Models\Role;
 use App\Models\Specializations;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -142,8 +143,8 @@ class SearchClinics extends Page
     {
         return auth()->check()
             && auth()->user()->hasAnyRole([
-                'Super Admin',
-                'Member',
+                Role::SUPER_ADMIN,
+                Role::MEMBER,
             ]);
     }
 }

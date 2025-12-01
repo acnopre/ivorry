@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Role;
 use Filament\Widgets\Widget;
 use Spatie\Activitylog\Models\Activity;
 
@@ -14,7 +15,7 @@ class ActivityTimeline extends Widget
     public static function canView(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
     }
 
     public function getActivities()

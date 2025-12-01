@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BusinessTypeResource\Pages;
 use App\Models\BusinessType;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Forms\Form;
@@ -29,25 +30,25 @@ class BusinessTypeResource extends Resource
         return $table->columns([
             Tables\Columns\TextColumn::make('name')->searchable(),
             Tables\Columns\TextColumn::make('created_at')
-            ->dateTime()
-            ->label('Created'),
-             Tables\Columns\TextColumn::make('updated_at')
-            ->dateTime()
-            ->label('Updated'),
+                ->dateTime()
+                ->label('Created'),
+            Tables\Columns\TextColumn::make('updated_at')
+                ->dateTime()
+                ->label('Updated'),
         ])
-        ->actions([
-            Tables\Actions\EditAction::make(),
-            Tables\Actions\DeleteAction::make(),
-        ])
-        ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
-        ]);
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make(),
+            ]);
     }
 
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
     }
 
     public static function getPages(): array

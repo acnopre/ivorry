@@ -5,6 +5,7 @@ namespace App\Filament\Resources\AccountResource\Pages;
 use App\Filament\Resources\AccountResource;
 use App\Models\Account;
 use App\Models\AccountServiceHistory;
+use App\Models\Role;
 use Filament\Infolists;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\Tabs;
@@ -29,7 +30,7 @@ class ViewAccount extends ViewRecord
                 ->label('Approve Account')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
-                ->visible(fn(Account $record) => $record->account_status === 0 && auth()->user()?->hasAnyRole('Super Admin', 'Upper Management'))
+                ->visible(fn(Account $record) => $record->account_status === 0 && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT))
                 ->requiresConfirmation()
                 ->action(function (Account $record) {
                     $record->update([
@@ -49,7 +50,7 @@ class ViewAccount extends ViewRecord
                 ->visible(
                     fn(Account $record) =>
                     $record->account_status === 0 &&
-                        auth()->user()?->hasAnyRole('Super Admin', 'Upper Management')
+                        auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
                 )
                 ->disabled(fn(Account $record) => $record->endorsement_status === 'REJECTED')
                 ->form([
@@ -79,7 +80,7 @@ class ViewAccount extends ViewRecord
                 ->icon('heroicon-o-arrow-path')
                 ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL'
                     &&  $record->endorsement_status === 'PENDING'
-                    && auth()->user()?->hasAnyRole('Super Admin', 'Upper Management'))
+                    && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT))
                 ->form([
                     \Filament\Forms\Components\DatePicker::make('effective_date')
                         ->label('Effective Date')

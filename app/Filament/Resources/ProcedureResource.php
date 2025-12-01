@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProcedureResource\Pages;
 use App\Models\Procedure;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Resources\Resource;
@@ -104,7 +105,7 @@ class ProcedureResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() &&
-            auth()->user()->hasAnyRole(['Super Admin', 'Dentist']);
+        return auth()->check()
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::DENTIST]);
     }
 }

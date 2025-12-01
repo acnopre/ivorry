@@ -6,6 +6,7 @@ use App\Filament\Resources\DentistResource\Pages;
 use App\Models\Dentist;
 use App\Models\BasicDentalService;
 use App\Models\PlanEnhancement;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -42,11 +43,11 @@ class DentistResource extends Resource
                     Forms\Components\DatePicker::make('prc_expiration_date')->label('PRC Expiration Date'),
                     Forms\Components\Toggle::make('is_owner')->label('Is Owner'),
                     Forms\Components\Select::make('specializations')
-                    ->label('Specializations')
-                    ->multiple()
-                    ->relationship('specializations', 'name')
-                    ->preload()
-                    ->searchable(),
+                        ->label('Specializations')
+                        ->multiple()
+                        ->relationship('specializations', 'name')
+                        ->preload()
+                        ->searchable(),
                 ])->columns(2),
             ]);
     }
@@ -76,11 +77,10 @@ class DentistResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
-
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Accreditation', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCREDITATION]);
     }
 
     public static function getPages(): array

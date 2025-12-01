@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RoleResource\Pages;
 use App\Filament\Resources\RoleResource\RelationManagers;
+use App\Models\Role as ModelsRole;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -59,10 +60,11 @@ class RoleResource extends Resource
             //
         ];
     }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([ModelsRole::SUPER_ADMIN, ModelsRole::UPPER_MANAGEMENT]);
     }
     public static function getPages(): array
     {

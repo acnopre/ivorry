@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivityResource\Pages;
 use App\Models\Activity;
+use App\Models\Role;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -43,7 +44,7 @@ class ActivityResource extends Resource
             ->actions([])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-                Tables\Actions\ExportBulkAction::make() 
+                Tables\Actions\ExportBulkAction::make()
             ]);
     }
 
@@ -62,11 +63,11 @@ class ActivityResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
     }
 
-     public static function canCreate(): bool
+    public static function canCreate(): bool
     {
-        return false; 
+        return false;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Procedure;
+use App\Models\Role;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,7 +17,7 @@ class RecentClaimsTable extends BaseWidget
     public static function canView(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
     }
 
     public function table(Table $table): Table

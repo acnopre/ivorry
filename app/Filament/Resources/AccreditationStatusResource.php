@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AccreditationStatusResource\Pages;
 use App\Models\AccreditationStatus;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Forms\Form;
@@ -29,20 +30,20 @@ class AccreditationStatusResource extends Resource
         return $table->columns([
             Tables\Columns\TextColumn::make('name')->searchable(),
             Tables\Columns\TextColumn::make('created_at')
-            ->dateTime()
-            ->label('Created'),
-             Tables\Columns\TextColumn::make('updated_at')
-            ->dateTime()
-            ->label('Updated'),
+                ->dateTime()
+                ->label('Created'),
+            Tables\Columns\TextColumn::make('updated_at')
+                ->dateTime()
+                ->label('Updated'),
         ]);
     }
 
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
     }
-    
+
     public static function getPages(): array
     {
         return [

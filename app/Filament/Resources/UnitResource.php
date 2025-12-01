@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UnitResource\Pages;
+use App\Models\Role;
 use App\Models\Unit;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -61,7 +62,7 @@ class UnitResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
     }
 
     public static function getPages(): array

@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\AccountService;
 use App\Models\AccountServiceHistory;
 use App\Models\EndorsementType;
+use App\Models\Role;
 use App\Models\Service;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -415,7 +416,7 @@ class AccountResource extends Resource
                             ->visible(
                                 fn(Model $record) =>
                                 $record->endorsement_type === 'RENEWAL'
-                                    && auth()->user()?->hasAnyRole(['Upper Management'])
+                                    && auth()->user()?->hasAnyRole([Role::UPPER_MANAGEMENT])
                             )
                             ->requiresConfirmation()
                             ->action(function (Model $record) {
@@ -452,10 +453,10 @@ class AccountResource extends Resource
 
                     ]),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => auth()->user()?->hasAnyRole('Super Admin', 'Account Manager')),
+                    ->visible(fn() => auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::ACCOUNT_MANAGER)),
 
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn() => auth()->user()?->hasAnyRole('Super Admin')),
+                    ->visible(fn() => auth()->user()?->hasAnyRole(Role::SUPER_ADMIN)),
 
 
             ])
@@ -473,7 +474,7 @@ class AccountResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if (! auth()->user()?->hasAnyRole(['Super Admin', 'Upper Management'])) {
+        if (! auth()->user()?->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT])) {
             return null; // Do NOT show badge for other roles
         }
         // Count accounts where account_status = 0 (pending)
@@ -492,7 +493,7 @@ class AccountResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole(['Super Admin', 'Account Manager', 'Upper Management']);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::ACCOUNT_MANAGER, Role::UPPER_MANAGEMENT]);
     }
 
     public static function getRelations(): array

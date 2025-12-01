@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\MemberResource\Pages;
 use App\Imports\MembersImport;
 use App\Models\Member;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -172,16 +173,10 @@ class MemberResource extends Resource
     }
 
 
-
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([
-                'Super Admin',
-                'Account Manager',
-                'Upper Management',
-                'CSR'
-            ]);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCOUNT_MANAGER, Role::CSR]);
     }
 
     public static function getPages(): array

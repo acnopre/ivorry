@@ -1,5 +1,6 @@
 <x-filament-panels::page>
     <div class="space-y-6 max-w-4xl mx-auto">
+
         {{-- 📚 Header --}}
         <div class="text-center">
             <h1 class="text-3xl font-extrabold text-gray-800">Procedure Sign-off Sheet</h1>
@@ -45,24 +46,21 @@
             </div>
         </div>
 
-        {{-- 2. Signature Panel Card --}}
+        {{-- 2. Signature Panel --}}
         <div class="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
             <h2 class="text-xl font-bold mb-6 text-center border-b pb-3 text-primary-600">Required Signatures</h2>
-
-            {{-- Member Unavailable Toggle --}}
-            <div class="flex items-center justify-center mb-6 space-x-2">
-                <input type="checkbox" id="member-unavailable" class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded" onchange="toggleMemberAvailability()">
-                <label for="member-unavailable" class="text-sm font-medium text-gray-700">Member unable to sign: Dentist signs on their behalf</label>
-            </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="signature-section">
 
                 {{-- Member Signature --}}
                 <div class="space-y-3 p-4 border rounded-xl bg-white shadow-sm member-signature 
-                    col-span-1 md:col-span-2 mx-auto max-w-md">
+                col-span-1 md:col-span-2 mx-auto max-w-md">
+
                     <h4 class="font-bold text-lg text-center text-gray-800">Patient/Member Signature</h4>
                     <p class="text-sm text-center text-gray-500">Please sign inside the box</p>
+
                     <canvas id="member-signature" class="border-2 border-dashed border-gray-300 rounded-lg w-full h-40 bg-white cursor-crosshair"></canvas>
+
                     <div class="flex justify-center">
                         <x-filament::button color="primary" size="sm" icon="heroicon-o-arrow-path" onclick="clearSignature('member-signature')">
                             Clear Signature
@@ -72,7 +70,7 @@
             </div>
         </div>
 
-        {{-- ✅ Submit Footer --}}
+        {{-- Submit --}}
         <div class="p-6 bg-gray-50 rounded-2xl text-center">
             <x-filament::button color="success" size="xl" wire:click="signNow" id="submit-signatures" class="w-full md:w-auto" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="signNow">Complete & Submit Signatures</span>
@@ -81,15 +79,14 @@
         </div>
     </div>
 </x-filament-panels::page>
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 <script>
     const memberCanvas = document.getElementById('member-signature');
-    const memberUnavailableCheckbox = document.getElementById('member-unavailable');
     const submitButton = document.getElementById('submit-signatures');
 
-    // --- 1. Canvas Sizing and Initialization ---
-
+    // Resize & initialize pad
     function resizeCanvas(canvas, pad) {
         if (!canvas) return;
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -99,9 +96,7 @@
         canvas.height = canvas.offsetHeight * ratio;
         canvas.getContext("2d").scale(ratio, ratio);
 
-        if (pad && data) {
-            pad.fromData(data);
-        }
+        if (pad && data) pad.fromData(data);
     }
 
     const pads = {
@@ -117,70 +112,29 @@
         validateSignatures();
     };
 
-    // --- 2. Utility Functions ---
-
+    // Clear signature
     window.clearSignature = function(id) {
-        // Now only handles 'member-signature'
-        const key = id.split('-')[0];
-        if (pads[key]) pads[key].clear();
+        if (pads.member) pads.member.clear();
         validateSignatures();
-    }
+    };
 
-    window.toggleMemberAvailability = function() {
-        const unavailable = memberUnavailableCheckbox.checked;
-        // document.querySelectorAll('.member-signature').forEach(el => {
-        //     el.style.display = unavailable ? 'none' : 'block';
-        // });
-
-        if (unavailable) {
-            pads.member.clear();
-        }
-
-        validateSignatures();
-    }
-
-    // --- 3. Core Validation Logic ---
-
+    // Validation (member signature required)
     function validateSignatures() {
-        if (!submitButton) return;
-
-        const isMemberUnavailable = memberUnavailableCheckbox.checked;
-        const isMemberSigned = !pads.member.isEmpty();
-
-        // Validation now only depends on the member signature OR the member being unavailable.
-        // We no longer check for a separate dentist signature.
-        const isValid = isMemberSigned || isMemberUnavailable;
-
-        // submitButton.disabled = !isValid;
-        // submitButton.style.opacity = isValid ? '1' : '0.5';
+        const signed = !pads.member.isEmpty();
+        // submitButton.disabled = !signed;
     }
 
-    // --- 4. Enhanced Event Listeners ---
-
-    // 4a. SignaturePad's internal event
     pads.member.onEnd = validateSignatures;
-
-    // 4b. FALLBACK: Attach validation to mouse/touch release on the canvas elements
     memberCanvas.addEventListener('mouseup', validateSignatures);
     memberCanvas.addEventListener('touchend', validateSignatures);
 
-    // 4c. Checkbox event
-    memberUnavailableCheckbox.addEventListener('change', toggleMemberAvailability);
-
-    // 4d. Submission Handler
-    submitButton.addEventListener('click', (e) => {
-        if (!submitButton.disabled) {
-            @this.set('signatures', {
-                member: pads.member.isEmpty() ? null : pads.member.toDataURL("image/png")
-                , memberUnavailable: memberUnavailableCheckbox.checked
-            });
-        } else {
-            e.preventDefault();
-        }
+    // Submit
+    submitButton.addEventListener('click', () => {
+        @this.set('signatures', {
+            member: pads.member.isEmpty() ? null : pads.member.toDataURL("image/png")
+        , });
     });
 
-    // Initial calls on page load
-    toggleMemberAvailability();
     validateSignatures();
 
 </script>

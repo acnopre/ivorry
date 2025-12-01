@@ -66,6 +66,7 @@ class RoleResource extends Resource
         return auth()->check()
             && auth()->user()->hasAnyRole([ModelsRole::SUPER_ADMIN, ModelsRole::UPPER_MANAGEMENT]);
     }
+
     public static function getPages(): array
     {
         return [

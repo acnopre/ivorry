@@ -28,7 +28,7 @@ class Account extends Model
         'expiration_date' => 'date',
     ];
 
-    protected $with = ['services'];
+    protected $with = ['services', 'renewals'];
 
     public function members()
     {
@@ -38,6 +38,12 @@ class Account extends Model
     {
         return $this->belongsTo(EndorsementType::class);
     }
+
+    public function renewals()
+    {
+        return $this->hasMany(AccountRenewal::class, 'account_id');
+    }
+
 
     public function services()
     {

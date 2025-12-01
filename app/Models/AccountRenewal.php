@@ -17,6 +17,8 @@ class AccountRenewal extends Model
         'approved_by'
     ];
 
+    protected $with = ['services'];
+
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);

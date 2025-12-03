@@ -35,6 +35,10 @@ class Dashboard extends BaseDashboard
             return [
                 AccountStatsWidget::class,
             ];
+        } else if (auth()->user()?->hasAnyRole(Role::CLAIMS_PROCESSOR)) {
+            return [
+                RecentClaimsTable::class,
+            ];
         } else {
             return [];
         }

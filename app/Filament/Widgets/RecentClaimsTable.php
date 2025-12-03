@@ -14,11 +14,11 @@ class RecentClaimsTable extends BaseWidget
     protected int | string | array $columnSpan = 'full';
     protected static ?string $heading = 'Recent Procedures / Claims';
 
-    public static function canView(): bool
-    {
-        return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
-    }
+    // public static function canView(): bool
+    // {
+    //     return auth()->check()
+    //         && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
+    // }
 
     public function table(Table $table): Table
     {
@@ -30,8 +30,9 @@ class RecentClaimsTable extends BaseWidget
                     ->limit(10)
             )
             ->columns([
-                Tables\Columns\TextColumn::make('member.name')
+                Tables\Columns\TextColumn::make('member')
                     ->label('Member')
+                    ->getStateUsing(fn($record) => $record->member->first_name . ' ' . $record->member->last_name)
                     ->sortable()
                     ->searchable()
                     ->toggleable(),

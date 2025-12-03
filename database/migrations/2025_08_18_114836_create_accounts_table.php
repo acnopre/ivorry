@@ -21,7 +21,13 @@ return new class extends Migration
             $table->date('expiration_date')->nullable();      // Valid until
 
             // endorsement workflow
-            $table->enum('endorsement_type', ['NEW', 'RENEWAL', 'AMENDMENT'])->default('NEW');
+            $table->enum('endorsement_type', [
+                'NEW',
+                'RENEWAL',
+                'RENEWED',
+                'AMENDMENT',
+                'AMENDED'
+            ])->default('NEW');
             $table->enum('endorsement_status', ['PENDING', 'APPROVED', 'REJECTED'])->default('PENDING');
 
             // account activation

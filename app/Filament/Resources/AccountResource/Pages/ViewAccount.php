@@ -100,7 +100,6 @@ class ViewAccount extends ViewRecord
                             'quantity' => $service->pivot->default_quantity,
                         ]);
                     }
-                    dd($record);
                     // Update accountstatus
                     $record->update([
                         'endorsement_status' => 'APPROVED',

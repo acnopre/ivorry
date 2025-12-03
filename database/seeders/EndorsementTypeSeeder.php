@@ -9,7 +9,13 @@ class EndorsementTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        $types = ['NEW', 'RENEWAL', 'AMENDMENT'];
+        $types = [
+            'NEW',
+            'RENEWAL',
+            'RENEWED',
+            'AMENDMENT',
+            'AMENDED'
+        ];
 
         foreach ($types as $type) {
             EndorsementType::firstOrCreate(['name' => $type]);

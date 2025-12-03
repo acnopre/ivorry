@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
 class Account extends Model
 {
-
     use LogsActivity;
 
     protected $fillable = [
@@ -54,6 +54,9 @@ class Account extends Model
                 'default_quantity',
                 'is_unlimited',
                 'remarks',
+                'created_at',
+                'updated_at',
+                'deleted_at',
             ])
             ->withTimestamps();
     }

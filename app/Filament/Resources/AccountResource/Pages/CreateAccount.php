@@ -65,7 +65,8 @@ class CreateAccount extends CreateRecord
                     $serviceId => [
                         // If it's unlimited, set quantity to a default (e.g., 9999) or 0, or just use the input quantity.
                         // We'll use the provided quantity, as the flag is what matters.
-                        'quantity' => (int) ($pivotData['quantity'] ?? 0),
+                        'quantity' => ($pivotData['quantity'] ?? null),
+                        'default_quantity' => ($pivotData['quantity'] ?? null),
                         'is_unlimited' => $isUnlimited, // Saved as boolean
                         'remarks' => $pivotData['remarks'] ?? null, // Saved as string/null
                     ],

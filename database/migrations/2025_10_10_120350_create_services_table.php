@@ -15,6 +15,7 @@ return new class extends Migration
             $table->enum('type', ['basic', 'enhancement'])->default('basic');
             $table->enum('unit_type', ['Session', 'Quadrant', 'Tooth', 'Arch', 'Surface', 'Canal']);
             $table->timestamps();
+            $table->softDeletes();
         });
 
         // pivot for account ↔ services
@@ -27,6 +28,7 @@ return new class extends Migration
             $table->longText('remarks')->nullable();
             $table->boolean('is_unlimited')->default(false);
             $table->timestamps();
+            $table->softDeletes();
         });
 
         // pivot for dentist ↔ services
@@ -36,6 +38,7 @@ return new class extends Migration
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
             $table->decimal('fee', 10, 2)->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

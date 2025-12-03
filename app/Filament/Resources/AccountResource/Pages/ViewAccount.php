@@ -4,6 +4,9 @@ namespace App\Filament\Resources\AccountResource\Pages;
 
 use App\Filament\Resources\AccountResource;
 use App\Models\Account;
+use App\Models\AccountRenewal;
+use App\Models\AccountRenewalService;
+use App\Models\AccountService;
 use App\Models\AccountServiceHistory;
 use App\Models\Role;
 use Filament\Infolists;
@@ -80,47 +83,71 @@ class ViewAccount extends ViewRecord
                 ->color('info')
                 ->icon('heroicon-o-arrow-path')
                 ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL'
-                    &&  $record->endorsement_status === 'PENDING'
+                    && $record->endorsement_status === 'PENDING'
                     && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
-                    && $this->record->renewals->first() != null)
+                    && $record->renewals->first() != null)
                 ->requiresConfirmation()
                 ->action(function (array $data, Account $record) {
-                    // Store renewal history
-                    foreach ($record->services as $service) {
-                        AccountServiceHistory::create([
-                            'account_id'     => $record->id,
-                            'service_id'     => $service->id,
-                            'quantity'       => $service->pivot->quantity,
-                            'remarks'        => 'Renewed to default quantity',
-                            'action'         => 'renewal',
-                        ]);
+                    // Get the renewal for this account (assuming only one pending renewal)
+                    $renewal = AccountRenewal::where('account_id', $record->id)
+                        ->where('status', 'PENDING')
+                        ->firstOrFail();
 
-                        // Reset service quantity to default
-                        $service->pivot->update([
-                            'quantity' => $service->pivot->default_quantity,
+                    $renewalServices = AccountRenewalService::where('renewal_id', $renewal->id)->get();
+
+                    $accountService = AccountService::where('account_id', $renewal->account_id);
+                    // foreach ($accountService->get() as $key => $service) {
+                    //     dd($service);
+                    //     AccountServiceHistory::create([
+                    //         'account_id'     => $record->id,
+                    //         'service_id'     => $service->id,
+                    //         'quantity'       => $service->pivot->quantity,
+                    //         'remarks'        => 'Renewed to default quantity',
+                    //         'action'         => 'renewal',
+                    //     ]);
+                    // }
+
+                    if ($accountService) {
+                        $accountService->delete(); //doesn't remove the record; Soft delete
+                    }
+
+                    // Process each service in the renewal
+                    foreach ($renewalServices as $key => $service) {
+                        AccountService::create([
+                            'account_id'  => $renewal->account_id,
+                            'renewal_id'  => $service['renewal_id'],
+                            'service_id'  => $service['service_id'],
+                            'quantity'    => $service['quantity'],
+                            'is_unlimited' => $service['is_unlimited'],
+                            'remarks'     => $service['remarks'],
                         ]);
                     }
-                    // Update accountstatus
-                    $record->update([
-                        'endorsement_status' => 'APPROVED',
-                    ]);
 
-                    // ----------------------------
-                    // ✅ Send Email Notification
-                    // ----------------------------
-                    Mail::raw(
-                        "The account {$record->company_name} has been renewed and approved.",
-                        function ($message) use ($record) {
-                            $message->to($record->email ?? 'fallback@example.com')
-                                ->subject('Account Renewal Approved');
-                        }
-                    );
+                    // Update the renewal status
+                    $renewal->update([
+                        'status'      => 'APPROVED',
+                        'approved_by' => auth()->id(),
+                    ]);
+                    //Update account status
+                    $record->endorsement_type = 'RENEWED';
+                    $record->endorsement_status = 'APPROVED';
+                    $record->save();
+
+                    // Send Email Notification
+                    // Mail::raw(
+                    //     "The account {$record->company_name} renewal has been approved.",
+                    //     function ($message) use ($record) {
+                    //         $message->to($record->email ?? 'fallback@example.com')
+                    //             ->subject('Account Renewal Approved');
+                    //     }
+                    // );
 
                     Notification::make()
-                        ->title('Account renewed successfully.')
+                        ->title('Account renewal approved successfully.')
                         ->success()
                         ->send();
                 }),
+
 
         ];
     }
@@ -136,85 +163,7 @@ class ViewAccount extends ViewRecord
                 Tabs::make('AccountTabs')
                     ->columnSpanFull()
                     ->tabs([
-                        // Active Account Tab
-                        Tabs\Tab::make('Active Account')
-                            ->schema([
-                                Section::make('Account Overview')
-                                    ->schema([
-                                        Grid::make(3)
-                                            ->schema([
-                                                TextEntry::make('company_name')
-                                                    ->label('Company Name')
-                                                    ->weight(FontWeight::Bold)
-                                                    ->size(TextEntrySize::Large),
-
-                                                TextEntry::make('policy_code')
-                                                    ->label('Policy Code')
-                                                    ->copyable()
-                                                    ->copyMessage('Policy code copied!'),
-
-                                                TextEntry::make('endorsement_type')
-                                                    ->label('Endorsement Type')
-                                                    ->badge()
-                                                    ->colors([
-                                                        'success' => fn($state): bool => $state === 'NEW',
-                                                        'warning' => fn($state): bool => $state === 'RENEWAL',
-                                                        'info'    => fn($state): bool => $state === 'AMENDMENT',
-                                                    ]),
-                                            ]),
-                                        Grid::make(3)
-                                            ->schema([
-                                                TextEntry::make('endorsement_status')
-                                                    ->label('Endorsement Status')
-                                                    ->badge()
-                                                    ->formatStateUsing(fn($state) => match ($state) {
-                                                        'PENDING' => 'Pending',
-                                                        'APPROVED' => 'Approved',
-                                                        'REJECTED' => 'Rejected',
-                                                        default => $state,
-                                                    })
-                                                    ->colors([
-                                                        'warning' => fn($state) => $state === 'PENDING',
-                                                        'success' => fn($state) => $state === 'APPROVED',
-                                                        'danger' => fn($state) => $state === 'REJECTED',
-                                                    ]),
-
-                                                TextEntry::make('account_status')
-                                                    ->label('Account Status')
-                                                    ->badge()
-                                                    ->formatStateUsing(fn($state) => $state == 1 ? 'Active' : 'Inactive')
-                                                    ->color(fn($state): string => $state == 1 ? 'success' : 'danger'),
-
-                                                TextEntry::make('effective_date')
-                                                    ->label('Effective Date')
-                                                    ->date('M d, Y')
-                                                    ->icon('heroicon-m-calendar-days'),
-
-
-                                                TextEntry::make('expiration_date')
-                                                    ->label('Expiration Date')
-                                                    ->date('M d, Y')
-                                                    ->icon('heroicon-m-calendar-days'),
-
-
-                                                TextEntry::make('remarks')
-                                                    ->label('Remarks')
-
-                                            ]),
-                                    ])
-                                    ->columns(false), // Grid handles the columns
-                                ViewEntry::make('full_width_tabs_wrapper')
-                                    ->columnSpanFull()
-                                    ->label(false)
-                                    ->view('filament.infolists.account-tabs', [
-                                        // Pass necessary data to the custom view
-                                        'record' => $this->record,
-                                        // Group the history data here and pass it
-                                        'renewal_groups' => $this->groupRenewalHistory(),
-                                    ]),
-                            ]),
-
-                        // Account Renewal Tab (blank for now)
+                        // Account Renewal Tab 
                         Tabs\Tab::make('Account Renewal')
                             ->badge(function ($record) {
                                 if ($record->endorsement_status === 'PENDING') {
@@ -307,6 +256,84 @@ class ViewAccount extends ViewRecord
                                         'renewal_services' => $renewalRecord
                                     ]),
                             ]),
+                        // Active Account Tab
+                        Tabs\Tab::make('Active Account')
+                            ->schema([
+                                Section::make('Account Overview')
+                                    ->schema([
+                                        Grid::make(3)
+                                            ->schema([
+                                                TextEntry::make('company_name')
+                                                    ->label('Company Name')
+                                                    ->weight(FontWeight::Bold)
+                                                    ->size(TextEntrySize::Large),
+
+                                                TextEntry::make('policy_code')
+                                                    ->label('Policy Code')
+                                                    ->copyable()
+                                                    ->copyMessage('Policy code copied!'),
+
+                                                TextEntry::make('endorsement_type')
+                                                    ->label('Endorsement Type')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'success' => fn($state): bool => $state === 'NEW',
+                                                        'warning' => fn($state): bool => $state === 'RENEWAL',
+                                                        'info'    => fn($state): bool => $state === 'AMENDMENT',
+                                                    ]),
+                                            ]),
+                                        Grid::make(3)
+                                            ->schema([
+                                                TextEntry::make('endorsement_status')
+                                                    ->label('Endorsement Status')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => match ($state) {
+                                                        'PENDING' => 'Pending',
+                                                        'APPROVED' => 'Approved',
+                                                        'REJECTED' => 'Rejected',
+                                                        default => $state,
+                                                    })
+                                                    ->colors([
+                                                        'warning' => fn($state) => $state === 'PENDING',
+                                                        'success' => fn($state) => $state === 'APPROVED',
+                                                        'danger' => fn($state) => $state === 'REJECTED',
+                                                    ]),
+
+                                                TextEntry::make('account_status')
+                                                    ->label('Account Status')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => $state == 1 ? 'Active' : 'Inactive')
+                                                    ->color(fn($state): string => $state == 1 ? 'success' : 'danger'),
+
+                                                TextEntry::make('effective_date')
+                                                    ->label('Effective Date')
+                                                    ->date('M d, Y')
+                                                    ->icon('heroicon-m-calendar-days'),
+
+
+                                                TextEntry::make('expiration_date')
+                                                    ->label('Expiration Date')
+                                                    ->date('M d, Y')
+                                                    ->icon('heroicon-m-calendar-days'),
+
+
+                                                TextEntry::make('remarks')
+                                                    ->label('Remarks')
+
+                                            ]),
+                                    ])
+                                    ->columns(false), // Grid handles the columns
+                                ViewEntry::make('full_width_tabs_wrapper')
+                                    ->columnSpanFull()
+                                    ->label(false)
+                                    ->view('filament.infolists.account-tabs', [
+                                        // Pass necessary data to the custom view
+                                        'record' => $this->record,
+                                        // Group the history data here and pass it
+                                        'renewal_groups' => $this->groupRenewalHistory(),
+                                    ]),
+                            ]),
+
                     ]),
             ]);
     }

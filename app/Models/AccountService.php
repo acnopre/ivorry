@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AccountService extends Pivot
 {
+    use SoftDeletes;
     protected $table = 'account_service';
 
     protected $fillable = [
@@ -20,6 +22,7 @@ class AccountService extends Pivot
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     /**

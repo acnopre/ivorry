@@ -1,7 +1,6 @@
 <div class="space-y-6">
     @php
-    $services = $getRecord()->services;
-
+    $services = $getRecord()->services()->get();
     $groupedServices = $services->groupBy('type');
     @endphp
 
@@ -14,6 +13,14 @@
     </div>
     @else
     @foreach ($groupedServices as $type => $servicesOfType)
+    @php
+    // Filter only visible/active services
+    $visibleServices = $servicesOfType->filter(function($service) {
+    return $service->pivot->deleted_at === null && ($service->pivot->quantity != 0 || $service->pivot->is_unlimited);
+    });
+    @endphp
+
+    @if ($visibleServices->isNotEmpty())
     <x-filament::section class="rounded-2xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900">
 
         {{-- Header --}}
@@ -29,7 +36,7 @@
                 </div>
 
                 <span class="text-xs font-medium px-3 py-1 rounded-full bg-primary-600 text-white shadow-sm">
-                    {{ count($servicesOfType) }} {{ Str::plural('Item', count($servicesOfType)) }}
+                    {{ $visibleServices->count() }} {{ Str::plural('Item', $visibleServices->count()) }}
                 </span>
             </div>
         </x-slot>
@@ -45,7 +52,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                    @foreach ($servicesOfType as $service)
+                    @foreach ($visibleServices as $service)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                         <td class="px-6 py-4">
                             <div class="font-medium text-gray-900 dark:text-gray-100">
@@ -83,6 +90,7 @@
             </table>
         </div>
     </x-filament::section>
+    @endif
     @endforeach
     @endif
 </div>

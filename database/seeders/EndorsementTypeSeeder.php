@@ -12,9 +12,7 @@ class EndorsementTypeSeeder extends Seeder
         $types = [
             'NEW',
             'RENEWAL',
-            'RENEWED',
             'AMENDMENT',
-            'AMENDED'
         ];
 
         foreach ($types as $type) {

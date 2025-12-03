@@ -132,7 +132,6 @@ class AccountResource extends Resource
                                         ->whereHas('service', fn($q) => $q->where('type', 'enhancement'))
                                         ->with('service')
                                         ->get();
-
                                     foreach ($enhancementServices as $service) {
                                         $set("services.enhancement.{$service->service_id}.is_unlimited", $service->is_unlimited);
                                         $set("services.enhancement.{$service->service_id}.quantity", $service->default_quantity);

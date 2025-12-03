@@ -86,7 +86,6 @@ class EditAccount extends EditRecord
 
             // Save Renewal Services (basic + enhancement)
             $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
-
             foreach (['basic', 'enhancement'] as $type) {
                 if (empty($servicesByType[$type])) {
                     continue;

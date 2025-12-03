@@ -1,6 +1,7 @@
 <div class="space-y-6">
     @php
     $services = $getRecord()->services;
+
     $groupedServices = $services->groupBy('type');
     @endphp
 

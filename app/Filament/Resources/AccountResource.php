@@ -59,6 +59,7 @@ class AccountResource extends Resource
                 return [
                     Section::make('Account Information')
                         ->schema([
+
                             TextInput::make('company_name')
                                 ->label('Company Name')
                                 ->required()

@@ -19,6 +19,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\TextEntry\TextEntrySize;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
+use Illuminate\Support\Facades\Mail;
 
 class ViewAccount extends ViewRecord
 {
@@ -99,11 +100,22 @@ class ViewAccount extends ViewRecord
                             'quantity' => $service->pivot->default_quantity,
                         ]);
                     }
-
+                    dd($record);
                     // Update accountstatus
                     $record->update([
                         'endorsement_status' => 'APPROVED',
                     ]);
+
+                    // ----------------------------
+                    // ✅ Send Email Notification
+                    // ----------------------------
+                    Mail::raw(
+                        "The account {$record->company_name} has been renewed and approved.",
+                        function ($message) use ($record) {
+                            $message->to($record->email ?? 'fallback@example.com')
+                                ->subject('Account Renewal Approved');
+                        }
+                    );
 
                     Notification::make()
                         ->title('Account renewed successfully.')
@@ -214,7 +226,7 @@ class ViewAccount extends ViewRecord
                             ->visible(
                                 fn(Account $record) => $record->endorsement_type === 'RENEWAL'
                                     &&  $record->endorsement_status === 'PENDING'
-                                    && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
+                                    && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCOUNT_MANAGER)
                                     && $renewalRecord != null
                             )
                             ->schema([

@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\AccountResource\Pages;
 
 use App\Filament\Resources\AccountResource;
-use App\Models\Account;
+use App\Models\AccountRenewal;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-use DB;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+// use Illuminate\Support\Facades\Log; // uncomment for debug
 
 class EditAccount extends EditRecord
 {
@@ -24,114 +26,87 @@ class EditAccount extends EditRecord
     }
 
     /**
-     * Remove service fields from the main table data.
+     * Remove service fields from the main table payload so Filament doesn't attempt to write them to Account.
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Store all services (basic + enhancement)
         $this->servicesData = $data['services'] ?? [];
-
-        // Remove from main record fields (pivot only)
         unset($data['services']);
-
         return $data;
     }
 
-    protected function afterSave(): void
+    /**
+     * Tell Filament not to run the normal save for the Account model.
+     */
+    protected function shouldSaveRecord(): bool
     {
-        $record = $this->record; // The account being edited
-        $data = $this->form->getState();
-        // Only create renewal if endorsement type is RENEWAL
-        if ($record->endorsement_type === 'RENEWAL') {
-
-            //Update Account endorsement status to Pending
-            $record->endorsement_status = 'PENDING';
-            $record->save();
-            // Create renewal record
-            $renewal = \App\Models\AccountRenewal::create([
-                'account_id' => $record->id,
-                'effective_date' => $data['effective_date'],
-                'expiration_date' => $data['expiration_date'],
-                'requested_by' => auth()->id(),
-                'status' => 'PENDING',
-            ]);
-
-            // Save services attached to this renewal
-            foreach (['basic', 'enhancement'] as $type) {
-                if (isset($data['services'][$type])) {
-                    foreach ($data['services'][$type] as $serviceId => $serviceData) {
-                        $renewal->services()->create([
-                            'service_id' => $serviceId,
-                            'quantity' => $serviceData['quantity'] ?? null,
-                            'is_unlimited' => $serviceData['is_unlimited'] ?? false,
-                            'remarks' => $serviceData['remarks'] ?? null,
-                        ]);
-                    }
-                }
-            }
-
-            Notification::make()
-                ->success()
-                ->title('Renewal Submitted')
-                ->body('The renewal has been saved and is awaiting Upper Management approval.')
-                ->send();
-        }
+        return false;
     }
 
-    // /**
-    //  * After saving the Account, sync related services with pivot table.
-    //  */
-    // protected function afterSave(): void
-    // {
-    //     $account = $this->record;
+    /**
+     * Extra defensive override: if Filament calls this to update the record, do nothing.
+     * This ensures the Account will not be changed by any internal update path.
+     */
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        // Do not update the account
+        return $record;
+    }
 
-    //     $account->update([
-    //         'renewal_status' => 0, // Reset renewal status to default 0;
-    //     ]);
-    //     $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'];
+    /**
+     * After validation: create the renewal and renewal services.
+     * IMPORTANT: we do NOT update the Account model here.
+     */
+    protected function afterValidate(): void
+    {
+        $record = $this->record;
+        $data = $this->form->getState();
+        // Only proceed if endorsement_type is RENEWAL on the Account record
+        if ($data['endorsement_type']  !== 'RENEWAL') {
+            return;
+        }
 
-    //     if (empty($mergedServices)) {
-    //         return;
-    //     }
+        DB::transaction(function () use ($record, $data) {
+            // Optional debug:
+            // Log::info('Creating AccountRenewal for account_id: ' . $record->id, ['data' => $data]);
 
-    //     // The structure from the form is: [service_id => ['quantity' => X, 'is_unlimited' => Y, 'remarks' => Z]]
-    //     $filtered = collect($mergedServices)
-    //         // Filter out any entries where the quantity is null/empty and it's not marked as unlimited.
-    //         // We want to keep services where either quantity is set OR it's marked unlimited OR remarks are present.
-    //         ->filter(function ($pivotData, $serviceId) {
-    //             // If quantity is set AND > 0, or if is_unlimited is true, or if remarks is set, keep it.
-    //             return (isset($pivotData['quantity']) && (int)$pivotData['quantity'] > 0)
-    //                 || (isset($pivotData['is_unlimited']) && $pivotData['is_unlimited'] == true)
-    //                 || !empty($pivotData['remarks']);
-    //         })
-    //         ->mapWithKeys(function ($pivotData, $serviceId) {
-    //             // Map the pivot data to the format required by sync: [service_id => [pivot_column => value]]
+            // Create renewal header (do NOT touch $record)
+            $renewal = AccountRenewal::create([
+                'account_id'      => $record->id,
+                'effective_date'  => $data['effective_date'] ?? null,
+                'expiration_date' => $data['expiration_date'] ?? null,
+                'requested_by'    => auth()->id(),
+                'status'          => 'PENDING',
+            ]);
 
-    //             // Ensure boolean conversion for `is_unlimited`
-    //             $isUnlimited = filter_var($pivotData['is_unlimited'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $record->endorsement_type = 'RENEWAL';
+            $record->endorsement_status = 'PENDING';
+            $record->save();
 
-    //             return [
-    //                 $serviceId => [
-    //                     // If it's unlimited, set quantity to a default (e.g., 9999) or 0, or just use the input quantity.
-    //                     // We'll use the provided quantity, as the flag is what matters.
-    //                     'quantity' => (int) ($pivotData['quantity'] ?? 0),
-    //                     'is_unlimited' => $isUnlimited, // Saved as boolean
-    //                     'remarks' => $pivotData['remarks'] ?? null, // Saved as string/null
-    //                 ],
-    //             ];
-    //         })
-    //         ->toArray();
 
-    //     if (! empty($filtered)) {
-    //         // Sync the services with the new pivot data (quantity, is_unlimited, remarks)
-    //         $this->record->services()->sync($filtered);
-    //     } else {
-    //         // Optional: Notify if no valid services were kept after filtering
-    //         Notification::make()
-    //             ->title('No services saved')
-    //             ->body('All service entries were empty and filtered out.')
-    //             ->warning()
-    //             ->send();
-    //     }
-    // }
+            // Save Renewal Services (basic + enhancement)
+            $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
+
+            foreach (['basic', 'enhancement'] as $type) {
+                if (empty($servicesByType[$type])) {
+                    continue;
+                }
+
+                foreach ($servicesByType[$type] as $serviceId => $serviceData) {
+                    $renewal->services()->create([
+                        'service_id'   => $serviceId,
+                        'quantity'     => $serviceData['quantity'] ?? null,
+                        'is_unlimited' => $serviceData['is_unlimited'] ?? false,
+                        'remarks'      => $serviceData['remarks'] ?? null,
+                    ]);
+                }
+            }
+        });
+
+        Notification::make()
+            ->success()
+            ->title('Renewal Submitted')
+            ->body('The renewal has been saved and is awaiting approval.')
+            ->send();
+    }
 }

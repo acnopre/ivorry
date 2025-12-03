@@ -55,7 +55,6 @@
                 {{-- Member Signature --}}
                 <div class="space-y-3 p-4 border rounded-xl bg-white shadow-sm member-signature 
                 col-span-1 md:col-span-2 mx-auto max-w-md">
-
                     <h4 class="font-bold text-lg text-center text-gray-800">Patient/Member Signature</h4>
                     <p class="text-sm text-center text-gray-500">Please sign inside the box</p>
 

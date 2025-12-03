@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProcedureResource\Pages;
 
 use App\Filament\Resources\ProcedureResource;
+use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureSignature;
 use Filament\Resources\Pages\Page;
@@ -107,10 +108,33 @@ class SignProcedurePage extends Page
                 'notes'          => 'Member was explicitly marked unavailable. Dentist attested to the procedure.',
             ]);
         }
-
         // --- 4. Finalize Procedure ---
-
         $this->record->update(['status' => 'completed']);
+
+        // 🧮 Deduct service quantity from account_service pivot
+        $member = Member::find($this->record->member_id);
+
+        if ($member && $member->account) {
+            $account = $member->account;
+            $serviceId = $this->record->service_id;
+            $quantityUsed = $this->record->quantity ?? null;
+
+            $pivot = $account->services()
+                ->where('service_id', $serviceId)
+                ->first()
+                ?->pivot;
+
+            if ($pivot) {
+                // Skip deduction if unlimited
+                if (!$pivot->is_unlimited) {
+                    $newQuantity = max(0, $pivot->quantity - $quantityUsed);
+
+                    $account->services()->updateExistingPivot($serviceId, [
+                        'quantity' => $newQuantity,
+                    ]);
+                }
+            }
+        }
 
         Notification::make()
             ->title('Procedure Signed Successfully! 🎉')

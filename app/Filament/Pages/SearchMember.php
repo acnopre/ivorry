@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\AccountService;
 use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureSurface;
@@ -91,8 +92,8 @@ class SearchMember extends Page
                 $q->where('account_status', 1) // ⭐ ONLY ACTIVE
             )
             ->when($this->card_number, fn($q) => $q->where('card_number', 'like', "%{$this->card_number}%"))
-            ->when($this->first_name, fn($q) => $q->where('name', 'like', "%{$this->first_name}%"))
-            ->when($this->last_name, fn($q) => $q->where('name', 'like', "%{$this->last_name}%"))
+            ->when($this->first_name, fn($q) => $q->where('first_name', 'like', "%{$this->first_name}%"))
+            ->when($this->last_name, fn($q) => $q->where('last_name', 'like', "%{$this->last_name}%"))
             ->get();
 
         $this->members = $members;
@@ -139,13 +140,14 @@ class SearchMember extends Page
             'service_id' => $data['service_id'],
             'availment_date' => $data['availment_date'] ?? null,
             'status' => Procedure::STATUS_PENDING,
+            'quantity' => $data['quantity'],
             'approval_code' => $approvalCode,
         ]);
 
         // Create associated procedure unit
         $procedureUnit = ProcedureUnit::create([
             'procedure_id' => $procedure->id,
-            'unit_id' => $data['unit_id'],
+            'unit_id' => $data['unit_id'] ?? null,
             'quantity' => $data['quantity'] ?? 1,
         ]);
 
@@ -159,30 +161,6 @@ class SearchMember extends Page
             }
         }
 
-        // 🧮 Deduct service quantity from account_service pivot
-        $member = Member::find($this->selectedMemberId);
-
-        if ($member && $member->account) {
-            $account = $member->account;
-            $serviceId = $data['service_id'];
-            $quantityUsed = $data['quantity'] ?? 1;
-
-            $pivot = $account->services()
-                ->where('service_id', $serviceId)
-                ->first()
-                ?->pivot;
-
-            if ($pivot) {
-                // Skip deduction if unlimited
-                if (!$pivot->is_unlimited) {
-                    $newQuantity = max(0, $pivot->quantity - $quantityUsed);
-
-                    $account->services()->updateExistingPivot($serviceId, [
-                        'quantity' => $newQuantity,
-                    ]);
-                }
-            }
-        }
 
         // Close form modal and show approval modal
         $this->showProcedureModal = false;
@@ -197,17 +175,40 @@ class SearchMember extends Page
     {
         return $this->makeForm()
             ->schema([
+                /*
+            |--------------------------------------------------------------------------
+            | SERVICE DROPDOWN
+            |--------------------------------------------------------------------------
+            */
                 Forms\Components\Select::make('service_id')
                     ->label('Service')
-                    ->options(Service::pluck('name', 'id'))
-                    ->reactive()
+                    ->options(function () {
+                        $accountId = $this->members->first()->account_id ?? null;
+                        if (! $accountId) return collect();
+
+                        return AccountService::where('account_id', $accountId)
+                            ->where(function ($query) {
+                                $query->where('quantity', '>', 0)
+                                    ->orWhere('is_unlimited', true);
+                            })
+                            ->with('service')
+                            ->get()
+                            ->pluck('service.name', 'service_id');
+                    })
+                    ->live() // Use live() for better real-time updates
                     ->afterStateUpdated(function ($state, callable $set) {
+
+                        // 1. Reset fields if Service is cleared
                         if (! $state) {
                             $set('unit_type_name', null);
                             $set('unit_type_id', null);
+                            $set('quantity', null);
+                            $set('unit_id', null);
+                            $set('procedure_surface', []);
                             return;
                         }
 
+                        // 2. Load Unit Type
                         $service = Service::with('unitType')->find($state);
 
                         if ($service && $service->unitType) {
@@ -217,12 +218,52 @@ class SearchMember extends Page
                             $set('unit_type_name', '—');
                             $set('unit_type_id', null);
                         }
+
+                        // 3. Auto-populate Quantity
+                        $accountId = $this->members->first()->account_id ?? null;
+
+                        if ($accountId) {
+                            $accountService = AccountService::where('account_id', $accountId)
+                                ->where('service_id', $state)
+                                ->first();
+
+                            if ($accountService) {
+                                // Priority: Default Quantity -> Fallback to 1
+                                $qty = $accountService->default_quantity ?? 1;
+
+                                // If NOT unlimited, cap it at their remaining balance
+                                if (! $accountService->is_unlimited) {
+                                    $qty = min($qty, $accountService->quantity);
+                                }
+
+                                // Global Max Cap of 6
+                                $qty = min($qty, 6);
+
+                                // IMPORTANT: Force integer cast and set
+                                $set('quantity', (int) $qty);
+                            } else {
+                                $set('quantity', 1);
+                            }
+                        }
                     }),
 
+                /*
+            |--------------------------------------------------------------------------
+            | UNIT TYPE DISPLAY
+            |--------------------------------------------------------------------------
+            */
                 Forms\Components\Placeholder::make('unit_type_display')
                     ->label('Unit Type')
-                    ->content(fn(callable $get) => Service::find($get('service_id'))?->unitType?->name ?? '—'),
+                    ->content(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))?->unitType?->name ?? '—'
+                    ),
 
+                /*
+            |--------------------------------------------------------------------------
+            | UNIT SELECT
+            |--------------------------------------------------------------------------
+            */
                 Forms\Components\Select::make('unit_id')
                     ->label(fn(callable $get) => match (Service::find($get('service_id'))?->unitType?->name) {
                         'Tooth' => 'Tooth Number',
@@ -244,17 +285,59 @@ class SearchMember extends Page
                             ?->unitType?->units?->isNotEmpty()
                     ),
 
+                /*
+            |--------------------------------------------------------------------------
+            | QUANTITY
+            |--------------------------------------------------------------------------
+            */
                 Forms\Components\TextInput::make('quantity')
                     ->label('Quantity')
                     ->numeric()
                     ->minValue(1)
-                    ->maxValue(6)
-                    ->helperText('Enter a number between 1 and 6')
-                    ->rules(['nullable', 'integer', 'between:1,6'])
+                    ->maxValue(function (callable $get) {
+                        // Dynamic Max Value Logic
+                        $accountId = $this->members->first()->account_id ?? null;
+                        $serviceId = $get('service_id');
+
+                        if (!$accountId || !$serviceId) return 6;
+
+                        $accountService = AccountService::where('account_id', $accountId)
+                            ->where('service_id', $serviceId)
+                            ->first();
+
+                        if ($accountService && !$accountService->is_unlimited) {
+                            // Max is the lesser of Balance or 6
+                            return min($accountService->quantity, 6);
+                        }
+
+                        return 6;
+                    })
+                    ->helperText(function (callable $get) {
+                        // Helper text to show remaining balance
+                        $accountId = $this->members->first()->account_id ?? null;
+                        $serviceId = $get('service_id');
+
+                        if (!$accountId || !$serviceId) return 'Enter a number between 1 and 6';
+
+                        $accountService = AccountService::where('account_id', $accountId)
+                            ->where('service_id', $serviceId)
+                            ->first();
+
+                        if ($accountService && !$accountService->is_unlimited) {
+                            return "Max allowed: " . min($accountService->quantity, 6) . " (Balance: {$accountService->quantity})";
+                        }
+
+                        return 'Enter a number between 1 and 6';
+                    })
+                    ->rules(['nullable', 'integer'])
                     ->nullable()
-                    ->reactive(),
+                    ->live(), // Make live so helper text updates instantly
 
-
+                /*
+            |--------------------------------------------------------------------------
+            | SURFACE SELECTION
+            |--------------------------------------------------------------------------
+            */
                 Forms\Components\Select::make('procedure_surface')
                     ->label('Surface')
                     ->options(Surface::all()->pluck('name', 'id') ?? collect())
@@ -263,13 +346,19 @@ class SearchMember extends Page
                     ->required()
                     ->visible(function (callable $get) {
                         $service = Service::find($get('service_id'));
-                        $unitType = $service?->unitType?->name;
-
-                        return $unitType === 'Surface' && ($get('quantity') > 0);
+                        return $service?->unitType?->name === 'Surface' && $get('quantity') > 0;
                     })
-                    ->helperText(fn(callable $get) => 'You can select up to ' . ($get('quantity') ?? 0) . ' surface(s)')
+                    ->helperText(
+                        fn(callable $get) =>
+                        'You can select up to ' . ($get('quantity') ?? 0) . ' surface(s)'
+                    )
                     ->maxItems(fn(callable $get) => $get('quantity') ?? 0),
 
+                /*
+            |--------------------------------------------------------------------------
+            | AVAILMENT DATE
+            |--------------------------------------------------------------------------
+            */
                 Forms\Components\DatePicker::make('availment_date')
                     ->label('Availment Date')
                     ->minDate(today())
@@ -278,6 +367,7 @@ class SearchMember extends Page
             ])
             ->statePath('procedureFormData');
     }
+
 
     public static function shouldRegisterNavigation(): bool
     {

@@ -115,10 +115,10 @@ class SearchClinics extends Page
             $query->where('region_id', $this->region);
         }
         if ($this->province) {
-            $query->where('province', $this->province);
+            $query->where('province_id', $this->province);
         }
         if ($this->city) {
-            $query->where('city', $this->city);
+            $query->where('municipality_id', $this->city);
         }
         if ($this->dentist_last_name) {
             $query->whereHas(

@@ -89,7 +89,7 @@ class SearchMember extends Page
             ->whereHas(
                 'account',
                 fn($q) =>
-                $q->where('account_status', 1) // ⭐ ONLY ACTIVE
+                $q->where('account_status', 'active')
             )
             ->when($this->card_number, fn($q) => $q->where('card_number', 'like', "%{$this->card_number}%"))
             ->when($this->first_name, fn($q) => $q->where('first_name', 'like', "%{$this->first_name}%"))

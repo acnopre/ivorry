@@ -68,4 +68,30 @@ class Account extends Model
             ->logOnlyDirty() // log only changed values
             ->useLogName('Account');
     }
+
+    protected static function booted()
+    {
+        static::retrieved(function ($account) {
+            $account->autoExpire();
+        });
+
+        static::saving(function ($account) {
+            $account->autoExpire();
+        });
+    }
+
+    public function autoExpire()
+    {
+        if ($this->expiration_date && now()->greaterThan($this->expiration_date)) {
+
+            if ($this->account_status !== 'expired') {
+                $this->account_status = 'expired';
+
+                // Prevent recursion (only save if not already saving)
+                if ($this->isDirty('account_status')) {
+                    $this->saveQuietly();
+                }
+            }
+        }
+    }
 }

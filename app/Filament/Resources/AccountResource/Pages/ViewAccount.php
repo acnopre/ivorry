@@ -34,11 +34,11 @@ class ViewAccount extends ViewRecord
                 ->label('Approve Account')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
-                ->visible(fn(Account $record) => $record->account_status === 0 && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT))
+                ->visible(fn(Account $record) => $record->account_status === 'inactive' && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT))
                 ->requiresConfirmation()
                 ->action(function (Account $record) {
                     $record->update([
-                        'account_status' => 1,
+                        'account_status' => 'active',
                         'endorsement_status' => 'APPROVED'
                     ]);
                     Notification::make()
@@ -53,7 +53,7 @@ class ViewAccount extends ViewRecord
                 ->icon('heroicon-o-x-circle')
                 ->visible(
                     fn(Account $record) =>
-                    $record->account_status === 0 &&
+                    $record->account_status === 'inactive' &&
                         auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
                 )
                 ->disabled(fn(Account $record) => $record->endorsement_status === 'REJECTED')
@@ -94,18 +94,16 @@ class ViewAccount extends ViewRecord
                         ->firstOrFail();
 
                     $renewalServices = AccountRenewalService::where('renewal_id', $renewal->id)->get();
-
                     $accountService = AccountService::where('account_id', $renewal->account_id);
-                    // foreach ($accountService->get() as $key => $service) {
-                    //     dd($service);
-                    //     AccountServiceHistory::create([
-                    //         'account_id'     => $record->id,
-                    //         'service_id'     => $service->id,
-                    //         'quantity'       => $service->pivot->quantity,
-                    //         'remarks'        => 'Renewed to default quantity',
-                    //         'action'         => 'renewal',
-                    //     ]);
-                    // }
+                    foreach ($accountService->get() as $key => $service) {
+                        AccountServiceHistory::create([
+                            'account_id'     => $record->id,
+                            'service_id'     => $service->id,
+                            'quantity'       => $service->quantity ?? null,
+                            'remarks'        => 'Renewed to default quantity',
+                            'action'         => 'renewal',
+                        ]);
+                    }
 
                     if ($accountService) {
                         $accountService->delete(); //doesn't remove the record; Soft delete

@@ -23,13 +23,25 @@
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Expiration Date</p>
                 <p class="text-gray-900 dark:text-white">{{ $account->expiration_date?->format('M d, Y') ?? 'N/A' }}</p>
             </div>
+            @php
+            $status = $account->account_status;
+
+            $color = match ($status) {
+            'active' => 'success',
+            'inactive' => 'warning',
+            'expired' => 'danger',
+            default => 'gray',
+            };
+
+            $label = ucfirst($status);
+            @endphp
             <div class="space-y-1">
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Status</p>
-                <x-filament::badge color="{{ $account->account_status == '1' ? 'success' : 'danger' }}" size="md" class="inline-flex">
-                    {{ $account->account_status == '1' ? 'Active' : 'Inactive' }}
+                <x-filament::badge color="{{ $color }}" size="md" class="inline-flex">
+                    {{ $label }}
                 </x-filament::badge>
             </div>
-        </div>
+
     </x-filament::section>
 
     <x-filament::section class="mt-6">

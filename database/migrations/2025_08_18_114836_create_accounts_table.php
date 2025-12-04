@@ -31,7 +31,8 @@ return new class extends Migration
             $table->enum('endorsement_status', ['PENDING', 'APPROVED', 'REJECTED'])->default('PENDING');
 
             // account activation
-            $table->boolean('account_status')->default(0); // 0 = inactive, 1 = active
+            $table->enum('account_status', ['inactive', 'active', 'expired'])
+                ->default('inactive');
             $table->longText('remarks')->nullable();
             $table->timestamps();
         });

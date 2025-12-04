@@ -47,12 +47,12 @@ class AccountStatsWidget extends BaseWidget
                 ->color('warning')
                 ->description('Accounts awaiting amendment approval'),
 
-            Stat::make('Active Accounts', $baseQuery->clone()->where('account_status', 1)->count())
+            Stat::make('Active Accounts', $baseQuery->clone()->where('account_status', 'active')->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->description('Accounts currently active'),
 
-            Stat::make('Inactive Accounts', $baseQuery->clone()->where('account_status', 0)->count())
+            Stat::make('Inactive Accounts', $baseQuery->clone()->where('account_status', 'inactive')->count())
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->description('Accounts currently inactive'),

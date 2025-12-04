@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('account_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
-            $table->integer('quantity')->nullable();
+            $table->string('quantity')->nullable();
             $table->longText('remarks')->nullable();
             $table->string('action')->default('renewal'); // e.g. renewal, adjustment, etc.
             $table->date('effective_date')->nullable();

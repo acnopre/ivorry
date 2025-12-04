@@ -95,7 +95,7 @@ class AccountResource extends Resource
                                 ->disabled(fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')),
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')
-                                ->visible($record?->account_status == 1)
+                                ->visible($record?->account_status == 'active')
                                 ->options(function ($record) {
 
                                     if (blank($record)) {
@@ -329,11 +329,12 @@ class AccountResource extends Resource
 
                 TextColumn::make('account_status')
                     ->label('Account Status')
-                    ->formatStateUsing(fn($state) => $state === 1 ? 'Active' : 'Inactive')
                     ->badge()
+                    ->formatStateUsing(fn($state) => ucfirst($state))
                     ->colors([
-                        'success' => fn($state) => $state === 1,
-                        'danger' => fn($state) => $state === 0,
+                        'warning' => 'inactive',
+                        'success'   => 'active',
+                        'danger'    => 'expired',
                     ]),
 
                 TextColumn::make('effective_date')->label('Effective')->date(),
@@ -401,7 +402,7 @@ class AccountResource extends Resource
                             )
                             ->requiresConfirmation()
                             ->action(function (Model $record) {
-                                $record->update(['account_status' => 1]);
+                                $record->update(['account_status' => 'active']);
                                 Notification::make()
                                     ->success()
                                     ->title('Account Approved')

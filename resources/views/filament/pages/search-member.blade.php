@@ -71,13 +71,23 @@
                             <div class="font-semibold text-gray-500 dark:text-gray-400">Status</div>
 
                             @php
-                            $isActive = $member->account->account_status == 1;
+                            $status = $member->account->account_status;
+
+                            $color = match ($status) {
+                            'active' => 'success',
+                            'inactive' => 'warning',
+                            'expired' => 'danger',
+                            default => 'gray',
+                            };
+
+                            $label = ucfirst($status); // Active, Inactive, Expired
                             @endphp
 
-                            <x-filament::badge :color="$isActive ? 'success' : 'danger'" class="mt-1 inline-flex text-xs px-2 py-0.5 rounded-full font-medium">
-                                {{ $isActive ? 'Active' : 'Inactive' }}
+                            <x-filament::badge :color="$color" class="mt-1 inline-flex text-xs px-2 py-0.5 rounded-full font-medium">
+                                {{ $label }}
                             </x-filament::badge>
                         </div>
+
                     </div>
 
                     {{-- 🧾 Services (From account_service pivot) --}}

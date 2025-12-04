@@ -76,8 +76,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 'pending' => 'Pending',
                                 'completed' => 'Completed',
                                 'valid' => 'Valid',
-                                'invalid' => 'Invalid',
-                                'reject' => 'Reject',
+                                'invalid' => 'Rejected',
                                 'returned' => 'Returned',
                             ])
                             ->label('Claim Status')
@@ -176,14 +175,17 @@ class SearchClaims extends Page implements HasForms, HasTable
                         'completed' => 'info',
                         'valid' => 'success',
                         'invalid' => 'danger',
-                        'reject' => 'rose',
+                        'returned' => 'warning',
                         default => 'secondary',
                     }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->modalHeading('Claim Details')
-                    ->modalContent(function (Procedure $record) {
+                    ->modalContent(function (?Procedure $record) {
+                        if (! $record) {
+                            return [];
+                        }
                         $account = $record->member->account;
                         $services = $account->services ?? collect();
                         $member = $record->member;
@@ -197,8 +199,11 @@ class SearchClaims extends Page implements HasForms, HasTable
                             'member' => $member,
                         ]);
                     })
-                    ->extraModalFooterActions(function (Procedure $record) {
-                        // Only show actions when status is 'completed'
+                    ->extraModalFooterActions(function (?Procedure $record) {
+                        if (! $record) {
+                            return [];
+                        }
+
                         if ($record->status !== Procedure::STATUS_COMPLETED) {
                             return [];
                         }
@@ -221,7 +226,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                         ->send();
 
                                     $this->dispatch('closeModal');
-                                    $this->dispatch('refreshTable');
+                                    // $this->dispatch('refreshTable');
                                 }),
 
                             // 🔴 REJECTED
@@ -240,7 +245,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ->modalDescription('Are you sure you want to reject this claim?')
                                 ->action(function (Procedure $record, array $data) {
                                     $record->update([
-                                        'account_status' => Procedure::STATUS_REJECT,
+                                        'status' => Procedure::STATUS_REJECT,
                                         'remarks' => $data['remarks'],
                                     ]);
 
@@ -250,7 +255,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                         ->send();
 
                                     $this->dispatch('closeModal');
-                                    $this->dispatch('refreshTable');
+                                    // $this->dispatch('refreshTable');
                                 }),
 
                             // 🟡 RETURN
@@ -261,25 +266,25 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ->form([
                                     Forms\Components\Textarea::make('remarks')
                                         ->label('Remarks')
-                                        ->placeholder('Enter reason for returning this claim...')
+                                        ->placeholder('Enter reason for return...')
                                         ->required(),
                                 ])
-                                ->modalHeading('Return Claim')
-                                ->modalDescription('Please provide remarks for returning this claim.')
+                                ->requiresConfirmation()
+                                ->modalHeading('Confirm Return Claims')
+                                ->modalDescription('Are you sure you want to return this claim?')
                                 ->action(function (Procedure $record, array $data) {
                                     $record->update([
-                                        'account_status' => Procedure::STATUS_RETURN,
+                                        'status' => Procedure::STATUS_RETURN,
                                         'remarks' => $data['remarks'],
                                     ]);
 
                                     Notification::make()
-                                        ->title('Claim Returned')
-                                        ->body('This claim has been marked as returned with your remarks.')
-                                        ->warning()
+                                        ->title('Claim Return')
+                                        ->danger()
                                         ->send();
 
                                     $this->dispatch('closeModal');
-                                    $this->dispatch('refreshTable');
+                                    // $this->dispatch('refreshTable');
                                 }),
                         ];
                     })

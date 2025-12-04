@@ -28,8 +28,8 @@ class Procedure extends Model
     public const STATUS_PENDING = 'pending';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_VALID = 'valid';
-    public const STATUS_REJECT = 'rejected';
-    public const STATUS_RETURN = 'rejected';
+    public const STATUS_REJECT = 'invalid';
+    public const STATUS_RETURN = 'returned';
 
 
     /**

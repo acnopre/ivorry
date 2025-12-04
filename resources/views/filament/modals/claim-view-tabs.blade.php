@@ -17,7 +17,6 @@
                         {{ ucfirst($record->status) }}
                     </x-filament::badge>
                 </li>
-
                 <li><span class="font-medium">Availment Date:</span> {{ \Carbon\Carbon::parse($record->availment_date)->toFormattedDateString() }}</li>
                 <li><span class="font-medium">Service:</span> {{ $record->service?->name ?? 'N/A' }}</li>
                 <li><span class="font-medium">Approval Code:</span> {{ $record->approval_code ?? 'N/A' }}</li>

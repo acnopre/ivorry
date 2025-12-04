@@ -57,11 +57,11 @@ class ProcedureResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn($state) => ucfirst($state))
                     ->colors([
-                        'gray'    => 'pending',
-                        'success' => 'valid',
+                        'warning' => 'pending',
+                        'success' => 'completed',
                         'danger'  => 'rejected',
-                        'warning' => 'returned',
-                        'info' => 'completed',
+                        'warning'    => 'returned',
+                        'success' => 'valid',
                     ]),
 
                 Tables\Columns\TextColumn::make('approval_code')
@@ -90,6 +90,25 @@ class ProcedureResource extends Resource
                     ->visible(fn($record) => $record->status === 'pending')
                     ->url(fn(Procedure $record): string => ProcedureResource::getUrl('sign', ['record' => $record]))
                     ->openUrlInNewTab(),
+
+                // 🔄 RESUBMIT PROCEDURE
+                Tables\Actions\Action::make('resubmit')
+                    ->label('Resubmit')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Resubmission')
+                    ->modalSubheading('Are you sure you want to resubmit this procedure?')
+                    ->visible(fn($record) => $record->status === 'returned')
+                    ->action(function (Procedure $record) {
+                        $record->status = 'completed';
+                        $record->save();
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Procedure resubmitted successfully.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([]);
     }

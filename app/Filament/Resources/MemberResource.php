@@ -112,14 +112,17 @@ class MemberResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('account.status')
+                TextColumn::make('account.account_status')
                     ->label('Status')
                     ->badge()
                     ->colors([
-                        'success' => fn($state) => $state === 1,
-                        'warning' => fn($state) => $state === 0,
+                        'success' => fn($state) => $state === 'active',
+                        'warning' => fn($state) => $state === 'inactive',
+                        'danger'  => fn($state) => $state === 'expired',
+                        'gray'    => fn($state) => !in_array($state, ['active', 'inactive', 'expired']),
                     ])
-                    ->formatStateUsing(fn($state) => $state === 1 ? 'Active' : 'Inactive'),
+                    ->formatStateUsing(fn($state) => ucfirst($state)),
+
 
                 TextColumn::make('created_at')
                     ->date()

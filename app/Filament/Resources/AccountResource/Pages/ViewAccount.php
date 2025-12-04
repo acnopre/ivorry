@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Mail;
 class ViewAccount extends ViewRecord
 {
     protected static string $resource = AccountResource::class;
+
     protected function getHeaderActions(): array
     {
         return [
@@ -43,10 +44,16 @@ class ViewAccount extends ViewRecord
                         'account_status' => 'active',
                         'endorsement_status' => 'APPROVED'
                     ]);
+
                     Notification::make()
                         ->title('The account has been approved successfully.')
                         ->success()
                         ->send();
+
+                    Mail::raw("The account {$record->company_name} has been approved.", function ($message) {
+                        $message->to('acnopre@upsitf.org')
+                            ->subject('Account Approved');
+                    });
                 }),
 
             Actions\Action::make('rejectAccount')
@@ -78,74 +85,76 @@ class ViewAccount extends ViewRecord
                         ->title('Account rejected.')
                         ->danger()
                         ->send();
+
+                    Mail::raw("The account {$record->company_name} has been rejected. Reason: {$data['remarks']}", function ($message) {
+                        $message->to('acnopre@upsitf.org')
+                            ->subject('Account Rejected');
+                    });
                 }),
 
             Actions\Action::make('renewAccount')
                 ->label('Renew Account')
                 ->color('info')
                 ->icon('heroicon-o-arrow-path')
-                ->visible(fn(Account $record) => $record->endorsement_type === 'RENEWAL'
-                    && $record->endorsement_status === 'PENDING'
-                    && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
-                    && $record->renewals->first() != null)
+                ->visible(
+                    fn(Account $record) =>
+                    $record->endorsement_type === 'RENEWAL'
+                        && $record->endorsement_status === 'PENDING'
+                        && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
+                        && $record->renewals->first() != null
+                )
                 ->requiresConfirmation()
                 ->action(function (array $data, Account $record) {
-                    // Get the renewal for this account (assuming only one pending renewal)
                     $renewal = AccountRenewal::where('account_id', $record->id)
                         ->where('status', 'PENDING')
                         ->firstOrFail();
 
                     $renewalServices = AccountRenewalService::where('renewal_id', $renewal->id)->get();
                     $accountService = AccountService::where('account_id', $renewal->account_id);
-                    foreach ($accountService->get() as $key => $service) {
+
+                    foreach ($accountService->get() as $service) {
                         AccountServiceHistory::create([
-                            'account_id'     => $record->id,
-                            'service_id'     => $service->id,
-                            'quantity'       => $service->quantity ?? null,
-                            'remarks'        => 'Renewed to default quantity',
-                            'action'         => 'renewal',
+                            'account_id' => $record->id,
+                            'service_id' => $service->id,
+                            'quantity' => $service->quantity ?? null,
+                            'remarks' => 'Renewed to default quantity',
+                            'action' => 'renewal',
                         ]);
                     }
 
                     if ($accountService) {
-                        $accountService->delete(); //doesn't remove the record; Soft delete
+                        $accountService->delete(); // soft delete
                     }
 
-                    // Process each service in the renewal
-                    foreach ($renewalServices as $key => $service) {
+                    foreach ($renewalServices as $service) {
                         AccountService::create([
-                            'account_id'  => $renewal->account_id,
-                            'renewal_id'  => $service['renewal_id'],
-                            'service_id'  => $service['service_id'],
-                            'quantity'    => $service['quantity'],
+                            'account_id' => $renewal->account_id,
+                            'renewal_id' => $service['renewal_id'],
+                            'service_id' => $service['service_id'],
+                            'quantity' => $service['quantity'],
                             'is_unlimited' => $service['is_unlimited'],
-                            'remarks'     => $service['remarks'],
+                            'remarks' => $service['remarks'],
                         ]);
                     }
 
-                    // Update the renewal status
                     $renewal->update([
-                        'status'      => 'APPROVED',
+                        'status' => 'APPROVED',
                         'approved_by' => auth()->id(),
                     ]);
-                    //Update account status
+
                     $record->endorsement_type = 'RENEWED';
                     $record->endorsement_status = 'APPROVED';
                     $record->save();
-
-                    // Send Email Notification
-                    // Mail::raw(
-                    //     "The account {$record->company_name} renewal has been approved.",
-                    //     function ($message) use ($record) {
-                    //         $message->to($record->email ?? 'fallback@example.com')
-                    //             ->subject('Account Renewal Approved');
-                    //     }
-                    // );
 
                     Notification::make()
                         ->title('Account renewal approved successfully.')
                         ->success()
                         ->send();
+
+                    Mail::raw("The account {$record->company_name} has been renewed and approved.", function ($message) {
+                        $message->to('acnopre@upsitf.org')
+                            ->subject('Account Renewal Approved');
+                    });
                 }),
 
             Actions\Action::make('approveAmendment')
@@ -157,44 +166,47 @@ class ViewAccount extends ViewRecord
                         && auth()->user()?->hasAnyRole([Role::UPPER_MANAGEMENT])
                 )
                 ->action(function (Account $record) {
-
                     $amendment = AccountAmendment::where('account_id', $record->id)
                         ->where('endorsement_status', 'PENDING')
                         ->latest()
                         ->first();
 
-                    // Update main account
                     $record->update([
-                        'company_name'     => $amendment->company_name,
-                        'policy_code'      => $amendment->policy_code,
-                        'hip'              => $amendment->hip,
-                        'card_used'        => $amendment->card_used,
-                        'effective_date'   => $amendment->effective_date,
-                        'expiration_date'  => $amendment->expiration_date,
+                        'company_name' => $amendment->company_name,
+                        'policy_code' => $amendment->policy_code,
+                        'hip' => $amendment->hip,
+                        'card_used' => $amendment->card_used,
+                        'effective_date' => $amendment->effective_date,
+                        'expiration_date' => $amendment->expiration_date,
                         'endorsement_type' => 'AMENDED',
                         'endorsement_status' => 'APPROVED',
                     ]);
 
-                    // Clear old services & apply amended services
                     $accountService = AccountService::where('account_id', $record->id);
-
                     if ($accountService) {
-                        $accountService->delete(); //doesn't remove the record; Soft delete
+                        $accountService->delete();
                     }
+
                     foreach ($amendment->services as $srv) {
                         AccountService::create([
-                            'account_id'  => $record->id,
-                            'service_id'  => $srv['service_id'],
-                            'quantity'    => $srv['quantity'],
+                            'account_id' => $record->id,
+                            'service_id' => $srv['service_id'],
+                            'quantity' => $srv['quantity'],
                             'is_unlimited' => $srv['is_unlimited'],
-                            'remarks'     => $srv['remarks'],
+                            'remarks' => $srv['remarks'],
                         ]);
                     }
 
                     $amendment->update(['endorsement_status' => 'APPROVED']);
+
+                    Mail::raw("The amendment for account {$record->company_name} has been approved.", function ($message) {
+                        $message->to('acnopre@upsitf.org')
+                            ->subject('Account Amendment Approved');
+                    });
                 }),
         ];
     }
+
 
     /**
      * Infolist layout
@@ -338,13 +350,13 @@ class ViewAccount extends ViewRecord
                                                     ->label('Company Name')
                                                     ->weight(FontWeight::Bold)
                                                     ->size(TextEntrySize::Large)
-                                                    ->default($amendmentAccount->company_name),
+                                                    ->default($amendmentAccount?->company_name),
 
                                                 TextEntry::make('policy_code_amendment')
                                                     ->label('Policy Code')
                                                     ->copyable()
                                                     ->copyMessage('Policy code copied!')
-                                                    ->default($amendmentAccount->policy_code),
+                                                    ->default($amendmentAccount?->policy_code),
 
                                                 TextEntry::make('endorsement_type_amendment')
                                                     ->label('Endorsement Type')
@@ -354,7 +366,7 @@ class ViewAccount extends ViewRecord
                                                         'warning' => fn($state): bool => $state === 'RENEWAL',
                                                         'info'    => fn($state): bool => $state === 'AMENDMENT',
                                                     ])
-                                                    ->default($amendmentAccount->endorsement_type),
+                                                    ->default($amendmentAccount?->endorsement_type),
 
                                             ]),
                                         Grid::make(3)
@@ -373,7 +385,7 @@ class ViewAccount extends ViewRecord
                                                         'success' => fn($state) => $state === 'APPROVED',
                                                         'danger' => fn($state) => $state === 'REJECTED',
                                                     ])
-                                                    ->default($amendmentAccount->endorsement_status),
+                                                    ->default($amendmentAccount?->endorsement_status),
 
 
                                                 TextEntry::make('account_status')
@@ -409,7 +421,7 @@ class ViewAccount extends ViewRecord
 
                                                 TextEntry::make('remarks')
                                                     ->label('Remarks')
-                                                    ->visible($amendmentAccount->remarks != null)
+                                                    ->visible($amendmentAccount?->remarks != null)
 
                                             ]),
                                     ])

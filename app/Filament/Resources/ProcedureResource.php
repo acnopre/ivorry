@@ -12,6 +12,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Mail;
 
 class ProcedureResource extends Resource
 {
@@ -108,6 +109,12 @@ class ProcedureResource extends Resource
                             ->title('Procedure resubmitted successfully.')
                             ->success()
                             ->send();
+
+                        // Send email notification
+                        Mail::raw("The procedure '{$record->title}' has been resubmitted.", function ($message) use ($record) {
+                            $message->to('acnopre@upsitf.org')
+                                ->subject('Procedure Resubmitted');
+                        });
                     }),
             ])
             ->bulkActions([]);

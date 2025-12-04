@@ -15,6 +15,8 @@ use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Auth;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 
 class SearchMember extends Page
@@ -103,7 +105,10 @@ class SearchMember extends Page
     public function openProcedureModal(int $memberId): void
     {
         $this->selectedMemberId = $memberId;
-        $this->procedureFormData = [];
+        $this->procedureFormData = [
+            'availment_date_display' => now()->format('F j, Y'),
+            'availment_date' => now()->format('Y-m-d'),
+        ];
         $this->showProcedureModal = true;
     }
     public function saveProcedure(): void
@@ -359,11 +364,15 @@ class SearchMember extends Page
             | AVAILMENT DATE
             |--------------------------------------------------------------------------
             */
-                Forms\Components\DatePicker::make('availment_date')
+                TextInput::make('availment_date_display')
                     ->label('Availment Date')
-                    ->minDate(today())
-                    ->maxDate(today())
-                    ->nullable(),
+                    ->default(fn() => now()->format('F j, Y')) // display today's date
+                    ->disabled()
+                    ->dehydrated(false), // don't submit
+
+                // Actual value submitted
+                Hidden::make('availment_date')
+                    ->default(fn() => now()->format('Y-m-d')),   // today's date will be submitted
             ])
             ->statePath('procedureFormData');
     }

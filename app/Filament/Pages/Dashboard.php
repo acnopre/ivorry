@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Widgets\AccountStatsWidget;
+use App\Filament\Widgets\AccreditationStatsWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 use App\Filament\Widgets\ActivityTimeline;
 use App\Filament\Widgets\DashboardStats;
@@ -38,6 +39,10 @@ class Dashboard extends BaseDashboard
         } else if (auth()->user()?->hasAnyRole(Role::CLAIMS_PROCESSOR)) {
             return [
                 RecentClaimsTable::class,
+            ];
+        } else if (auth()->user()?->hasAnyRole(Role::ACCREDITATION)) {
+            return [
+                AccreditationStatsWidget::class,
             ];
         } else {
             return [];

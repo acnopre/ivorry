@@ -8,8 +8,10 @@
                 <li class="flex items-center gap-2">
                     <span class="font-medium">Status:</span>
                     <x-filament::badge class="!inline !w-auto px-2 py-0.5 text-xs" :color="match ($record->status) {
-                            'approved' => 'success',
-                            'denied' => 'danger',
+                            'approved' => 'info',
+                            'pending' => 'warning',
+                            'valid' => 'success',
+                            'invalid' => 'danger',
                             default => 'warning'
                         }">
                         {{ ucfirst($record->status) }}

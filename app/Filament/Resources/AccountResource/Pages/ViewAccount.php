@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AccountResource\Pages;
 
 use App\Filament\Resources\AccountResource;
 use App\Models\Account;
+use App\Models\AccountAmendment;
 use App\Models\AccountRenewal;
 use App\Models\AccountRenewalService;
 use App\Models\AccountService;
@@ -22,6 +23,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\TextEntry\TextEntrySize;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 
 class ViewAccount extends ViewRecord
@@ -146,7 +148,51 @@ class ViewAccount extends ViewRecord
                         ->send();
                 }),
 
+            Actions\Action::make('approveAmendment')
+                ->label('Approve Amendment')
+                ->requiresConfirmation()
+                ->visible(
+                    fn(Model $record) =>
+                    $record->endorsement_type === 'AMENDMENT'
+                        && auth()->user()?->hasAnyRole([Role::UPPER_MANAGEMENT])
+                )
+                ->action(function (Account $record) {
 
+                    $amendment = AccountAmendment::where('account_id', $record->id)
+                        ->where('endorsement_status', 'PENDING')
+                        ->latest()
+                        ->first();
+
+                    // Update main account
+                    $record->update([
+                        'company_name'     => $amendment->company_name,
+                        'policy_code'      => $amendment->policy_code,
+                        'hip'              => $amendment->hip,
+                        'card_used'        => $amendment->card_used,
+                        'effective_date'   => $amendment->effective_date,
+                        'expiration_date'  => $amendment->expiration_date,
+                        'endorsement_type' => 'AMENDED',
+                        'endorsement_status' => 'APPROVED',
+                    ]);
+
+                    // Clear old services & apply amended services
+                    $accountService = AccountService::where('account_id', $record->id);
+
+                    if ($accountService) {
+                        $accountService->delete(); //doesn't remove the record; Soft delete
+                    }
+                    foreach ($amendment->services as $srv) {
+                        AccountService::create([
+                            'account_id'  => $record->id,
+                            'service_id'  => $srv['service_id'],
+                            'quantity'    => $srv['quantity'],
+                            'is_unlimited' => $srv['is_unlimited'],
+                            'remarks'     => $srv['remarks'],
+                        ]);
+                    }
+
+                    $amendment->update(['endorsement_status' => 'APPROVED']);
+                }),
         ];
     }
 
@@ -156,6 +202,7 @@ class ViewAccount extends ViewRecord
     public function infolist(Infolists\Infolist $infolist): Infolists\Infolist
     {
         $renewalRecord = $this->record->renewals->first();
+        $amendmentAccount = AccountAmendment::where('account_id', $this->record->id)->first();
         return $infolist
             ->schema([
                 Tabs::make('AccountTabs')
@@ -222,8 +269,17 @@ class ViewAccount extends ViewRecord
                                                 TextEntry::make('account_status')
                                                     ->label('Account Status')
                                                     ->badge()
-                                                    ->formatStateUsing(fn($state) => $state == 1 ? 'Active' : 'Inactive')
-                                                    ->color(fn($state): string => $state == 1 ? 'success' : 'danger'),
+                                                    ->formatStateUsing(fn($state) => match ($state) {
+                                                        'active' => 'Active',
+                                                        'inactive' => 'Inactive',
+                                                        'expired' => 'Expired',
+                                                        default => $state,
+                                                    })
+                                                    ->colors([
+                                                        'warning' => fn($state) => $state === 'inactive',
+                                                        'success' => fn($state) => $state === 'active',
+                                                        'danger' => fn($state) => $state === 'expired',
+                                                    ]),
 
 
                                                 TextEntry::make('renewal_effective_date')
@@ -252,6 +308,117 @@ class ViewAccount extends ViewRecord
                                     ->label(false)
                                     ->view('filament.infolists.renewals.renewal-services', [
                                         'renewal_services' => $renewalRecord
+                                    ]),
+                            ]),
+
+
+                        // Account Amendment Tab
+                        Tabs\Tab::make('Account Amendment')
+                            ->badge(function ($record) {
+                                if ($record->endorsement_status === 'PENDING') {
+                                    return 'Pending Update';
+                                }
+                            })
+                            ->badgeColor('warning')
+                            ->visible(
+                                fn(Account $record) => $record->endorsement_type === 'AMENDMENT'
+                                    &&  $record->endorsement_status === 'PENDING'
+                                    && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCOUNT_MANAGER)
+                                    && $amendmentAccount != null
+                            )
+                            ->schema([
+                                Section::make('Account Renewal')
+                                    ->headerActions(
+                                        []
+                                    )
+                                    ->schema([
+                                        Grid::make(3)
+                                            ->schema([
+                                                TextEntry::make('company_name_amendment')
+                                                    ->label('Company Name')
+                                                    ->weight(FontWeight::Bold)
+                                                    ->size(TextEntrySize::Large)
+                                                    ->default($amendmentAccount->company_name),
+
+                                                TextEntry::make('policy_code_amendment')
+                                                    ->label('Policy Code')
+                                                    ->copyable()
+                                                    ->copyMessage('Policy code copied!')
+                                                    ->default($amendmentAccount->policy_code),
+
+                                                TextEntry::make('endorsement_type_amendment')
+                                                    ->label('Endorsement Type')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'success' => fn($state): bool => $state === 'NEW',
+                                                        'warning' => fn($state): bool => $state === 'RENEWAL',
+                                                        'info'    => fn($state): bool => $state === 'AMENDMENT',
+                                                    ])
+                                                    ->default($amendmentAccount->endorsement_type),
+
+                                            ]),
+                                        Grid::make(3)
+                                            ->schema([
+                                                TextEntry::make('endorsement_status_amendment')
+                                                    ->label('Endorsement Status')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => match ($state) {
+                                                        'PENDING' => 'Pending',
+                                                        'APPROVED' => 'Approved',
+                                                        'REJECTED' => 'Rejected',
+                                                        default => $state,
+                                                    })
+                                                    ->colors([
+                                                        'warning' => fn($state) => $state === 'PENDING',
+                                                        'success' => fn($state) => $state === 'APPROVED',
+                                                        'danger' => fn($state) => $state === 'REJECTED',
+                                                    ])
+                                                    ->default($amendmentAccount->endorsement_status),
+
+
+                                                TextEntry::make('account_status')
+                                                    ->label('Account Status')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => match ($state) {
+                                                        'active' => 'Active',
+                                                        'inactive' => 'Inactive',
+                                                        'expired' => 'Expired',
+                                                        default => $state,
+                                                    })
+                                                    ->colors([
+                                                        'warning' => fn($state) => $state === 'inactive',
+                                                        'success' => fn($state) => $state === 'active',
+                                                        'danger' => fn($state) => $state === 'expired',
+                                                    ]),
+
+
+                                                TextEntry::make('reffectve_date_amendment')
+                                                    ->label('Effective Date')
+                                                    ->date('M d, Y')
+                                                    ->icon('heroicon-m-calendar-days')
+                                                    ->default($amendmentAccount?->effective_date),
+
+
+
+                                                TextEntry::make('expiration_date_amendment')
+                                                    ->label('Expiration Date')
+                                                    ->date('M d, Y')
+                                                    ->icon('heroicon-m-calendar-days')
+                                                    ->default($amendmentAccount?->expiration_date),
+
+
+                                                TextEntry::make('remarks')
+                                                    ->label('Remarks')
+                                                    ->visible($amendmentAccount->remarks != null)
+
+                                            ]),
+                                    ])
+                                    ->columns(false),
+                                ViewEntry::make('full_width_tabs_wrapper')
+                                    ->columnSpanFull()
+                                    ->label(false)
+                                    ->view('filament.infolists.amendment.amendment-services', [
+                                        'amendment_services' => $amendmentAccount
                                     ]),
                             ]),
                         // Active Account Tab
@@ -300,8 +467,17 @@ class ViewAccount extends ViewRecord
                                                 TextEntry::make('account_status')
                                                     ->label('Account Status')
                                                     ->badge()
-                                                    ->formatStateUsing(fn($state) => $state == 1 ? 'Active' : 'Inactive')
-                                                    ->color(fn($state): string => $state == 1 ? 'success' : 'danger'),
+                                                    ->formatStateUsing(fn($state) => match ($state) {
+                                                        'active' => 'Active',
+                                                        'inactive' => 'Inactive',
+                                                        'expired' => 'Expired',
+                                                        default => $state,
+                                                    })
+                                                    ->colors([
+                                                        'warning' => fn($state) => $state === 'inactive',
+                                                        'success' => fn($state) => $state === 'active',
+                                                        'danger' => fn($state) => $state === 'expired',
+                                                    ]),
 
                                                 TextEntry::make('effective_date')
                                                     ->label('Effective Date')

@@ -6,6 +6,7 @@ use App\Filament\Resources\AccountResource\Pages;
 use App\Filament\Widgets\AccountStatsWidget;
 use App\Imports\AccountImport;
 use App\Models\Account;
+use App\Models\AccountAmendment;
 use App\Models\AccountService;
 use App\Models\AccountServiceHistory;
 use App\Models\EndorsementType;
@@ -54,7 +55,7 @@ class AccountResource extends Resource
                 // Determine if record is new or editing
                 $isCreate = blank($record);
                 // Allow fields only on create OR if record’s amendment_status == 1
-                $isAmendment = $isCreate || ($record?->amendment_status == 1);
+                $isAmendment = fn(Forms\Get $get) =>  $isCreate ||  $get('endorsement_type') === 'AMENDMENT';
 
                 return [
                     Section::make('Account Information')
@@ -64,35 +65,36 @@ class AccountResource extends Resource
                                 ->label('Company Name')
                                 ->required()
                                 ->maxLength(255)
-                                ->disabled(! $isAmendment),
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
+
 
                             TextInput::make('policy_code')
                                 ->label('Policy Code')
                                 ->unique(ignoreRecord: true)
                                 ->required()
                                 ->maxLength(50)
-                                ->disabled(! $isAmendment),
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
                             TextInput::make('hip')
                                 ->label('HIP')
                                 ->maxLength(255)
-                                ->disabled(! $isAmendment),
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
                             TextInput::make('card_used')
                                 ->label('Card Used')
                                 ->maxLength(255)
-                                ->disabled(! $isAmendment),
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
                         ])->columns(2),
 
                     Section::make('Contract Information')
                         ->schema([
                             DatePicker::make('effective_date')
                                 ->label('Effective Date')
-                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')),
+                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')),
 
                             DatePicker::make('expiration_date')
                                 ->label('Expiration Date')
-                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')),
+                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')),
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')
                                 ->visible($record?->account_status == 'active')
@@ -111,10 +113,14 @@ class AccountResource extends Resource
                                 ->reactive()
                                 ->afterStateUpdated(function ($state, Forms\Set $set, $record) {
 
-                                    if ($state !== 'RENEWAL') {
-                                        return;
+                                    if ($state === 'RENEWAL') {
+                                        // Existing renewal logic
                                     }
 
+                                    if ($state === 'AMENDMENT') {
+                                        // Enable all fields by setting necessary defaults if needed
+                                        // For example, you could preload existing service values
+                                    }
                                     // Load existing BASIC services from the account
                                     $basicServices = AccountService::where('account_id', $record->id)
                                         ->whereHas('service', fn($q) => $q->where('type', 'basic'))
@@ -158,27 +164,33 @@ class AccountResource extends Resource
                                         ->numeric()
                                         ->columnSpan(2)
                                         ->reactive()
-                                        ->disabled(
-                                            fn(Forms\Get $get) =>
-                                            $get("services.basic.{$service->id}.is_unlimited") === true ||
-                                                ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
-                                        )
+                                        ->disabled(function (Forms\Get $get) use ($isAmendment, $service) {
+                                            // Always disable if unlimited
+                                            if ($get("services.basic.{$service->id}.is_unlimited") === true) {
+                                                return true;
+                                            }
+
+                                            // Otherwise, only enable for amendment or renewal
+                                            return !($isAmendment($get) || $get('endorsement_type') === 'RENEWAL');
+                                        })
                                         ->dehydrated(true)
                                         ->formatStateUsing(function ($state, $record) use ($service) {
                                             if (! $record) {
                                                 return $state;
                                             }
+
                                             return $record->services()
                                                 ->where('service_id', $service->id)
                                                 ->value('quantity');
                                         }),
+
 
                                     TextInput::make("services.basic.{$service->id}.remarks")
                                         ->label('Remarks')
                                         ->columnSpan(4)
                                         ->maxLength(255)
                                         ->disabled(
-                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                            fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
                                         )
                                         ->formatStateUsing(function ($state, $record) use ($service) {
                                             if (! $record) {
@@ -196,7 +208,7 @@ class AccountResource extends Resource
                                         ->reactive()
                                         ->default(true)   // ✅ New accounts default to TRUE
                                         ->disabled(
-                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                            fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
                                         )
                                         ->afterStateUpdated(function ($state, Forms\Set $set) use ($service) {
                                             if ($state === true) {
@@ -238,7 +250,7 @@ class AccountResource extends Resource
                                         ->disabled(
                                             fn(Forms\Get $get) =>
                                             $get("services.enhancement.{$enhancement->id}.is_unlimited") === true ||
-                                                ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                                ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
                                         )
                                         ->dehydrated(true)
                                         ->formatStateUsing(function ($state, $record) use ($enhancement) {
@@ -255,7 +267,7 @@ class AccountResource extends Resource
                                         ->columnSpan(4)
                                         ->maxLength(255)
                                         ->disabled(
-                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                            fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
                                         )
                                         ->formatStateUsing(function ($state, $record) use ($enhancement) {
                                             if (! $record) {
@@ -272,7 +284,7 @@ class AccountResource extends Resource
                                         ->inline(false)
                                         ->reactive()
                                         ->disabled(
-                                            fn(Forms\Get $get) => ! ($isAmendment || $get('endorsement_type') === 'RENEWAL')
+                                            fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
                                         )
                                         ->afterStateUpdated(function ($state, Forms\Set $set) use ($enhancement) {
                                             if ($state === true) {
@@ -450,6 +462,50 @@ class AccountResource extends Resource
                                     ->body('Renewal request has been saved and awaits approval.')
                                     ->send();
                             }),
+
+                        TableAction::make('approveAmendment')
+                            ->label('Approve Amendment')
+
+                            ->visible(
+                                fn(Model $record) =>
+                                $record->endorsement_type === 'AMENDMENT'
+                                    && auth()->user()?->hasAnyRole([Role::UPPER_MANAGEMENT])
+                            )
+                            ->action(function (Account $record) {
+
+                                $amendment = AccountAmendment::where('account_id', $record->id)
+                                    ->where('endorsement_status', 'PENDING')
+                                    ->latest()
+                                    ->first();
+
+                                // Update main account
+                                $record->update([
+                                    'company_name'     => $amendment->company_name,
+                                    'policy_code'      => $amendment->policy_code,
+                                    'hip'              => $amendment->hip,
+                                    'card_used'        => $amendment->card_used,
+                                    'effective_date'   => $amendment->effective_date,
+                                    'expiration_date'  => $amendment->expiration_date,
+                                    'endorsement_type' => 'AMENDED',
+                                    'endorsement_status' => 'APPROVED',
+                                ]);
+
+                                // Clear old services & apply amended services
+                                $record->services()->delete();
+
+                                foreach ($amendment->services as $srv) {
+                                    $record->services()->create([
+                                        'service_id'        => $srv->service_id,
+                                        'quantity'          => $srv->quantity,
+                                        'default_quantity'  => $srv->default_quantity,
+                                        'is_unlimited'      => $srv->is_unlimited,
+                                        'remarks'           => $srv->remarks,
+                                    ]);
+                                }
+
+                                $amendment->update(['endorsement_status' => 'APPROVED']);
+                            }),
+
 
 
                     ]),

@@ -1,14 +1,15 @@
 @php
 // Define your tabs
 $tabs = [
-'renewal_services' => 'Renewal Services',
+'amendment_services' => 'Amendment Services',
 ];
-$visibleServicesCount = $renewal_services->services
+
+
+$visibleServicesCount = $amendment_services->services
 ->filter(fn($service) => ($service->quantity != 0 || $service->is_unlimited))
 ->count();
 @endphp
-@endphp
-<div x-data="{ activeTab: 'renewal_services' }" class="w-full">
+<div x-data="{ activeTab: 'amendment_services' }" class="w-full">
     {{-- Full-Width Tab Headers (Uses standard Filament styles for look and feel) --}}
     <div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <nav class="-mb-px flex space-x-8 px-4 sm:px-6 lg:px-8" aria-label="Tabs">
@@ -19,7 +20,7 @@ $visibleServicesCount = $renewal_services->services
                     }" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition duration-150 ease-in-out">
                 {{ $label }}
                 {{-- Tab Badges --}}
-                @if ($key === 'services')
+                @if ($key === 'amendment_services')
                 <span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">{{ $visibleServicesCount }}</span>
                 @endif
             </a>
@@ -30,8 +31,8 @@ $visibleServicesCount = $renewal_services->services
     {{-- Tab Content Containers --}}
     <div class="py-6">
         {{-- Services Tab Content --}}
-        <div x-show="activeTab === 'renewal_services'" x-cloak>
-            @include('filament.infolists.components.renewal-services-table', ['renewal_services' => $renewal_services])
+        <div x-show="activeTab === 'amendment_services'" x-cloak>
+            @include('filament.infolists.components.amendment-services-table', ['amendment_services' => $amendment_services])
         </div>
     </div>
 </div>

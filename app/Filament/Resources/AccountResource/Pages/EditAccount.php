@@ -3,13 +3,13 @@
 namespace App\Filament\Resources\AccountResource\Pages;
 
 use App\Filament\Resources\AccountResource;
+use App\Models\AccountAmendment;
 use App\Models\AccountRenewal;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-// use Illuminate\Support\Facades\Log; // uncomment for debug
 
 class EditAccount extends EditRecord
 {
@@ -45,67 +45,122 @@ class EditAccount extends EditRecord
 
     /**
      * Extra defensive override: if Filament calls this to update the record, do nothing.
-     * This ensures the Account will not be changed by any internal update path.
      */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        // Do not update the account
-        return $record;
+        return $record; // Prevent changes to Account
     }
 
     /**
-     * After validation: create the renewal and renewal services.
-     * IMPORTANT: we do NOT update the Account model here.
+     * Handles RENEWAL + AMENDMENT logic.
      */
     protected function afterValidate(): void
     {
         $record = $this->record;
-        $data = $this->form->getState();
-        // Only proceed if endorsement_type is RENEWAL on the Account record
-        if ($data['endorsement_type']  !== 'RENEWAL') {
+        $data   = $this->form->getState();
+
+        // -------------------------------------------------------------------
+        // 1. HANDLE RENEWAL WORKFLOW
+        // -------------------------------------------------------------------
+        if ($data['endorsement_type'] === 'RENEWAL') {
+
+            DB::transaction(function () use ($record, $data) {
+                // Optional debug:
+                // Log::info('Creating AccountRenewal for account_id: ' . $record->id, ['data' => $data]);
+
+                // Create renewal header (do NOT touch $record)
+                $renewal = AccountRenewal::create([
+                    'account_id'      => $record->id,
+                    'effective_date'  => $data['effective_date'] ?? null,
+                    'expiration_date' => $data['expiration_date'] ?? null,
+                    'requested_by'    => auth()->id(),
+                    'status'          => 'PENDING',
+                ]);
+
+                $record->endorsement_type = 'RENEWAL';
+                $record->endorsement_status = 'PENDING';
+                $record->save();
+
+
+                // Save Renewal Services (basic + enhancement)
+                $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
+                foreach (['basic', 'enhancement'] as $type) {
+                    if (empty($servicesByType[$type])) {
+                        continue;
+                    }
+
+                    foreach ($servicesByType[$type] as $serviceId => $serviceData) {
+                        $renewal->services()->create([
+                            'service_id'   => $serviceId,
+                            'quantity'     => $serviceData['quantity'] ?? null,
+                            'is_unlimited' => $serviceData['is_unlimited'] ?? false,
+                            'remarks'      => $serviceData['remarks'] ?? null,
+                        ]);
+                    }
+                }
+            });
+
+            Notification::make()
+                ->success()
+                ->title('Renewal Submitted')
+                ->body('The renewal has been submitted and is awaiting approval.')
+                ->send();
+
             return;
         }
 
-        DB::transaction(function () use ($record, $data) {
-            // Optional debug:
-            // Log::info('Creating AccountRenewal for account_id: ' . $record->id, ['data' => $data]);
 
-            // Create renewal header (do NOT touch $record)
-            $renewal = AccountRenewal::create([
-                'account_id'      => $record->id,
-                'effective_date'  => $data['effective_date'] ?? null,
-                'expiration_date' => $data['expiration_date'] ?? null,
-                'requested_by'    => auth()->id(),
-                'status'          => 'PENDING',
-            ]);
+        // -------------------------------------------------------------------
+        // 2. HANDLE AMENDMENT WORKFLOW (NEW)
+        // -------------------------------------------------------------------
+        if ($data['endorsement_type'] === 'AMENDMENT') {
 
-            $record->endorsement_type = 'RENEWAL';
-            $record->endorsement_status = 'PENDING';
-            $record->save();
+            DB::transaction(function () use ($record, $data) {
 
+                // Create Amendment Header (Snapshot)
+                $amendment = AccountAmendment::create([
+                    'account_id'        => $record->id,
+                    'company_name'      => $data['company_name'],
+                    'policy_code'       => $data['policy_code'],
+                    'hip'               => $data['hip'] ?? null,
+                    'card_used'         => $data['card_used'] ?? null,
+                    'effective_date'    => $data['effective_date'] ?? null,
+                    'expiration_date'   => $data['expiration_date'] ?? null,
+                    'endorsement_type'  => 'AMENDMENT',
+                    'endorsement_status' => 'PENDING',
+                    'remarks'           => $data['remarks'] ?? null,
+                    'requested_by'      => auth()->id(),
+                ]);
 
-            // Save Renewal Services (basic + enhancement)
-            $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
-            foreach (['basic', 'enhancement'] as $type) {
-                if (empty($servicesByType[$type])) {
-                    continue;
+                // Update main account status only
+                $record->update([
+                    'endorsement_type'   => 'AMENDMENT',
+                    'endorsement_status' => 'PENDING',
+                ]);
+
+                // Save Amendment Services
+                $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
+                foreach (['basic', 'enhancement'] as $type) {
+                    if (empty($servicesByType[$type])) continue;
+
+                    foreach ($servicesByType[$type] as $serviceId => $serviceData) {
+                        $amendment->services()->create([
+                            'service_id'       => $serviceId,
+                            'quantity'         => $serviceData['quantity'] ?? null,
+                            'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
+                            'remarks'          => $serviceData['remarks'] ?? null,
+                        ]);
+                    }
                 }
+            });
 
-                foreach ($servicesByType[$type] as $serviceId => $serviceData) {
-                    $renewal->services()->create([
-                        'service_id'   => $serviceId,
-                        'quantity'     => $serviceData['quantity'] ?? null,
-                        'is_unlimited' => $serviceData['is_unlimited'] ?? false,
-                        'remarks'      => $serviceData['remarks'] ?? null,
-                    ]);
-                }
-            }
-        });
+            Notification::make()
+                ->success()
+                ->title('Amendment Submitted')
+                ->body('The amendment has been submitted and is awaiting approval.')
+                ->send();
 
-        Notification::make()
-            ->success()
-            ->title('Renewal Submitted')
-            ->body('The renewal has been saved and is awaiting approval.')
-            ->send();
+            return;
+        }
     }
 }

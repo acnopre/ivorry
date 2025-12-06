@@ -329,38 +329,39 @@ class SearchClaims extends Page implements HasForms, HasTable
     {
         $data = $this->data;
 
-        if (empty($data['availment_from']) || empty($data['availment_to'])) {
-            Notification::make()
-                ->title('Date Range Required')
-                ->body('Please select both start and end dates before generating an SOA.')
-                ->warning()
-                ->send();
-            return;
-        }
+        // if (empty($data['availment_from']) || empty($data['availment_to'])) {
+        //     Notification::make()
+        //         ->title('Date Range Required')
+        //         ->body('Please select both start and end dates before generating an SOA.')
+        //         ->warning()
+        //         ->send();
+        //     return;
+        // }
 
-        $claims = Procedure::query()
-            ->with(['member', 'clinic', 'service'])
-            ->whereBetween('availment_date', [
-                $data['availment_from'],
-                $data['availment_to'],
-            ])
-            ->where('status', 'approved')
-            ->get();
+        // $claims = Procedure::query()
+        //     ->with(['member', 'clinic', 'service'])
+        //     ->whereBetween('availment_date', [
+        //         $data['availment_from'],
+        //         $data['availment_to'],
+        //     ])
+        //     ->where('status', 'approved')
+        //     ->get();
 
-        if ($claims->isEmpty()) {
-            Notification::make()
-                ->title('No Valid Claims')
-                ->body('No approved claims found within the selected period.')
-                ->warning()
-                ->send();
-            return;
-        }
+        // if ($claims->isEmpty()) {
+        //     Notification::make()
+        //         ->title('No Valid Claims')
+        //         ->body('No approved claims found within the selected period.')
+        //         ->warning()
+        //         ->send();
+        //     return;
+        // }
 
         $pdf = Pdf::loadView('pdf.soa', [
-            'claims' => $claims,
+            'claims' => [],
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
-        ]);
+        ])
+            ->setPaper('a4', 'landscape');
 
         $filename = 'Statement_of_Account_' . now()->format('Y-m-d_His') . '.pdf';
 

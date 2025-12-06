@@ -465,7 +465,6 @@ class AccountResource extends Resource
 
                         TableAction::make('approveAmendment')
                             ->label('Approve Amendment')
-
                             ->visible(
                                 fn(Model $record) =>
                                 $record->endorsement_type === 'AMENDMENT'

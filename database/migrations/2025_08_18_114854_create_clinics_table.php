@@ -62,15 +62,6 @@ return new class extends Migration
                 '15%',
             ])->nullable();
 
-            // TAX TYPE (original)
-            $table->enum('tax_type', [
-                '2%',
-                '5%',
-                '10%',
-                '15%'
-            ])->nullable();
-
-
 
             $table->string('sec_registration_no')->nullable();
 

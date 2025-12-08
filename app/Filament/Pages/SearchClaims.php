@@ -366,29 +366,38 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         // Fetch all matching procedures
         $claims = Procedure::query()
-            ->when(
-                $data['member_name'] ?? null,
-                fn($q, $name) =>
-                $q->whereHas(
-                    'member',
-                    fn($r) =>
-                    $r->where(function ($sub) use ($name) {
-                        $sub->where('first_name', 'like', "%{$name}%")
-                            ->orWhere('last_name', 'like', "%{$name}%")
-                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
-                    })
-                )
-            )
+            ->with(['member', 'clinic', 'service', 'clinic.services']) // eager load relations
+            ->when($data['member_name'] ?? null, function ($q, $name) {
+                $q->whereHas('member', function ($sub) use ($name) {
+                    $sub->where('first_name', 'like', "%{$name}%")
+                        ->orWhere('last_name', 'like', "%{$name}%")
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                });
+            })
             ->when($data['approval_code'] ?? null, fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%"))
             ->when($data['clinic_id'] ?? null, fn($q, $clinic_id) => $q->where('clinic_id', $clinic_id))
             ->when($data['status'] ?? null, fn($q, $status) => $q->where('status', $status))
-            ->when(
-                isset($data['availment_from'], $data['availment_to']),
-                fn($q) =>
-                $q->whereBetween('availment_date', [$data['availment_from'], $data['availment_to']])
-            )
-            ->where('status', 'valid')
-            ->get();
+            ->when(isset($data['availment_from'], $data['availment_to']), function ($q) use ($data) {
+                $q->whereBetween('availment_date', [$data['availment_from'], $data['availment_to']]);
+            })
+            ->where('status', Procedure::STATUS_VALID)
+            ->get()
+            ->map(function ($procedure) {
+                // Add the clinic_service fee for this procedure's service
+                $clinicService = $procedure->clinic
+                    ? $procedure->clinic->services()->where('service_id', $procedure->service_id)->first()
+                    : null;
+
+
+                $procedure->clinic_service_fee = $clinicService->pivot->fee ?? 0;
+                $procedure->ewt = $procedure->clinic->withholding_tax ?? 0;
+                $procedure->net = (float) $procedure->clinic_service_fee - (float) $procedure->ewt;
+
+
+                return $procedure;
+            });
+
+
 
         if ($claims->isEmpty()) {
             \Filament\Notifications\Notification::make()
@@ -400,7 +409,7 @@ class SearchClaims extends Page implements HasForms, HasTable
         }
 
         // Update procedures status → processed
-        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+        // Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
 
         // Calculate total amount for the SOA (optional)
         $totalAmount = $claims->sum('quantity'); // or use actual billing column

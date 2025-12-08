@@ -101,7 +101,7 @@
         </tr>
         <tr>
             <td><strong>Tax Type:</strong></td>
-            <td>{{ $clinicDetails->tax_type }}</td>
+            <td>{{ $clinicDetails->vat_type }}</td>
         </tr>
         <tr>
             <td><strong>EWT:</strong></td>
@@ -128,6 +128,7 @@
         <tbody>
             <!-- Example Row -->
             @foreach ($claims as $claim)
+
             <tr>
                 <td>{{ \Carbon\Carbon::parse($claim->availment_date)->format('F d, Y') }}</td>
                 <td>{{ $claim->member->first_name }} {{ $claim->member->last_name }}</td>
@@ -136,9 +137,15 @@
                 <td>{{ $claim->member->card_number }}</td>
                 <td>{{ $claim->service->name }}</td>
                 <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
+                <td>
+                    {{ $claim->clinic_service_fee }}
+                </td>
+                <td>
+                    {{ $claim->ewt }}
+                </td>
+                <td>
+                    {{ $claim->net }}
+                </td>
             </tr>
             @endforeach
             <!-- Add more rows dynamically as needed -->

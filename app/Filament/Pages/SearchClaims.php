@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Clinic;
+use App\Models\GeneratedSoa;
 use App\Models\Procedure;
 use App\Models\Role;
 use Filament\Forms;
@@ -15,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 
 class SearchClaims extends Page implements HasForms, HasTable
@@ -70,7 +73,21 @@ class SearchClaims extends Page implements HasForms, HasTable
                     Forms\Components\Grid::make(4)->schema([
                         Forms\Components\TextInput::make('approval_code')->label('Approval Code')->placeholder('Enter Approval Code'),
                         Forms\Components\TextInput::make('member_name')->placeholder('Enter Member Name'),
-                        Forms\Components\TextInput::make('clinic_name')->label('Clinic Name')->placeholder('Enter Clinic Name'),
+                        Forms\Components\Select::make('clinic_id')
+                            ->label('Clinic')
+                            ->searchable()
+                            ->getSearchResultsUsing(function (string $search) {
+                                return \App\Models\Clinic::where('clinic_name', 'like', "%{$search}%")
+                                    ->limit(20)
+                                    ->pluck('clinic_name', 'id');
+                            })
+                            ->getOptionLabelUsing(
+                                fn($value): ?string =>
+                                \App\Models\Clinic::find($value)?->clinic_name
+                            )
+                            ->required()
+                            ->placeholder('Search Clinic...'),
+
                         Forms\Components\Select::make('status')
                             ->options([
                                 'pending' => 'Pending',
@@ -78,11 +95,16 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 'valid' => 'Valid',
                                 'invalid' => 'Rejected',
                                 'returned' => 'Returned',
+                                'processed' => 'Processed',
                             ])
                             ->label('Claim Status')
                             ->placeholder('Any Status'),
-                        Forms\Components\DatePicker::make('availment_from')->label('Availment From'),
-                        Forms\Components\DatePicker::make('availment_to')->label('Availment To'),
+                        Forms\Components\DatePicker::make('availment_from')
+                            ->required()
+                            ->label('Availment From'),
+                        Forms\Components\DatePicker::make('availment_to')
+                            ->required()
+                            ->label('Availment To'),
                     ]),
                 ])
                 ->footerActions([
@@ -132,9 +154,9 @@ class SearchClaims extends Page implements HasForms, HasTable
                         $q->where('approval_code', 'like', "%{$code}%")
                     )
                     ->when(
-                        $searchData['clinic_name'] ?? null,
-                        fn(Builder $q, $clinicName) =>
-                        $q->whereHas('clinic', fn($r) => $r->where('clinic_name', 'like', "%{$clinicName}%"))
+                        $searchData['clinic_id'] ?? null,
+                        fn(Builder $q, $clinic_id) =>
+                        $q->whereHas('clinic', fn($r) => $r->where('id', '=', $clinic_id))
                     )
                     ->when(
                         $searchData['status'] ?? null,
@@ -176,6 +198,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                         'valid' => 'success',
                         'invalid' => 'danger',
                         'returned' => 'warning',
+                        'processed' => 'primary',
                         default => 'secondary',
                     }),
             ])
@@ -293,13 +316,15 @@ class SearchClaims extends Page implements HasForms, HasTable
             ])
             ->headerActions([
                 Tables\Actions\Action::make('generate_soa')
-                    ->label('Download SOA')
+                    ->label('Generate SOA')
+                    ->color('success')
                     ->icon('heroicon-o-document-arrow-down')
-                    ->color('info')
                     ->requiresConfirmation()
                     ->modalHeading('Generate Statement of Account')
-                    ->modalDescription('Download SOA as PDF based on the selected filters and date range.')
-                    ->action('generateSOA'),
+                    ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED before the SOA is created.')
+                    ->modalSubmitActionLabel('Yes, Generate SOA')
+                    ->action(fn() => $this->confirmSOA()),
+
             ])
             ->defaultSort('availment_date', 'desc');
     }
@@ -325,50 +350,111 @@ class SearchClaims extends Page implements HasForms, HasTable
         $this->dispatch('$refresh');
     }
 
-    public function generateSOA()
+
+    public function confirmSOA()
     {
         $data = $this->data;
 
-        // if (empty($data['availment_from']) || empty($data['availment_to'])) {
-        //     Notification::make()
-        //         ->title('Date Range Required')
-        //         ->body('Please select both start and end dates before generating an SOA.')
-        //         ->warning()
-        //         ->send();
-        //     return;
-        // }
+        if (! $this->hasSearched) {
+            \Filament\Notifications\Notification::make()
+                ->title('Search Required')
+                ->body('Please apply search filters before generating the SOA.')
+                ->warning()
+                ->send();
+            return;
+        }
 
-        // $claims = Procedure::query()
-        //     ->with(['member', 'clinic', 'service'])
-        //     ->whereBetween('availment_date', [
-        //         $data['availment_from'],
-        //         $data['availment_to'],
-        //     ])
-        //     ->where('status', 'approved')
-        //     ->get();
+        // Fetch all matching procedures
+        $claims = Procedure::query()
+            ->when(
+                $data['member_name'] ?? null,
+                fn($q, $name) =>
+                $q->whereHas(
+                    'member',
+                    fn($r) =>
+                    $r->where(function ($sub) use ($name) {
+                        $sub->where('first_name', 'like', "%{$name}%")
+                            ->orWhere('last_name', 'like', "%{$name}%")
+                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                    })
+                )
+            )
+            ->when($data['approval_code'] ?? null, fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%"))
+            ->when($data['clinic_id'] ?? null, fn($q, $clinic_id) => $q->where('clinic_id', $clinic_id))
+            ->when($data['status'] ?? null, fn($q, $status) => $q->where('status', $status))
+            ->when(
+                isset($data['availment_from'], $data['availment_to']),
+                fn($q) =>
+                $q->whereBetween('availment_date', [$data['availment_from'], $data['availment_to']])
+            )
+            ->where('status', 'valid')
+            ->get();
 
-        // if ($claims->isEmpty()) {
-        //     Notification::make()
-        //         ->title('No Valid Claims')
-        //         ->body('No approved claims found within the selected period.')
-        //         ->warning()
-        //         ->send();
-        //     return;
-        // }
+        if ($claims->isEmpty()) {
+            \Filament\Notifications\Notification::make()
+                ->title('No Data')
+                ->body('No valid procedures were found.')
+                ->warning()
+                ->send();
+            return;
+        }
 
+        // Update procedures status → processed
+        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+
+        // Calculate total amount for the SOA (optional)
+        $totalAmount = $claims->sum('quantity'); // or use actual billing column
+
+        // Create a GeneratedSoa record
+        $soa = GeneratedSoa::create([
+            'clinic_id' => $data['clinic_id'],
+            'from_date' => $data['availment_from'],
+            'to_date' => $data['availment_to'],
+            'total_amount' => $totalAmount,
+            'generated_by' => auth()->id(),
+            'status' => 'generated',
+        ]);
+
+        // Attach procedures to pivot table
+        foreach ($claims as $procedure) {
+            $soa->procedures()->attach($procedure->id, [
+                'amount' => $procedure->quantity, // optional per procedure amount
+            ]);
+        }
+
+        // Generate and download PDF
+        return $this->generateSOAAfterProcessing($claims, $soa);
+    }
+
+
+
+    public function generateSOAAfterProcessing($claims, GeneratedSoa $soa)
+    {
+        $data = $this->data;
+        $clinicDetails = Clinic::find($data['clinic_id']);
         $pdf = Pdf::loadView('pdf.soa', [
-            'claims' => [],
+            'claims' => $claims,
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
-        ])
-            ->setPaper('a4', 'landscape');
+            'clinicDetails' => $clinicDetails,
+            'soa' => $soa,
+        ])->setPaper('a4', 'landscape');
 
-        $filename = 'Statement_of_Account_' . now()->format('Y-m-d_His') . '.pdf';
+        $fileName = 'SOA_' . now()->format('Y-m-d_His') . '.pdf';
+        $path = 'soas/' . $fileName;
 
-        return response()->streamDownload(function () use ($pdf) {
-            echo $pdf->output();
-        }, $filename);
+        // Store the file on the "public" disk
+        Storage::disk('public')->put($path, $pdf->output());
+
+        // Update the database with relative path
+        $soa->update(['file_path' => $path]);
+
+        // Return download
+        return Storage::disk('public')->download($path, $fileName);
     }
+
+
+
 
     public static function shouldRegisterNavigation(): bool
     {

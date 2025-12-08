@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->date('availment_date')->nullable();
             $table->string('quantity')->nullable();
             $table->string('approval_code')->nullable();
-            $table->enum('status', ['pending', 'completed', 'valid', 'invalid', 'returned']);
+            $table->enum('status', ['pending', 'completed', 'valid', 'invalid', 'returned', 'processed']);
             $table->longText('remarks')->nullable();
             $table->string('qr_path')->nullable();
             $table->timestamps();

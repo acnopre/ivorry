@@ -32,7 +32,7 @@ class ProcedureSeeder extends Seeder
                     'service_id' => $serviceIds[array_rand($serviceIds)],
                     'availment_date' => Carbon::now()->subDays(rand(1, 15)),
                     'approval_code' => Str::upper(Str::random(9)),
-                    'status' => Procedure::STATUS_PENDING,
+                    'status' => Procedure::STATUS_VALID,
                 ]);
             }
         }

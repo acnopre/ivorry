@@ -99,4 +99,12 @@ class Procedure extends Model
 
         return '—';
     }
+
+
+    public function generatedSoas()
+    {
+        return $this->belongsToMany(GeneratedSoa::class, 'generated_soa_procedure')
+            ->withPivot('amount')
+            ->withTimestamps();
+    }
 }

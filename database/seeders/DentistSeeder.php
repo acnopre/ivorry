@@ -91,6 +91,18 @@ class DentistSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
+            $allServiceIds = DB::table('services')->pluck('id')->toArray();
+
+            foreach ($allServiceIds as $serviceId) {
+                DB::table('clinic_service')->insert([
+                    'clinic_id' => $clinic->id,
+                    'service_id' => $serviceId,
+                    'fee' => $faker->randomFloat(2, 300, 3000), // assign random fee for each service
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             // Insert the owner dentist record
             DB::table('dentists')->insert([
                 'clinic_id'           => $clinic->id,

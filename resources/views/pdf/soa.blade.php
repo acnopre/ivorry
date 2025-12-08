@@ -77,19 +77,19 @@
     <table class="header-table">
         <tr>
             <td><strong>Clinic:</strong></td>
-            <td colspan="3">NORTHERN DENTAL SPECIALISTS</td>
+            <td colspan="3">{{ $clinicDetails->clinic_name }}</td>
         </tr>
         <tr>
             <td><strong>Dentist:</strong></td>
-            <td colspan="3">DR. JUAN RAFAEL ANTONIO GERARDO SILVA</td>
+            <td colspan="3">{{ $clinicDetails->dentists->first()->name }}</td>
         </tr>
         <tr>
             <td><strong>BIR Registered Name:</strong></td>
-            <td colspan="3">JUAN RAFAEL ANTONIO GERARDO SILVA</td>
+            <td colspan="3">{{ $clinicDetails->registered_name }}</td>
         </tr>
         <tr>
             <td><strong>TIN:</strong></td>
-            <td>243-366-967</td>
+            <td>{{ $clinicDetails->tax_identification_no }}</td>
         </tr>
         <tr>
             <td><strong>Branch Code:</strong></td>
@@ -97,15 +97,15 @@
         </tr>
         <tr>
             <td><strong>Address:</strong></td>
-            <td colspan="3">277 Mc Arthur Hwy., Balibago, Angeles City, Pampanga</td>
+            <td colspan="3">{{ $clinicDetails->complete_address }}</td>
         </tr>
         <tr>
             <td><strong>Tax Type:</strong></td>
-            <td>Non-VAT</td>
+            <td>{{ $clinicDetails->tax_type }}</td>
         </tr>
         <tr>
             <td><strong>EWT:</strong></td>
-            <td>5%</td>
+            <td>{{ $clinicDetails->withholding_tax }}</td>
         </tr>
     </table>
 
@@ -127,18 +127,20 @@
         </thead>
         <tbody>
             <!-- Example Row -->
+            @foreach ($claims as $claim)
             <tr>
-                <td>2/25/2025</td>
-                <td>AGUAS, JEFFERSON</td>
-                <td>Hann Philippines Inc. (PC16361) -> *PhilHealth Care Inc.</td>
-                <td>*PhilHealth Care Inc.</td>
-                <td>A102J20</td>
-                <td>Permanent Filling- Light Cure (Tooth)</td>
-                <td>24</td>
-                <td>500</td>
-                <td>25</td>
-                <td>475</td>
+                <td>{{ \Carbon\Carbon::parse($claim->availment_date)->format('F d, Y') }}</td>
+                <td>{{ $claim->member->first_name }} {{ $claim->member->last_name }}</td>
+                <td>{{ $claim->member->account->company_name }}</td>
+                <td>{{ $claim->member->account->company_name }}</td>
+                <td>{{ $claim->member->card_number }}</td>
+                <td>{{ $claim->service->name }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
             </tr>
+            @endforeach
             <!-- Add more rows dynamically as needed -->
             <tr class="totals">
                 <td colspan="7" class="text-right">Totals:</td>

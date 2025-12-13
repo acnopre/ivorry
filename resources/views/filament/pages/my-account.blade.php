@@ -96,12 +96,50 @@
         @endif
     </x-filament::section>
 
-    {{-- Fallback Case (Kept the same for focus) --}}
+    {{-- Procedures Section --}}
+    <x-filament::section class="mt-6">
+        <x-slot name="heading">
+            Procedures
+        </x-slot>
+
+        @if ($account->procedures->isNotEmpty())
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm table-auto">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-gray-800">
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Member Name</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Procedure Name</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Clinic</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Availment Date</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Quantity</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Dentist</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    @foreach ($account->procedures as $procedure)
+                    <tr class="bg-white dark:bg-gray-900">
+                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                            {{ $procedure->member->first_name }} {{ $procedure->member->last_name }}
+                        </td>
+                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ $procedure->service->name ?? '—' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->clinic->clinic_name ?? '—' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->availment_date?->format('M d, Y') ?? '—' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->quantity ?? '—' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->dentist_name ?? '—' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ ucfirst($procedure->status) }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @else
+        <p class="text-gray-500 text-sm">No procedures are currently recorded for this account.</p>
+        @endif
+    </x-filament::section>
     @else
     <x-filament::section>
-        <p class="text-gray-600 text-sm">
-            No account is assigned to your user profile.
-        </p>
+        <p class="text-gray-600 text-sm">No account is assigned to your user profile.</p>
     </x-filament::section>
     @endif
 </x-filament::page>

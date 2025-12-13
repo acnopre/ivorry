@@ -145,17 +145,17 @@
                     —
                     @endforelse
                 </td>
-                <td>{{ number_format($claim->clinic_service_fee, 2) }}</td>
+                <td>₱{{ number_format($claim->clinic_service_fee, 2) }}</td>
                 <td>{{ number_format($claim->ewt, 2) }}</td>
-                <td>{{ number_format($claim->net, 2) }}</td>
+                <td>₱{{ number_format($claim->net, 2) }}</td>
             </tr>
             @endforeach
             <!-- Add more rows dynamically as needed -->
             <tr class="totals">
                 <td colspan="7" class="text-right"><strong>Totals:</strong></td>
-                <td><strong>{{ number_format($totalClinicFee, 2) }}</strong></td>
+                <td><strong>₱{{ number_format($totalClinicFee, 2) }}</strong></td>
                 <td><strong>{{ number_format($totalEwt, 2) }}</strong></td>
-                <td><strong>{{ number_format($totalNet, 2) }}</strong></td>
+                <td><strong>₱{{ number_format($totalNet, 2) }}</strong></td>
             </tr>
         </tbody>
     </table>
@@ -174,16 +174,16 @@
             @foreach($accounts as $accountId => $data)
             <tr>
                 <td>{{ $data['account_name'] }}</td>
-                <td>{{ $data['total_rate'] }}</td>
+                <td>₱{{ $data['total_rate'] }}</td>
                 <td>{{ $data['total_ewt'] }}</td>
-                <td>{{ $data['total_net'] }}</td>
+                <td>₱{{ $data['total_net'] }}</td>
             </tr>
             @endforeach
             <tr class="totals">
                 <td><strong>Grand Total</strong></td>
-                <td><strong>{{ $grandTotalRate }}</strong></td>
+                <td><strong>₱{{ $grandTotalRate }}</strong></td>
                 <td><strong>{{ $grandTotalEwt }}</strong></td>
-                <td><strong>{{ $grandTotalNet }}</strong></td>
+                <td><strong>₱{{ $grandTotalNet }}</strong></td>
             </tr>
         </tbody>
     </table>

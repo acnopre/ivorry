@@ -94,4 +94,17 @@ class Account extends Model
             }
         }
     }
+
+    public function procedures()
+    {
+        // Get procedures through members
+        return $this->hasManyThrough(
+            Procedure::class,
+            Member::class,
+            'account_id', // Foreign key on members table
+            'member_id',  // Foreign key on procedures table
+            'id',         // Local key on account table
+            'id'          // Local key on member table
+        )->with(['service', 'clinic', 'units']); // eager-load related data
+    }
 }

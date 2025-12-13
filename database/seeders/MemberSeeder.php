@@ -18,12 +18,12 @@ class MemberSeeder extends Seeder
 
         // Create the "Member" role and assign permissions
         $role = Role::firstOrCreate(['name' => 'Member']);
-        $permissions = ['member.view', 'chatbot.use'];
+        $permissions = ['member.view'];
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());
 
         // Get all account IDs
         $accountIds = DB::table('accounts')->pluck('id');
-
+        $c = 1;
         foreach ($accountIds as $accountId) {
             for ($i = 1; $i <= 3; $i++) {
                 // Generate a random full name
@@ -35,9 +35,10 @@ class MemberSeeder extends Seeder
                 // Create a new user for this member
                 $user = User::create([
                     'name'     => $firstName . ' ' . $lastName,
-                    'email'    => $faker->unique()->safeEmail,
+                    'email' => "member{$c}@example.com",
                     'password' => Hash::make('password'),
                 ]);
+                $c++;
 
                 $user->assignRole($role);
 

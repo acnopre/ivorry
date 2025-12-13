@@ -22,6 +22,9 @@ class Member extends Model
         'user_id',
     ];
 
+    protected $with = ['account'];
+
+
     public function account()
     {
         return $this->belongsTo(Account::class);
@@ -51,6 +54,4 @@ class Member extends Model
     {
         return $this->hasMany(Procedure::class);
     }
-    
-
 }

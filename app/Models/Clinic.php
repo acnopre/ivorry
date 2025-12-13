@@ -56,6 +56,7 @@ class Clinic extends Model
     ];
 
     // protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];
+    protected $with = ['dentists'];
 
     public function dentists()
     {

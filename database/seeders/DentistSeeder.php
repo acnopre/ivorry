@@ -36,7 +36,7 @@ class DentistSeeder extends Seeder
 
             $ownerUser = User::create([
                 'name'     => $fullName,
-                'email'    => $faker->unique()->safeEmail,
+                'email'    => 'dentist' . $c . '@example.com',
                 'password' => Hash::make('password'),
             ]);
 
@@ -45,16 +45,34 @@ class DentistSeeder extends Seeder
             // Create the clinic (linked to the owner)
             $clinic = Clinic::create([
                 'user_id' => $ownerUser->id ?? 1,
+
+                // Clinic info
                 'clinic_name' => $clinicName,
                 'registered_name' => $registeredName,
+
+                // PTR
                 'ptr_no' => 'PTR-' . $faker->numerify('####'),
                 'ptr_date_issued' => $faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
+
+                // Accreditation & Tax
                 'other_hmo_accreditation' => implode(', ', $faker->randomElements(
                     ['Maxicare', 'Intellicare', 'MedCard', 'PhilCare'],
                     $faker->numberBetween(1, 3)
                 )),
                 'tax_identification_no' => $faker->numerify('###-###-###'),
-                'tax_type' => $faker->randomElement(['2%', '5%', '10%', '15%']),
+
+                'is_branch' => $faker->boolean(),
+                'complete_address' => $faker->address,
+
+                // Update Info per BIR Form 1903
+                'update_info_1903' => $faker->randomElement([
+                    'CHANGE IN BUSINESS NAME',
+                    'CHANGE IN ADDRESS',
+                    'CHANGE IN TAX TYPE',
+                    null
+                ]),
+
+                // Business type
                 'business_type' => $faker->randomElement([
                     'SOLE PROPRIETORSHIP',
                     'PARTNERSHIP',
@@ -62,34 +80,70 @@ class DentistSeeder extends Seeder
                     'CORPORATION',
                     'ONE PERSON CORPORATION',
                 ]),
+
+                // VAT TYPE
+                'vat_type' => $faker->randomElement([
+                    'VAT 12%',
+                    'VAT ZERO',
+                    'VAT EXEMPT',
+                    'NON-VAT',
+                ]),
+
+                // Withholding Tax
+                'withholding_tax' => $faker->randomElement([
+                    'ZERO',
+                    '2%',
+                    '5%',
+                    '10%',
+                    '15%',
+                ]),
+
+                // SEC registration
                 'sec_registration_no' => 'SEC-' . $faker->numerify('2024-###'),
 
-                // ✅ Proper address fields
+                // Address Fields
                 'street' => $faker->streetAddress,
-                // 'city' => $faker->city,
-                // 'province' => $faker->state,
-                // 'region' => 'Region ' . $faker->numberBetween(1, 13),
+                'region_id' => $faker->numberBetween(1, 17),
+                'province_id' => $faker->numberBetween(1, 100),
+                'municipality_id' => $faker->numberBetween(1, 500),
+                'barangay_id' => $faker->numberBetween(1, 2000),
 
+                // Contact Info
                 'clinic_landline' => $faker->numerify('02-8###-####'),
                 'clinic_mobile' => $faker->numerify('09#########'),
                 'viber_no' => $faker->numerify('09#########'),
                 'clinic_email' => $faker->unique()->companyEmail,
+
+                // Alternative address/contact
                 'alt_address' => $faker->secondaryAddress,
 
+                // Clinic Staff
                 'clinic_staff_name' => $faker->name,
                 'clinic_staff_mobile' => $faker->numerify('09#########'),
                 'clinic_staff_viber' => $faker->numerify('09#########'),
                 'clinic_staff_email' => $faker->unique()->safeEmail,
 
+                // Bank Info
                 'bank_account_name' => $clinicName,
                 'bank_account_number' => $faker->numerify('##########'),
                 'bank_name' => $faker->randomElement(['BPI', 'BDO', 'Metrobank', 'UnionBank']),
                 'bank_branch' => $faker->city,
                 'account_type' => $faker->randomElement(['SAVINGS', 'CURRENT']),
-                'accreditation_status' => $faker->randomElement(['ACTIVE', 'SILENT', 'INACTIVE', 'SPECIFIC ACCOUNT']),
+
+                // Status
+                'accreditation_status' => $faker->randomElement([
+                    'ACTIVE',
+                    'INACTIVE',
+                    'SILENT',
+                    'SPECIFIC ACCOUNT'
+                ]),
+
+                'remarks' => $faker->sentence(),
+
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
 
             $allServiceIds = DB::table('services')->pluck('id')->toArray();
 

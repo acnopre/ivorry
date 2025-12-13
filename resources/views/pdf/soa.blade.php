@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dental Billing Summary - Northern Dental Specialists</title>
+    <title>Statement of Account</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -81,7 +81,7 @@
         </tr>
         <tr>
             <td><strong>Dentist:</strong></td>
-            <td colspan="3">{{ $clinicDetails->dentists->first()->name }}</td>
+            <td colspan="3">{{ $dentist['first_name'] }} {{ $dentist['last_name'] }}</td>
         </tr>
         <tr>
             <td><strong>BIR Registered Name:</strong></td>
@@ -119,12 +119,13 @@
                 <th>Main Company</th>
                 <th>Card No.</th>
                 <th>Service Name</th>
-                <th>Tooth No.</th>
+                <th>Units</th>
                 <th>Rate</th>
                 <th>EWT</th>
                 <th>NET</th>
             </tr>
         </thead>
+
         <tbody>
             <!-- Example Row -->
             @foreach ($claims as $claim)
@@ -136,24 +137,25 @@
                 <td>{{ $claim->member->account->company_name }}</td>
                 <td>{{ $claim->member->card_number }}</td>
                 <td>{{ $claim->service->name }}</td>
-                <td></td>
                 <td>
-                    {{ $claim->clinic_service_fee }}
+                    @forelse ($claim->units as $unit)
+                    {{ $unit->unitType?->name ?? '—' }} : {{ $unit->name ?? '—' }}
+                    @if (! $loop->last), @endif
+                    @empty
+                    —
+                    @endforelse
                 </td>
-                <td>
-                    {{ $claim->ewt }}
-                </td>
-                <td>
-                    {{ $claim->net }}
-                </td>
+                <td>{{ number_format($claim->clinic_service_fee, 2) }}</td>
+                <td>{{ number_format($claim->ewt, 2) }}</td>
+                <td>{{ number_format($claim->net, 2) }}</td>
             </tr>
             @endforeach
             <!-- Add more rows dynamically as needed -->
             <tr class="totals">
-                <td colspan="7" class="text-right">Totals:</td>
-                <td>42,000.00</td>
-                <td>2,100.00</td>
-                <td>39,900.00</td>
+                <td colspan="7" class="text-right"><strong>Totals:</strong></td>
+                <td><strong>{{ number_format($totalClinicFee, 2) }}</strong></td>
+                <td><strong>{{ number_format($totalEwt, 2) }}</strong></td>
+                <td><strong>{{ number_format($totalNet, 2) }}</strong></td>
             </tr>
         </tbody>
     </table>
@@ -169,23 +171,19 @@
             </tr>
         </thead>
         <tbody>
+            @foreach($accounts as $accountId => $data)
             <tr>
-                <td>*Apex EB Consulting, Inc.</td>
-                <td>2,500.00</td>
-                <td>125.00</td>
-                <td>2,375.00</td>
+                <td>{{ $data['account_name'] }}</td>
+                <td>{{ $data['total_rate'] }}</td>
+                <td>{{ $data['total_ewt'] }}</td>
+                <td>{{ $data['total_net'] }}</td>
             </tr>
-            <tr>
-                <td>*COCOLIFE Healthcare</td>
-                <td>7,000.00</td>
-                <td>350.00</td>
-                <td>6,650.00</td>
-            </tr>
+            @endforeach
             <tr class="totals">
                 <td><strong>Grand Total</strong></td>
-                <td><strong>42,000.00</strong></td>
-                <td><strong>2,100.00</strong></td>
-                <td><strong>39,900.00</strong></td>
+                <td><strong>{{ $grandTotalRate }}</strong></td>
+                <td><strong>{{ $grandTotalEwt }}</strong></td>
+                <td><strong>{{ $grandTotalNet }}</strong></td>
             </tr>
         </tbody>
     </table>
@@ -198,9 +196,9 @@
             <th colspan="3">OPERATIONS</th>
         </tr>
         <tr>
-            <td><strong>Total No. of Forms:</strong> 66</td>
+            <td><strong>Total No. of Forms:</strong> {{ $claims->count() }}</td>
             <td><strong>Checked By:</strong> _________________________</td>
-            <td>4/8/2025</td>
+            <td><strong>Date:</strong> ___________</td>
         </tr>
     </table>
     <div class="clear"></div>
@@ -233,19 +231,19 @@
     <table class="float-right">
         <tr>
             <td><strong>Account Name:</strong></td>
-            <td>NORTHERN DENTAL SPECIALIST</td>
+            <td>{{ $clinicDetails->bank_account_name }}</td>
         </tr>
         <tr>
             <td><strong>Bank / Branch:</strong></td>
-            <td>Bangko Nuestra Senora Del Pilar, Inc. (A Rural Bank)</td>
+            <td>{{ $clinicDetails->bank_branch }}</td>
         </tr>
         <tr>
             <td><strong>Account No.:</strong></td>
-            <td>57-00016-6</td>
+            <td>{{ $clinicDetails->bank_account_number }}</td>
         </tr>
         <tr>
             <td><strong>Remarks:</strong></td>
-            <td>Priority / Consider Late Billing</td>
+            <td>{{ $clinicDetails->remarks }}</td>
         </tr>
     </table>
 

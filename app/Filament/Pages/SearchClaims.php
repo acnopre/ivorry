@@ -366,7 +366,7 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         // Fetch all matching procedures
         $claims = Procedure::query()
-            ->with(['member', 'clinic', 'service', 'clinic.services']) // eager load relations
+            ->with(['member', 'clinic', 'service', 'clinic.services'])
             ->when($data['member_name'] ?? null, function ($q, $name) {
                 $q->whereHas('member', function ($sub) use ($name) {
                     $sub->where('first_name', 'like', "%{$name}%")
@@ -383,21 +383,21 @@ class SearchClaims extends Page implements HasForms, HasTable
             ->where('status', Procedure::STATUS_VALID)
             ->get()
             ->map(function ($procedure) {
-                // Add the clinic_service fee for this procedure's service
+
+                /** GET CLINIC SERVICE FEE */
                 $clinicService = $procedure->clinic
                     ? $procedure->clinic->services()->where('service_id', $procedure->service_id)->first()
                     : null;
 
+                $fee = $clinicService && $clinicService->pivot ? (float) $clinicService->pivot->fee : 0;
+                $ewt = (float) ($procedure->clinic->withholding_tax ?? 0);
 
-                $procedure->clinic_service_fee = $clinicService->pivot->fee ?? 0;
-                $procedure->ewt = $procedure->clinic->withholding_tax ?? 0;
-                $procedure->net = (float) $procedure->clinic_service_fee - (float) $procedure->ewt;
-
+                $procedure->clinic_service_fee = $fee;
+                $procedure->ewt = $ewt;
+                $procedure->net = $fee - $ewt;
 
                 return $procedure;
             });
-
-
 
         if ($claims->isEmpty()) {
             \Filament\Notifications\Notification::make()
@@ -407,46 +407,97 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ->send();
             return;
         }
+        /** -----------------------------------------
+         *  ADD TOTALS (RATE, EWT, NET)
+         * -----------------------------------------*/
+        $totalClinicFee = $claims->sum('clinic_service_fee');
+        $totalEwt = $claims->sum('ewt');
+        $totalNet = $claims->sum('net');
 
-        // Update procedures status → processed
-        // Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+        /** -----------------------------------------
+         * LIST OF ACCOUNTS (GROUPED BY ACCOUNT ID)
+         * -----------------------------------------*/
+        $accounts = $claims->groupBy(function ($item) {
+            return $item->member->account_id; // group by account id in member
+        })
+            ->map(function ($items) {
+                return [
+                    'account_id'   => $items->first()->member->account->id,
+                    'account_name' => $items->first()->member->account->company_name ?? 'Unknown Account',
+                    'total_rate'   => $items->sum('clinic_service_fee'),
+                    'total_ewt'    => $items->sum('ewt'),
+                    'total_net'    => $items->sum('clinic_service_fee') -  $items->sum('ewt'),
+                ];
+            });
 
-        // Calculate total amount for the SOA (optional)
-        $totalAmount = $claims->sum('quantity'); // or use actual billing column
+        $grandTotalRate = collect($accounts)->sum('total_rate');
+        $grandTotalEwt = collect($accounts)->sum('total_ewt');
+        $grandTotalNet = $grandTotalRate - $grandTotalEwt;
 
-        // Create a GeneratedSoa record
+
+        // dd($claims, $accounts, $totalClinicFee, $totalEwt, $totalNet);
+
+        /** Create the SOA */
         $soa = GeneratedSoa::create([
             'clinic_id' => $data['clinic_id'],
             'from_date' => $data['availment_from'],
             'to_date' => $data['availment_to'],
-            'total_amount' => $totalAmount,
+            'total_amount' => $totalClinicFee,
             'generated_by' => auth()->id(),
             'status' => 'generated',
         ]);
 
-        // Attach procedures to pivot table
+        /** Attach procedures */
         foreach ($claims as $procedure) {
             $soa->procedures()->attach($procedure->id, [
-                'amount' => $procedure->quantity, // optional per procedure amount
+                'amount' => $procedure->clinic_service_fee
             ]);
         }
 
-        // Generate and download PDF
-        return $this->generateSOAAfterProcessing($claims, $soa);
+        // Generate PDF
+        return $this->generateSOAAfterProcessing(
+            $claims,
+            $totalClinicFee,
+            $totalEwt,
+            $totalNet,
+            $accounts,
+            $soa,
+            $grandTotalRate,
+            $grandTotalEwt,
+            $grandTotalNet
+        );
     }
 
-
-
-    public function generateSOAAfterProcessing($claims, GeneratedSoa $soa)
-    {
+    public function generateSOAAfterProcessing(
+        $claims,
+        $totalClinicFee,
+        $totalEwt,
+        $totalNet,
+        $accounts,
+        GeneratedSoa $soa,
+        $grandTotalRate,
+        $grandTotalEwt,
+        $grandTotalNet
+    ) {
         $data = $this->data;
         $clinicDetails = Clinic::find($data['clinic_id']);
+        $dentist = $clinicDetails->dentists->where('is_owner', 1)
+            ->first();
+
         $pdf = Pdf::loadView('pdf.soa', [
             'claims' => $claims,
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
             'clinicDetails' => $clinicDetails,
+            'dentist' => $dentist,
             'soa' => $soa,
+            'totalClinicFee' => $totalClinicFee,
+            'totalEwt' => $totalEwt,
+            'totalNet' => $totalNet,
+            'accounts' => $accounts,
+            'grandTotalRate' => $grandTotalRate,
+            'grandTotalEwt' => $grandTotalEwt,
+            'grandTotalNet' => $grandTotalNet
         ])->setPaper('a4', 'landscape');
 
         $fileName = 'SOA_' . now()->format('Y-m-d_His') . '.pdf';

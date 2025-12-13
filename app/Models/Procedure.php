@@ -31,6 +31,7 @@ class Procedure extends Model
     public const STATUS_REJECT = 'invalid';
     public const STATUS_RETURN = 'returned';
 
+    protected $with = ['units'];
 
     /**
      * Get the member associated with the procedure.

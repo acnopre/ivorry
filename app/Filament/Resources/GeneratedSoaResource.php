@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\GeneratedSoaResource\Pages;
 use App\Models\GeneratedSoa;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Tables;
@@ -100,7 +101,11 @@ class GeneratedSoaResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::CLAIMS_PROCESSOR]);
+    }
     public static function getPages(): array
     {
         return [

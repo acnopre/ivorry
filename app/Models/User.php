@@ -35,6 +35,9 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $with = ['member'];
+
+
     /**
      * Get the attributes that should be cast.
      *
@@ -50,7 +53,7 @@ class User extends Authenticatable
 
     public function clinic()
     {
-    return $this->hasOne(Clinic::class, 'user_id');
+        return $this->hasOne(Clinic::class, 'user_id');
     }
 
 

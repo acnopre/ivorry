@@ -9,6 +9,7 @@ use App\Filament\Widgets\ActivityTimeline;
 use App\Filament\Widgets\ClaimsStatsWidget;
 use App\Filament\Widgets\DashboardStats;
 use App\Filament\Widgets\DentistStatsWidget;
+use App\Filament\Widgets\DependentMemberStatsWidget;
 use App\Filament\Widgets\RecentClaimsTable;
 use App\Models\Role;
 use Filament\Notifications\Notification;
@@ -49,6 +50,10 @@ class Dashboard extends BaseDashboard
         } else if (auth()->user()?->hasAnyRole(Role::DENTIST)) {
             return [
                 DentistStatsWidget::class,
+            ];
+        } else if (auth()->user()?->hasAnyRole(Role::MEMBER)) {
+            return [
+                DependentMemberStatsWidget::class,
             ];
         } else {
             return [];

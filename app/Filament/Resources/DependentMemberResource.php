@@ -6,6 +6,7 @@ use App\Filament\Resources\DependentMemberResource\Pages;
 use App\Filament\Resources\DependentMemberResource\RelationManagers;
 use App\Models\DependentMember;
 use App\Models\Member;
+use App\Models\Role;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -71,5 +72,11 @@ class DependentMemberResource extends Resource
         return parent::getEloquentQuery()
             ->where('member_type', 'DEPENDENT')
             ->where('account_id', Auth::user()->member->account_id);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->hasAnyRole([Role::MEMBER]);
     }
 }

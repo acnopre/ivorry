@@ -67,9 +67,9 @@ return new class extends Migration
 
             // Address / Contact
             $table->string('street')->nullable()->comment('Street address or barangay');
-            $table->string('region_id')->nullable();
-            $table->string('province_id')->nullable();
-            $table->string('municipality_id')->nullable();
+            $table->string('region_id')->nullable()->constrained('regions')->cascadeOnDelete();
+            $table->string('province_id')->nullable()->constrained('provinces')->cascadeOnDelete();
+            $table->string('municipality_id')->nullable()->constrained('municipalities')->cascadeOnDelete();
             $table->string('barangay_id')->nullable();
             $table->string('clinic_landline')->nullable();
             $table->string('clinic_mobile')->nullable();

@@ -36,7 +36,6 @@ class MyAccount extends Page
     {
         return auth()->check()
             && auth()->user()->hasAnyRole([
-                Role::SUPER_ADMIN,
                 Role::MEMBER,
             ]);
     }

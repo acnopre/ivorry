@@ -23,7 +23,7 @@ class CSRSeeder extends Seeder
             'member.confirm_procedure',
             'member.search',
             'member.upload',
-            'chatbot.use',
+            // 'chatbot.use',
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

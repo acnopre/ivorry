@@ -36,4 +36,8 @@ class Service extends Model
     {
         return $this->belongsTo(UnitType::class, 'unit_type', 'name');
     }
+    public function accountServices()
+    {
+        return $this->hasMany(\App\Models\AccountService::class, 'service_id');
+    }
 }

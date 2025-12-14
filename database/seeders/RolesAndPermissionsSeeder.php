@@ -74,9 +74,6 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Dashboard & Reports
             'dashboard.view',
-
-            // Chatbot
-            'chatbot.use',
         ];
 
         foreach ($permissions as $permission) {

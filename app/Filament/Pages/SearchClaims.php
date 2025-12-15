@@ -429,6 +429,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                     'total_net'    => $items->sum('clinic_service_fee') -  $items->sum('ewt'),
                 ];
             });
+        // Update procedures status → processed
+        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
 
         $grandTotalRate = collect($accounts)->sum('total_rate');
         $grandTotalEwt = collect($accounts)->sum('total_ewt');

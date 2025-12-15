@@ -121,15 +121,14 @@
                 <th>Service Name</th>
                 <th>Units</th>
                 <th>Rate</th>
+                <th>VAT</th>
                 <th>EWT</th>
                 <th>NET</th>
             </tr>
         </thead>
 
         <tbody>
-            <!-- Example Row -->
             @foreach ($claims as $claim)
-
             <tr>
                 <td>{{ \Carbon\Carbon::parse($claim->availment_date)->format('F d, Y') }}</td>
                 <td>{{ $claim->member->first_name }} {{ $claim->member->last_name }}</td>
@@ -145,20 +144,25 @@
                     —
                     @endforelse
                 </td>
+
                 <td>₱{{ number_format($claim->clinic_service_fee, 2) }}</td>
-                <td>{{ number_format($claim->ewt, 2) }}</td>
+                <td>₱{{ number_format($claim->vat_amount, 2) }}</td>
+                <td>₱{{ number_format($claim->ewt_amount, 2) }}</td>
                 <td>₱{{ number_format($claim->net, 2) }}</td>
             </tr>
             @endforeach
-            <!-- Add more rows dynamically as needed -->
+
+            {{-- TOTALS --}}
             <tr class="totals">
                 <td colspan="7" class="text-right"><strong>Totals:</strong></td>
                 <td><strong>₱{{ number_format($totalClinicFee, 2) }}</strong></td>
-                <td><strong>{{ number_format($totalEwt, 2) }}</strong></td>
+                <td><strong>₱{{ number_format($totalVat, 2) }}</strong></td>
+                <td><strong>₱{{ number_format($totalEwt, 2) }}</strong></td>
                 <td><strong>₱{{ number_format($totalNet, 2) }}</strong></td>
             </tr>
         </tbody>
     </table>
+
 
     <!-- Main Company Totals -->
     <table>
@@ -166,24 +170,29 @@
             <tr>
                 <th>Main Company</th>
                 <th>Rate</th>
+                <th>VAT</th>
                 <th>EWT</th>
                 <th>NET</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($accounts as $accountId => $data)
+            @foreach($accounts as $data)
             <tr>
                 <td>{{ $data['account_name'] }}</td>
-                <td>₱{{ $data['total_rate'] }}</td>
-                <td>{{ $data['total_ewt'] }}</td>
-                <td>₱{{ $data['total_net'] }}</td>
+                <td>₱{{ number_format($data['total_rate'], 2) }}</td>
+                <td>₱{{ number_format($data['total_vat'], 2) }}</td>
+                <td>₱{{ number_format($data['total_ewt'], 2) }}</td>
+                <td>₱{{ number_format($data['total_net'], 2) }}</td>
             </tr>
             @endforeach
+
+            {{-- GRAND TOTAL --}}
             <tr class="totals">
                 <td><strong>Grand Total</strong></td>
-                <td><strong>₱{{ $grandTotalRate }}</strong></td>
-                <td><strong>{{ $grandTotalEwt }}</strong></td>
-                <td><strong>₱{{ $grandTotalNet }}</strong></td>
+                <td><strong>₱{{ number_format($grandTotalRate, 2) }}</strong></td>
+                <td><strong>₱{{ number_format($grandTotalVat, 2) }}</strong></td>
+                <td><strong>₱{{ number_format($grandTotalEwt, 2) }}</strong></td>
+                <td><strong>₱{{ number_format($grandTotalNet, 2) }}</strong></td>
             </tr>
         </tbody>
     </table>

@@ -99,6 +99,15 @@ return new class extends Migration
         });
     }
 
+    private function parsePercentage(?string $value): float
+    {
+        if (! $value || $value === 'ZERO') {
+            return 0;
+        }
+
+        // Extract numeric value from strings like "12%", "5%"
+        return (float) str_replace('%', '', $value) / 100;
+    }
     /**
      * Reverse the migrations.
      */

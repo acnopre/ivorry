@@ -389,13 +389,28 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ? $procedure->clinic->services()->where('service_id', $procedure->service_id)->first()
                     : null;
 
-                $fee = $clinicService && $clinicService->pivot ? (float) $clinicService->pivot->fee : 0;
-                $ewt = (float) ($procedure->clinic->withholding_tax ?? 0);
+                $serviceFee = $clinicService && $clinicService->pivot
+                    ? (float) $clinicService->pivot->fee
+                    : 0;
 
-                $procedure->clinic_service_fee = $fee;
-                $procedure->ewt = $ewt;
-                $procedure->net = $fee - $ewt;
+                // Percentages
+                $vatRate = $this->parseVatType($procedure->clinic->vat_type ?? null);
+                $ewtRate = $this->parsePercentage($procedure->clinic->withholding_tax ?? null);
 
+                // Amounts
+                $vatAmount = $serviceFee * $vatRate;
+                $ewtAmount = $serviceFee * $ewtRate;
+
+                // NET = Service Fee + VAT − EWT
+                $net = ($serviceFee + $vatAmount) - $ewtAmount;
+
+                // Assign computed values
+                $procedure->clinic_service_fee = $serviceFee;
+                $procedure->vat_rate           = $vatRate;
+                $procedure->vat_amount         = $vatAmount;
+                $procedure->ewt_rate           = $ewtRate;
+                $procedure->ewt_amount         = $ewtAmount;
+                $procedure->net                = round($net, 2);
                 return $procedure;
             });
 
@@ -411,30 +426,31 @@ class SearchClaims extends Page implements HasForms, HasTable
          *  ADD TOTALS (RATE, EWT, NET)
          * -----------------------------------------*/
         $totalClinicFee = $claims->sum('clinic_service_fee');
-        $totalEwt = $claims->sum('ewt');
-        $totalNet = $claims->sum('net');
+        $totalVat       = $claims->sum('vat_amount');
+        $totalEwt       = $claims->sum('ewt_amount');
+        $totalNet       = $claims->sum('net');
 
         /** -----------------------------------------
          * LIST OF ACCOUNTS (GROUPED BY ACCOUNT ID)
          * -----------------------------------------*/
-        $accounts = $claims->groupBy(function ($item) {
-            return $item->member->account_id; // group by account id in member
-        })
+        $accounts = $claims->groupBy(fn($item) => $item->member->account_id)
             ->map(function ($items) {
                 return [
                     'account_id'   => $items->first()->member->account->id,
                     'account_name' => $items->first()->member->account->company_name ?? 'Unknown Account',
                     'total_rate'   => $items->sum('clinic_service_fee'),
-                    'total_ewt'    => $items->sum('ewt'),
-                    'total_net'    => $items->sum('clinic_service_fee') -  $items->sum('ewt'),
+                    'total_vat'    => $items->sum('vat_amount'),
+                    'total_ewt'    => $items->sum('ewt_amount'),
+                    'total_net'    => $items->sum('net'),
                 ];
             });
         // Update procedures status → processed
-        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+        // Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
 
-        $grandTotalRate = collect($accounts)->sum('total_rate');
-        $grandTotalEwt = collect($accounts)->sum('total_ewt');
-        $grandTotalNet = $grandTotalRate - $grandTotalEwt;
+        $grandTotalRate = $accounts->sum('total_rate');
+        $grandTotalVat  = $accounts->sum('total_vat');
+        $grandTotalEwt  = $accounts->sum('total_ewt');
+        $grandTotalNet  = $accounts->sum('total_net');
 
 
         // dd($claims, $accounts, $totalClinicFee, $totalEwt, $totalNet);
@@ -460,11 +476,13 @@ class SearchClaims extends Page implements HasForms, HasTable
         return $this->generateSOAAfterProcessing(
             $claims,
             $totalClinicFee,
+            $totalVat,
             $totalEwt,
             $totalNet,
             $accounts,
             $soa,
             $grandTotalRate,
+            $grandTotalVat,
             $grandTotalEwt,
             $grandTotalNet
         );
@@ -473,11 +491,13 @@ class SearchClaims extends Page implements HasForms, HasTable
     public function generateSOAAfterProcessing(
         $claims,
         $totalClinicFee,
+        $totalVat,
         $totalEwt,
         $totalNet,
         $accounts,
         GeneratedSoa $soa,
         $grandTotalRate,
+        $grandTotalVat,
         $grandTotalEwt,
         $grandTotalNet
     ) {
@@ -494,10 +514,12 @@ class SearchClaims extends Page implements HasForms, HasTable
             'dentist' => $dentist,
             'soa' => $soa,
             'totalClinicFee' => $totalClinicFee,
+            'totalVat' => $totalVat,
             'totalEwt' => $totalEwt,
             'totalNet' => $totalNet,
             'accounts' => $accounts,
             'grandTotalRate' => $grandTotalRate,
+            'grandTotalVat' => $grandTotalVat,
             'grandTotalEwt' => $grandTotalEwt,
             'grandTotalNet' => $grandTotalNet
         ])->setPaper('a4', 'landscape');
@@ -516,7 +538,27 @@ class SearchClaims extends Page implements HasForms, HasTable
     }
 
 
+    private function parsePercentage(?string $value): float
+    {
+        if (! $value || $value === 'ZERO') {
+            return 0;
+        }
 
+        // Extract numeric value from strings like "12%", "5%"
+        return (float) str_replace('%', '', $value) / 100;
+    }
+
+    private function parseVatType(?string $vatType): float
+    {
+        return match ($vatType) {
+            'VAT 12%'  => 0.12,
+            'VAT ZERO',
+            'VAT EXEMPT',
+            'NON-VAT',
+            null       => 0,
+            default    => 0,
+        };
+    }
 
     public static function shouldRegisterNavigation(): bool
     {

@@ -108,6 +108,7 @@ class SearchMember extends Page
         $this->procedureFormData = [
             'availment_date_display' => now()->format('F j, Y'),
             'availment_date' => now()->format('Y-m-d'),
+            'quantity' => '1',
         ];
         $this->showProcedureModal = true;
     }

@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 
@@ -506,6 +507,19 @@ class SearchClaims extends Page implements HasForms, HasTable
         $dentist = $clinicDetails->dentists->where('is_owner', 1)
             ->first();
 
+        // Get the latest SOA number from database
+        $lastSOA = DB::table('generated_soas')->latest('id')->first(); // assuming you store SOAs
+
+        if ($lastSOA) {
+            $lastNumber = (int) substr($lastSOA->id, -10); // last 10 digits
+            $nextNumber = $lastNumber + 1;
+        } else {
+            $nextNumber = 1;
+        }
+
+        // Format with padding
+        $sequenceNumber = 'ADC' . str_pad($nextNumber, 10, '0', STR_PAD_LEFT);
+
         $pdf = Pdf::loadView('pdf.soa', [
             'claims' => $claims,
             'from' => $data['availment_from'],
@@ -521,11 +535,12 @@ class SearchClaims extends Page implements HasForms, HasTable
             'grandTotalRate' => $grandTotalRate,
             'grandTotalVat' => $grandTotalVat,
             'grandTotalEwt' => $grandTotalEwt,
-            'grandTotalNet' => $grandTotalNet
+            'grandTotalNet' => $grandTotalNet,
+            'sequenceNumber' => $sequenceNumber,
         ])->setPaper('a4', 'landscape');
 
-        $fileName = 'SOA_' . now()->format('Y-m-d_His') . '.pdf';
-        $path = 'soas/' . $fileName;
+        $fileName = 'ADC_' . now()->format('Y-m-d_His') . '.pdf';
+        $path = 'adc/' . $fileName;
 
         // Store the file on the "public" disk
         Storage::disk('public')->put($path, $pdf->output());

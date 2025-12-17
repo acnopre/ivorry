@@ -16,6 +16,7 @@ return new class extends Migration
             $table->date('to_date');
             $table->decimal('total_amount', 12, 2)->nullable();
             $table->string('file_path')->nullable();
+            $table->string('duplicate_file_path')->nullable();
             $table->foreignId('generated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('status')->default('generated'); // generated / sent / paid / cancelled
 

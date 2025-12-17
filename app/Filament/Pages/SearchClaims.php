@@ -447,7 +447,7 @@ class SearchClaims extends Page implements HasForms, HasTable
             });
         // Update procedures status → processed
         // Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
-
+        // 
         $grandTotalRate = $accounts->sum('total_rate');
         $grandTotalVat  = $accounts->sum('total_vat');
         $grandTotalEwt  = $accounts->sum('total_ewt');
@@ -504,23 +504,15 @@ class SearchClaims extends Page implements HasForms, HasTable
     ) {
         $data = $this->data;
         $clinicDetails = Clinic::find($data['clinic_id']);
-        $dentist = $clinicDetails->dentists->where('is_owner', 1)
-            ->first();
+        $dentist = $clinicDetails->dentists->where('is_owner', 1)->first();
 
-        // Get the latest SOA number from database
-        $lastSOA = DB::table('generated_soas')->latest('id')->first(); // assuming you store SOAs
-
-        if ($lastSOA) {
-            $lastNumber = (int) substr($lastSOA->id, -10); // last 10 digits
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        // Format with padding
+        // Get next SOA sequence number
+        $lastSOA = DB::table('generated_soas')->latest('id')->first();
+        $nextNumber = $lastSOA ? ((int) substr($lastSOA->id, -10)) + 1 : 1;
         $sequenceNumber = 'ADC' . str_pad($nextNumber, 10, '0', STR_PAD_LEFT);
-
-        $pdf = Pdf::loadView('pdf.soa', [
+        $preparedBy = auth()->user()->name ?? 'System Generated';
+        // ----------------- Original SOA PDF -----------------
+        $pdfOriginal = Pdf::loadView('pdf.adc.adc', [
             'claims' => $claims,
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
@@ -537,20 +529,52 @@ class SearchClaims extends Page implements HasForms, HasTable
             'grandTotalEwt' => $grandTotalEwt,
             'grandTotalNet' => $grandTotalNet,
             'sequenceNumber' => $sequenceNumber,
+            'preparedBy' => $preparedBy,
         ])->setPaper('a4', 'landscape');
 
-        $fileName = 'ADC_' . now()->format('Y-m-d_His') . '.pdf';
-        $path = 'adc/' . $fileName;
+        $timestamp = now()->format('Y-m-d_His');
 
-        // Store the file on the "public" disk
-        Storage::disk('public')->put($path, $pdf->output());
+        $fileName = 'ADC_' . $timestamp . '.pdf';
+        $originalPath = 'adc/' . $fileName;
 
-        // Update the database with relative path
-        $soa->update(['file_path' => $path]);
+        Storage::disk('public')->put($originalPath, $pdfOriginal->output());
 
-        // Return download
-        return Storage::disk('public')->download($path, $fileName);
+        // ----------------- Duplicate SOA PDF (different view) -----------------
+        $pdfDuplicate = Pdf::loadView('pdf.adc.adc_duplicate', [
+            'claims' => $claims,
+            'from' => $data['availment_from'],
+            'to' => $data['availment_to'],
+            'clinicDetails' => $clinicDetails,
+            'dentist' => $dentist,
+            'soa' => $soa,
+            'totalClinicFee' => $totalClinicFee,
+            'totalVat' => $totalVat,
+            'totalEwt' => $totalEwt,
+            'totalNet' => $totalNet,
+            'accounts' => $accounts,
+            'grandTotalRate' => $grandTotalRate,
+            'grandTotalVat' => $grandTotalVat,
+            'grandTotalEwt' => $grandTotalEwt,
+            'grandTotalNet' => $grandTotalNet,
+            'sequenceNumber' => $sequenceNumber,
+            'preparedBy' => $preparedBy
+        ])->setPaper('a4', 'landscape');
+
+        $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
+        $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
+
+        Storage::disk('public')->put($duplicatePath, $pdfDuplicate->output());
+
+        // Update the SOA record with original file path
+        $soa->update([
+            'file_path' => $originalPath,
+            'duplicate_file_path' => $duplicatePath
+        ]);
+
+        // Return download of the original
+        return Storage::disk('public')->download($originalPath, $fileName);
     }
+
 
 
     private function parsePercentage(?string $value): float

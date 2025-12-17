@@ -15,6 +15,7 @@ class GeneratedSoa extends Model
         'to_date',
         'total_amount',
         'file_path',
+        'duplicate_file_path',
         'generated_by',
         'status',
     ];

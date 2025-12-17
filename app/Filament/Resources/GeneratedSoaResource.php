@@ -79,7 +79,7 @@ class GeneratedSoaResource extends Resource
                         // Use the public disk
                         $disk = Storage::disk('public');
 
-                        if (!$disk->exists($record->file_path)) {
+                        if (!$disk->exists($record->duplicate_file_path)) {
                             \Filament\Notifications\Notification::make()
                                 ->title('PDF file not found.')
                                 ->body('No PDF file was found.')
@@ -88,10 +88,10 @@ class GeneratedSoaResource extends Resource
                             return;
                         }
 
-                        $fileName = basename($record->file_path);
+                        $fileName = basename($record->duplicate_file_path);
 
                         return response()->download(
-                            $disk->path($record->file_path), // full path to storage/app/public/{file_path}
+                            $disk->path($record->duplicate_file_path), // full path to storage/app/public/{duplicate_file_path}
                             $fileName
                         );
                     }),

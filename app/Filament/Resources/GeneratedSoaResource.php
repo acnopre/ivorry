@@ -22,7 +22,8 @@ class GeneratedSoaResource extends Resource
     protected static ?string $model = GeneratedSoa::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'SOAs';
+    protected static ?string $navigationGroup = 'Approved Dentist Claims';
+    protected static ?string $label = 'Generated ADC';
 
     // ✅ Form schema (readonly)
     public static function form(Form $form): Form
@@ -44,7 +45,7 @@ class GeneratedSoaResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('SOA ID')->sortable(),
+                Tables\Columns\TextColumn::make('id')->label('ADC ID')->sortable(),
                 Tables\Columns\TextColumn::make('clinic.clinic_name')->label('Clinic')->sortable(),
                 Tables\Columns\TextColumn::make('from_date')->label('From')->date(),
                 Tables\Columns\TextColumn::make('to_date')->label('To')->date(),

@@ -316,16 +316,120 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->modalSubmitAction(false)
             ])
             ->headerActions([
-                Tables\Actions\Action::make('generate_soa')
-                    ->label('Generate SOA')
+                Tables\Actions\Action::make('generate_adc')
+                    ->label('Generate ADC)')
                     ->color('success')
-                    ->icon('heroicon-o-document-arrow-down')
+                    ->icon('heroicon-o-check-badge')
                     ->requiresConfirmation()
-                    ->modalHeading('Generate Statement of Account')
-                    ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED before the SOA is created.')
-                    ->modalSubmitActionLabel('Yes, Generate SOA')
-                    ->action(fn() => $this->confirmSOA()),
+                    ->modalHeading('Approve Dentist Claims')
+                    ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED before the ADC is created.')
 
+                    ->modalSubmitActionLabel('Yes, Approve Claims')
+                    ->visible(function () {
+                        if (! $this->hasSearched) {
+                            return false;
+                        }
+
+                        $searchData = $this->data;
+
+                        $query = Procedure::query()
+                            ->when(
+                                $searchData['member_name'] ?? null,
+                                fn($q, $name) =>
+                                $q->whereHas(
+                                    'member',
+                                    fn($r) =>
+                                    $r->whereRaw(
+                                        "CONCAT(first_name, ' ', last_name) LIKE ?",
+                                        ["%{$name}%"]
+                                    )
+                                )
+                            )
+                            ->when(
+                                $searchData['approval_code'] ?? null,
+                                fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%")
+                            )
+                            ->when(
+                                $searchData['clinic_id'] ?? null,
+                                fn($q, $clinic_id) =>
+                                $q->whereHas('clinic', fn($r) => $r->where('id', $clinic_id))
+                            )
+                            ->when(
+                                $searchData['status'] ?? null,
+                                fn($q, $status) => $q->where('status', $status)
+                            )
+                            ->when(
+                                isset($searchData['availment_from'], $searchData['availment_to']),
+                                fn($q) =>
+                                $q->whereBetween('availment_date', [
+                                    $searchData['availment_from'],
+                                    $searchData['availment_to'],
+                                ])
+                            );
+
+                        return
+                            // ✅ must have results
+                            $query->exists()
+
+                            // ✅ all must be VALID
+                            && ! $query->where('status', '!=', Procedure::STATUS_VALID)->exists();
+                    })
+                    ->action(fn() => $this->generateClaims(Procedure::STATUS_VALID)),
+                Tables\Actions\Action::make('generate_return')
+                    ->label('Generate Return')
+                    ->color('warning')
+                    ->icon('heroicon-o-check-badge')
+                    ->requiresConfirmation()
+                    ->modalHeading('Generate Return')
+                    ->modalDescription('Are you sure you want to generate return claims?')
+
+                    ->modalSubmitActionLabel('Yes, Generate')
+                    ->visible(function () {
+                        if (! $this->hasSearched) {
+                            return false;
+                        }
+
+                        $searchData = $this->data;
+
+                        $query = Procedure::query()
+                            ->when(
+                                $searchData['member_name'] ?? null,
+                                fn($q, $name) =>
+                                $q->whereHas(
+                                    'member',
+                                    fn($r) =>
+                                    $r->whereRaw(
+                                        "CONCAT(first_name, ' ', last_name) LIKE ?",
+                                        ["%{$name}%"]
+                                    )
+                                )
+                            )
+                            ->when(
+                                $searchData['approval_code'] ?? null,
+                                fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%")
+                            )
+                            ->when(
+                                $searchData['clinic_id'] ?? null,
+                                fn($q, $clinicId) =>
+                                $q->whereHas('clinic', fn($r) => $r->where('id', $clinicId))
+                            )
+                            ->when(
+                                $searchData['status'] ?? null,
+                                fn($q, $status) => $q->where('status', $status)
+                            )
+                            ->when(
+                                isset($searchData['availment_from'], $searchData['availment_to']),
+                                fn($q) =>
+                                $q->whereBetween('availment_date', [
+                                    $searchData['availment_from'],
+                                    $searchData['availment_to'],
+                                ])
+                            );
+
+                        // ✅ Show button if at least 1 RETURN exists
+                        return $query->where('status', Procedure::STATUS_RETURN)->exists();
+                    })
+                    ->action(fn() => $this->generateClaims(Procedure::STATUS_RETURN)),
             ])
             ->defaultSort('availment_date', 'desc');
     }
@@ -352,7 +456,7 @@ class SearchClaims extends Page implements HasForms, HasTable
     }
 
 
-    public function confirmSOA()
+    public function generateClaims(string $status)
     {
         $data = $this->data;
 
@@ -381,7 +485,7 @@ class SearchClaims extends Page implements HasForms, HasTable
             ->when(isset($data['availment_from'], $data['availment_to']), function ($q) use ($data) {
                 $q->whereBetween('availment_date', [$data['availment_from'], $data['availment_to']]);
             })
-            ->where('status', Procedure::STATUS_VALID)
+            ->where('status', $status)
             ->get()
             ->map(function ($procedure) {
 
@@ -485,7 +589,8 @@ class SearchClaims extends Page implements HasForms, HasTable
             $grandTotalRate,
             $grandTotalVat,
             $grandTotalEwt,
-            $grandTotalNet
+            $grandTotalNet,
+            $status
         );
     }
 
@@ -500,7 +605,8 @@ class SearchClaims extends Page implements HasForms, HasTable
         $grandTotalRate,
         $grandTotalVat,
         $grandTotalEwt,
-        $grandTotalNet
+        $grandTotalNet,
+        $status
     ) {
         $data = $this->data;
         $clinicDetails = Clinic::find($data['clinic_id']);
@@ -511,8 +617,19 @@ class SearchClaims extends Page implements HasForms, HasTable
         $nextNumber = $lastSOA ? ((int) substr($lastSOA->id, -10)) + 1 : 1;
         $sequenceNumber = 'ADC' . str_pad($nextNumber, 10, '0', STR_PAD_LEFT);
         $preparedBy = auth()->user()->name ?? 'System Generated';
+        $timestamp = now()->format('Y-m-d_His');
+
+        if ($status == Procedure::STATUS_VALID) {
+            $loadPdf = 'pdf.adc.adc';
+            $fileName = 'ADC_' . $timestamp . '.pdf';
+            $originalPath = 'adc/' . $fileName;
+        } else if ($status == Procedure::STATUS_RETURN) {
+            $loadPdf = 'pdf.adc.return';
+            $fileName = 'RETURN_CLAIMS_' . $timestamp . '.pdf';
+            $originalPath = 'return/' . $fileName;
+        }
         // ----------------- Original SOA PDF -----------------
-        $pdfOriginal = Pdf::loadView('pdf.adc.adc', [
+        $pdfOriginal = Pdf::loadView($loadPdf, [
             'claims' => $claims,
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
@@ -532,10 +649,8 @@ class SearchClaims extends Page implements HasForms, HasTable
             'preparedBy' => $preparedBy,
         ])->setPaper('a4', 'landscape');
 
-        $timestamp = now()->format('Y-m-d_His');
 
-        $fileName = 'ADC_' . $timestamp . '.pdf';
-        $originalPath = 'adc/' . $fileName;
+
 
         Storage::disk('public')->put($originalPath, $pdfOriginal->output());
 
@@ -574,6 +689,7 @@ class SearchClaims extends Page implements HasForms, HasTable
         // Return download of the original
         return Storage::disk('public')->download($originalPath, $fileName);
     }
+
 
 
 

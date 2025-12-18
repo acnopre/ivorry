@@ -126,13 +126,5 @@
     <!--Footer -->
     @include('pdf.adc.footer')
 
-    <div class="page-break"></div>
-
-    <!-- Header Information -->
-    @include('pdf.adc.header_information')
-
-    <!-- Claims Table -->
-    @include('pdf.adc.claims_table')
-
 </body>
 </html>

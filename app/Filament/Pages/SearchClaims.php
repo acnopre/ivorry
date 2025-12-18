@@ -317,7 +317,7 @@ class SearchClaims extends Page implements HasForms, HasTable
             ])
             ->headerActions([
                 Tables\Actions\Action::make('generate_adc')
-                    ->label('Generate ADC)')
+                    ->label('Generate ADC')
                     ->color('success')
                     ->icon('heroicon-o-check-badge')
                     ->requiresConfirmation()
@@ -367,12 +367,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ])
                             );
 
-                        return
-                            // ✅ must have results
-                            $query->exists()
-
-                            // ✅ all must be VALID
-                            && ! $query->where('status', '!=', Procedure::STATUS_VALID)->exists();
+                        return $query->where('status', Procedure::STATUS_VALID)->exists();
                     })
                     ->action(fn() => $this->generateClaims(Procedure::STATUS_VALID)),
                 Tables\Actions\Action::make('generate_return')

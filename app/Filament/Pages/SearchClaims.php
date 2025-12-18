@@ -545,7 +545,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ];
             });
         // Update procedures status → processed
-        // Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
         // 
         $grandTotalRate = $accounts->sum('total_rate');
         $grandTotalVat  = $accounts->sum('total_vat');

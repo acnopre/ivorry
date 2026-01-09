@@ -450,6 +450,12 @@ class ViewAccount extends ViewRecord
                                                     ->copyable()
                                                     ->copyMessage('Policy code copied!'),
 
+                                                TextEntry::make('hip')
+                                                    ->label('HIP'),
+
+                                                TextEntry::make('card_used')
+                                                    ->label('Card Used'),
+
                                                 TextEntry::make('endorsement_type')
                                                     ->label('Endorsement Type')
                                                     ->badge()
@@ -457,6 +463,15 @@ class ViewAccount extends ViewRecord
                                                         'success' => fn($state): bool => $state === 'NEW',
                                                         'warning' => fn($state): bool => $state === 'RENEWAL',
                                                         'info'    => fn($state): bool => $state === 'AMENDMENT',
+                                                    ]),
+
+
+                                                TextEntry::make('plan_type')
+                                                    ->label('Plan Type')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'info' => fn($state): bool => $state === 'INDIVIDUAL',
+                                                        'warning' => fn($state): bool => $state === 'SHARED',
                                                     ]),
                                             ]),
                                         Grid::make(3)

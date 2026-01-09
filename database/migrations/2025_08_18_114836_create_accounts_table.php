@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('card_used')->nullable();          // Card used
             $table->date('effective_date')->nullable();       // Policy effective date
             $table->date('expiration_date')->nullable();      // Valid until
+            $table->enum('plan_type', ['INDIVIDUAL', 'SHARED'])->default('INDIVIDUAL');
 
             // endorsement workflow
             $table->enum('endorsement_type', [

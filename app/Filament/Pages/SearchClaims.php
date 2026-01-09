@@ -606,25 +606,31 @@ class SearchClaims extends Page implements HasForms, HasTable
         $data = $this->data;
         $clinicDetails = Clinic::find($data['clinic_id']);
         $dentist = $clinicDetails->dentists->where('is_owner', 1)->first();
-
-        // Get next SOA sequence number
-        $lastSOA = DB::table('generated_soas')->latest('id')->first();
-        $nextNumber = $lastSOA ? ((int) substr($lastSOA->id, -10)) + 1 : 1;
-        $sequenceNumber = 'ADC' . str_pad($nextNumber, 10, '0', STR_PAD_LEFT);
         $preparedBy = auth()->user()->name ?? 'System Generated';
         $timestamp = now()->format('Y-m-d_His');
 
+        // ----------------- Sequence Number -----------------
+        $sequenceNumber = 'ADC' . str_pad($soa->id, 10, '0', STR_PAD_LEFT);
+
+        // ----------------- Views -----------------
         if ($status == Procedure::STATUS_VALID) {
-            $loadPdf = 'pdf.adc.adc';
-            $fileName = 'ADC_' . $timestamp . '.pdf';
-            $originalPath = 'adc/' . $fileName;
-        } else if ($status == Procedure::STATUS_RETURN) {
-            $loadPdf = 'pdf.adc.return';
-            $fileName = 'RETURN_CLAIMS_' . $timestamp . '.pdf';
-            $originalPath = 'return/' . $fileName;
+            $originalView = 'pdf.adc.adc';
+            $duplicateView = 'pdf.adc.adc_duplicate';
+        } else {
+            $originalView = 'pdf.adc.return';
+            $duplicateView = 'pdf.adc.return_duplicate';
         }
-        // ----------------- Original SOA PDF -----------------
-        $pdfOriginal = Pdf::loadView($loadPdf, [
+
+        // ----------------- Determine Print Count & Copy Label -----------------
+        $printCount = $soa->print_count + 1; // this will be the current print
+        if ($printCount == 1) {
+            $copyLabelOriginal = 'ORIGINAL';
+        } else {
+            $copyLabelOriginal = 'DUPLICATE #' . $printCount;
+        }
+
+        // ----------------- Original PDF (Server-side Print) -----------------
+        $pdfOriginal = Pdf::loadView($originalView, [
             'claims' => $claims,
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
@@ -642,15 +648,35 @@ class SearchClaims extends Page implements HasForms, HasTable
             'grandTotalNet' => $grandTotalNet,
             'sequenceNumber' => $sequenceNumber,
             'preparedBy' => $preparedBy,
+            'copyLabel' => $copyLabelOriginal,
         ])->setPaper('a4', 'landscape');
 
+        // ----------------- Ensure temp folder exists -----------------
+        $tempDir = storage_path('app/temp');
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0775, true);
+        }
 
+        $tempPath = $tempDir . '/ADC_ORIGINAL_' . $timestamp . '.pdf';
+        file_put_contents($tempPath, $pdfOriginal->output());
 
+        // ----------------- Server Print -----------------
+        $printerName = config('printing.printer_name', 'CLINIC_PRINTER');
+        exec("lp -d {$printerName} {$tempPath}");
 
-        Storage::disk('public')->put($originalPath, $pdfOriginal->output());
+        // ----------------- Increment print count & log -----------------
+        $soa->increment('print_count');
 
-        // ----------------- Duplicate SOA PDF (different view) -----------------
-        $pdfDuplicate = Pdf::loadView('pdf.adc.adc_duplicate', [
+        DB::table('print_logs')->insert([
+            'user_id' => auth()->id(),
+            'document_id' => $soa->id,
+            'copy_type' => $copyLabelOriginal,
+            'printer' => $printerName,
+            'created_at' => now(),
+        ]);
+
+        // ----------------- Duplicate PDF (Downloadable) -----------------
+        $pdfDuplicate = Pdf::loadView($duplicateView, [
             'claims' => $claims,
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
@@ -667,25 +693,22 @@ class SearchClaims extends Page implements HasForms, HasTable
             'grandTotalEwt' => $grandTotalEwt,
             'grandTotalNet' => $grandTotalNet,
             'sequenceNumber' => $sequenceNumber,
-            'preparedBy' => $preparedBy
+            'preparedBy' => $preparedBy,
+            'copyLabel' => 'DUPLICATE #' . $printCount,
         ])->setPaper('a4', 'landscape');
 
         $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
         $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
-
         Storage::disk('public')->put($duplicatePath, $pdfDuplicate->output());
 
-        // Update the SOA record with original file path
+        // ----------------- Update SOA paths -----------------
         $soa->update([
-            'file_path' => $originalPath,
-            'duplicate_file_path' => $duplicatePath
+            'duplicate_file_path' => $duplicatePath,
         ]);
 
-        // Return download of the original
-        return Storage::disk('public')->download($originalPath, $fileName);
+        // ----------------- Return duplicate download -----------------
+        return Storage::disk('public')->download($duplicatePath, $duplicateFileName);
     }
-
-
 
 
     private function parsePercentage(?string $value): float

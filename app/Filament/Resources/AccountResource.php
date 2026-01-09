@@ -84,7 +84,74 @@ class AccountResource extends Resource
                                 ->label('Card Used')
                                 ->maxLength(255)
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
+
+
+                            Select::make('plan_type')
+                                ->label('Plan Type')
+                                ->options([
+                                    'INDIVIDUAL' => 'Individual',
+                                    'SHARED' => 'Shared',
+                                ])
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    if ($state !== 'SHARED') {
+                                        $set('members', []);
+                                    }
+                                })
+                                ->required()
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
                         ])->columns(2),
+
+
+                    Section::make('Members')
+                        ->visible(fn(Forms\Get $get) => $get('plan_type') === 'SHARED')
+                        ->schema([
+                            Forms\Components\Repeater::make('members')
+                                ->label('Members')
+                                ->relationship('members')
+                                ->schema([
+                                    Forms\Components\TextInput::make('first_name')
+                                        ->label('First Name')
+                                        ->required()
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('middle_name')
+                                        ->label('Middle Name')
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('last_name')
+                                        ->label('Last Name')
+                                        ->required()
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('suffix')
+                                        ->label('Suffix')
+                                        ->maxLength(50),
+                                    Forms\Components\DatePicker::make('birthdate')
+                                        ->label('Birthdate'),
+
+                                    Forms\Components\Select::make('gender')
+                                        ->label('Gender')
+                                        ->options([
+                                            'male' => 'Male',
+                                            'female' => 'Female',
+                                        ])
+                                        ->native(false),
+
+                                    Forms\Components\TextInput::make('email')
+                                        ->label('Email')
+                                        ->maxLength(255),
+
+                                ])
+                                ->columns(2)
+                                ->collapsible()
+                                ->createItemButtonLabel('Add Member')
+                                ->disabled(
+                                    fn(Forms\Get $get) =>
+                                    ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
+                                ),
+                        ]),
+
 
                     Section::make('Contract Information')
                         ->schema([
@@ -347,6 +414,15 @@ class AccountResource extends Resource
                         'warning' => 'inactive',
                         'success'   => 'active',
                         'danger'    => 'expired',
+                    ]),
+
+                TextColumn::make('plan_type')
+                    ->label('Plan Type')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->colors([
+                        'warning' => 'SHARED',
+                        'info'   => 'INDIVIDUAL',
                     ]),
 
                 TextColumn::make('effective_date')->label('Effective')->date(),

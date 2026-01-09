@@ -16,7 +16,7 @@
                     <th colspan="3" class="text-center">OPERATIONS</th>
                 </tr>
                 <tr>
-                    <td><strong>Total No. of Forms:</strong> {{ $claims->count() }}</td>
+                    <td><strong>Total No. of Forms:</strong>___________</td>
                     <td><strong>Checked By:</strong><br>_____________________</td>
                     <td><strong>Date:</strong><br>___________</td>
                 </tr>

@@ -4,14 +4,17 @@ namespace App\Filament\Resources\AccountResource\Pages;
 
 use App\Filament\Resources\AccountResource;
 use Filament\Resources\Pages\CreateRecord;
-use Filament\Notifications\Notification; // Use Filament Notification
-use DB;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Password;
 
 class CreateAccount extends CreateRecord
 {
     protected static string $resource = AccountResource::class;
 
     protected array $servicesData = [];
+    protected array $membersData = [];
 
     /**
      * Prepare data before creating the account record.
@@ -21,64 +24,59 @@ class CreateAccount extends CreateRecord
         // Store services (basic + enhancement) temporarily
         $this->servicesData = $data['services'] ?? [];
 
-        // Remove 'services' from main account data (pivot data)
-        unset($data['services']);
+        // Store members temporarily
+        $this->membersData = $data['members'] ?? [];
+
+        // Remove non-account columns
+        unset($data['services'], $data['members']);
 
         return $data;
     }
 
     /**
-     * Handle services pivot table after account creation.
+     * Handle services + members after account creation.
      */
     protected function afterCreate(): void
     {
-        // Check if both 'basic' and 'enhancement' arrays exist, merge them.
-        // If they don't exist, use an empty array for a safe merge.
+        $this->saveServices();
+        $this->saveMembers();
+    }
+
+    /**
+     * Save services pivot data.
+     */
+    protected function saveServices(): void
+    {
         $basic = $this->servicesData['basic'] ?? [];
         $enhancement = $this->servicesData['enhancement'] ?? [];
 
-        // Merge basic + enhancement arrays
         $mergedServices = $basic + $enhancement;
 
         if (empty($mergedServices)) {
-            // No services to sync, exit gracefully
             return;
         }
 
-        // The structure from the form is: [service_id => ['quantity' => X, 'is_unlimited' => Y, 'remarks' => Z]]
         $filtered = collect($mergedServices)
-            // Filter out any entries where the quantity is null/empty and it's not marked as unlimited.
-            // We want to keep services where either quantity is set OR it's marked unlimited OR remarks are present.
-            ->filter(function ($pivotData, $serviceId) {
-                // If quantity is set AND > 0, or if is_unlimited is true, or if remarks is set, keep it.
-                return (isset($pivotData['quantity']) && (int)$pivotData['quantity'] > 0)
-                    || (isset($pivotData['is_unlimited']) && $pivotData['is_unlimited'] == true)
-                    || !empty($pivotData['remarks']);
+            ->filter(function ($pivotData) {
+                return (isset($pivotData['quantity']) && (int) $pivotData['quantity'] > 0)
+                    || ($pivotData['is_unlimited'] ?? false)
+                    || ! empty($pivotData['remarks']);
             })
             ->mapWithKeys(function ($pivotData, $serviceId) {
-                // Map the pivot data to the format required by sync: [service_id => [pivot_column => value]]
-
-                // Ensure boolean conversion for `is_unlimited`
-                $isUnlimited = filter_var($pivotData['is_unlimited'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
                 return [
                     $serviceId => [
-                        // If it's unlimited, set quantity to a default (e.g., 9999) or 0, or just use the input quantity.
-                        // We'll use the provided quantity, as the flag is what matters.
-                        'quantity' => ($pivotData['quantity'] ?? null),
-                        'default_quantity' => ($pivotData['quantity'] ?? null),
-                        'is_unlimited' => $isUnlimited, // Saved as boolean
-                        'remarks' => $pivotData['remarks'] ?? null, // Saved as string/null
+                        'quantity' => $pivotData['quantity'] ?? null,
+                        'default_quantity' => $pivotData['quantity'] ?? null,
+                        'is_unlimited' => filter_var($pivotData['is_unlimited'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                        'remarks' => $pivotData['remarks'] ?? null,
                     ],
                 ];
             })
             ->toArray();
 
         if (! empty($filtered)) {
-            // Sync the services with the new pivot data (quantity, is_unlimited, remarks)
             $this->record->services()->sync($filtered);
         } else {
-            // Optional: Notify if no valid services were kept after filtering
             Notification::make()
                 ->title('No services saved')
                 ->body('All service entries were empty and filtered out.')
@@ -86,6 +84,60 @@ class CreateAccount extends CreateRecord
                 ->send();
         }
     }
+
+    /**
+     * Save members (SHARED plans only).
+     */
+    protected function saveMembers(): void
+    {
+        if ($this->record->plan_type !== 'SHARED') {
+            return;
+        }
+
+        if (empty($this->membersData)) {
+            return;
+        }
+
+        foreach ($this->membersData as $memberData) {
+            // Skip empty rows
+            if (empty($memberData['first_name']) || empty($memberData['last_name'])) {
+                continue;
+            }
+
+            $userId = null;
+            $plainPassword = Str::random(12);
+            // if (!empty($memberData['email'])) {
+            $user = \App\Models\User::create([
+                'name' => $memberData['first_name'] . ' ' . ($memberData['middle_name'] ?? '') . ' ' . $memberData['last_name'],
+                'email' => $memberData['email'],
+                'password' => $plainPassword, // temporary random password
+            ]);
+            $userId = $user->id;
+            // }
+
+            if (!empty($memberData['email'])) {
+                $token = Password::broker()->createToken($user);
+                $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+            }
+
+            // ✅ Create member with the new user_id
+            $this->record->members()->create([
+                'first_name'   => $memberData['first_name'],
+                'middle_name'  => $memberData['middle_name'] ?? null,
+                'last_name'    => $memberData['last_name'],
+                'suffix'       => $memberData['suffix'] ?? null,
+                'member_type'  => $memberData['member_type'] ?? 'DEPENDENT',
+                'birthdate'    => $memberData['birthdate'] ?? null,
+                'card_number'  => $this->record->card_used,
+                'gender'       => $memberData['gender'] ?? null,
+                'email'        => $memberData['email'] ?? null,
+                'phone'        => $memberData['phone'] ?? null,
+                'address'      => $memberData['address'] ?? null,
+                'user_id'      => $userId, // link created user
+            ]);
+        }
+    }
+
 
     /**
      * Redirect after creation.

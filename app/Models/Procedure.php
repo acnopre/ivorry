@@ -19,6 +19,7 @@ class Procedure extends Model
         'approval_code',
         'remarks',
         'quantity',
+        'print_count'
     ];
 
     protected $casts = [

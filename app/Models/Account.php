@@ -21,6 +21,7 @@ class Account extends Model
         'endorsement_type',
         'account_status',
         'endorsement_status',
+        'plan_type',
         'remarks'
     ];
     protected $casts = [
@@ -32,7 +33,7 @@ class Account extends Model
 
     public function members()
     {
-        return $this->hasMany(Member::class);
+        return $this->hasMany(Member::class, 'account_id');
     }
     public function endorsementType()
     {

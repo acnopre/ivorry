@@ -90,6 +90,15 @@
             font-weight: bold;
         }
 
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            font-size: 10px;
+            text-align: right;
+            color: #333;
+        }
+
         .no-outer-border {
             border: none !important;
         }
@@ -112,9 +121,12 @@
 </div>
 <br>
 <body>
+    <!-- Watermark for Copy Type -->
+    @if(!empty($copyLabel))
     <div class="watermark">
-        ORIGINAL
+        {{ strtoupper($copyLabel) }}
     </div>
+    @endif
     <!-- Header Information -->
     @include('pdf.adc.header_information')
 
@@ -133,6 +145,11 @@
 
     <!-- Claims Table -->
     @include('pdf.adc.claims_table')
+
+    <!-- Footer on second page as well -->
+    <div class="footer">
+        {{ strtoupper($copyLabel ?? 'ORIGINAL') }} - Printed on {{ now()->format('Y-m-d H:i') }}
+    </div>
 
 </body>
 </html>

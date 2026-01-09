@@ -305,35 +305,35 @@ class SearchMember extends Page
                         $accountId = $this->members->first()->account_id ?? null;
                         $serviceId = $get('service_id');
 
-                        if (!$accountId || !$serviceId) return 6;
+                        if (!$accountId || !$serviceId) return 3;
 
                         $accountService = AccountService::where('account_id', $accountId)
                             ->where('service_id', $serviceId)
                             ->first();
 
                         if ($accountService && !$accountService->is_unlimited) {
-                            // Max is the lesser of Balance or 6
-                            return min($accountService->quantity, 6);
+                            // Max is the lesser of Balance or 3
+                            return min($accountService->quantity, 3);
                         }
 
-                        return 6;
+                        return 3;
                     })
                     ->helperText(function (callable $get) {
                         // Helper text to show remaining balance
                         $accountId = $this->members->first()->account_id ?? null;
                         $serviceId = $get('service_id');
 
-                        if (!$accountId || !$serviceId) return 'Enter a number between 1 and 6';
+                        if (!$accountId || !$serviceId) return 'Enter a number between 1 and 3';
 
                         $accountService = AccountService::where('account_id', $accountId)
                             ->where('service_id', $serviceId)
                             ->first();
 
                         if ($accountService && !$accountService->is_unlimited) {
-                            return "Max allowed: " . min($accountService->quantity, 6) . " (Balance: {$accountService->quantity})";
+                            return "Max allowed: " . min($accountService->quantity, 3) . " (Balance: {$accountService->quantity})";
                         }
 
-                        return 'Enter a number between 1 and 6';
+                        return 'Enter a number between 1 and 3';
                     })
                     ->rules(['nullable', 'integer'])
                     ->nullable()

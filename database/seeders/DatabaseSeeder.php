@@ -63,7 +63,9 @@ class DatabaseSeeder extends Seeder
             DentistSeeder::class,
             AddressSeeder::class,
             AccountServicesSeeder::class,
-            ProcedureSeeder::class
+            ProcedureSeeder::class,
+            ReturnReasonsSeeder::class,
+            InvalidReasonsSeeder::class,
         ]);
     }
 }

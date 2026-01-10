@@ -76,6 +76,6 @@ class DependentMemberResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return false; //Hide 
     }
 }

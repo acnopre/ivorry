@@ -66,6 +66,7 @@ class DatabaseSeeder extends Seeder
             ProcedureSeeder::class,
             ReturnReasonsSeeder::class,
             InvalidReasonsSeeder::class,
+            HipSeeder::class,
         ]);
     }
 }

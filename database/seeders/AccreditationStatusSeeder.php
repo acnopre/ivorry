@@ -14,6 +14,7 @@ class AccreditationStatusSeeder extends Seeder
             'INACTIVE',
             'SILENT',
             'SPECIFIC ACCOUNT',
+            'SPECIFIC HIP',
         ];
 
         foreach ($statuses as $status) {

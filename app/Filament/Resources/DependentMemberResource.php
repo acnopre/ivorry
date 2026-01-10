@@ -76,7 +76,6 @@ class DependentMemberResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check()
-            && auth()->user()->hasAnyRole([Role::MEMBER]);
+        return false;
     }
 }

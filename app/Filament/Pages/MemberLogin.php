@@ -10,7 +10,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Member;
 
-class MemberLogin extends Page 
+class MemberLogin extends Page
 {
     use Forms\Concerns\InteractsWithForms;
 
@@ -43,8 +43,9 @@ class MemberLogin extends Page
     public function submit()
     {
         $data = $this->form->getState();
-
         $member = Member::where('card_number', $data['card_number'])
+            ->where('first_name', $data['firstname'])
+            ->where('last_name', $data['lastname'])
             ->first();
 
         if (! $member) {
@@ -69,12 +70,12 @@ class MemberLogin extends Page
     {
         return true;
     }
-    
+
     public function hasLogo(): bool
     {
         return false;
     }
-      /**
+    /**
      * Override default layout (removes sidebar + topbar).
      */
     // protected static string $layout = 'filament-panels::components.layout.base';

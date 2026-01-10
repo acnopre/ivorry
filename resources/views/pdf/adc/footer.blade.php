@@ -13,12 +13,15 @@
         <td style="width: 33%; vertical-align: top; border: none; padding: 1;">
             <table class="report-table no-outer-border" style="width: 100%;">
                 <tr>
-                    <th colspan="3" class="text-center">OPERATIONS</th>
+                    <th colspan="2" class="text-center">OPERATIONS</th>
                 </tr>
                 <tr>
                     <td><strong>Total No. of Forms:</strong>___________</td>
                     <td><strong>Checked By:</strong><br>_____________________</td>
+                </tr>
+                <tr>
                     <td><strong>Date:</strong><br>___________</td>
+                    <td><strong>Due Date:</strong><br>___________</td>
                 </tr>
             </table>
         </td>

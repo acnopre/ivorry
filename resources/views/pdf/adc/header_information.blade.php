@@ -16,15 +16,15 @@
         <td>{{ $clinicDetails->tax_identification_no }}</td>
     </tr>
     <tr>
-        <td><strong>Branch Code:</strong></td>
-        <td>000</td>
+        <td><strong>Branch:</strong></td>
+        <td>{{ $clinicDetails->is_branch == 1 ? 'YES' : 'NO' }}</td>
     </tr>
     <tr>
         <td><strong>Address:</strong></td>
         <td colspan="3">{{ $clinicDetails->complete_address }}</td>
     </tr>
     <tr>
-        <td><strong>Tax Type:</strong></td>
+        <td><strong>Vat Type:</strong></td>
         <td>{{ $clinicDetails->vat_type }}</td>
     </tr>
     <tr>

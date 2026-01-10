@@ -45,8 +45,8 @@ class AccountImport implements ToCollection
                     $service = Service::where('name', $serviceName)->first();
                     if ($service) {
                         $serviceData[$service->id] = [
-                            'quantity' => $quantity,
-                            'default_quantity' => $quantity,
+                            'quantity' => $service->type === 'basic' ? null : $quantity,
+                            'default_quantity' => $service->type === 'basic' ? null : $quantity,
                             'is_unlimited' => $service->type === 'basic' ? true : false,
                         ];
                     }

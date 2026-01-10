@@ -26,5 +26,6 @@ Route::get('/soa/generate', [SOAController::class, 'generate'])->name('soa.gener
 Route::get('/sign-procedure/{approval_code}', [SignatureController::class, 'show'])->name('procedure.sign');
 Route::post('/sign-procedure/{approval_code}', [SignatureController::class, 'store'])->name('procedure.sign.store');
 
-
-Route::get('/member-login', MemberLogin::class)->name('member.login');
+Route::get('/member-login', function () {
+    return redirect('/app/member-login');
+})->name('member.login');

@@ -5,7 +5,7 @@ use App\Filament\Pages\SearchMember;
 use App\Http\Controllers\SOAController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SignatureController;
-
+use App\Filament\Pages\MemberLogin;
 
 // Route::get('/', function () {
 //     return view('welcome');
@@ -25,3 +25,6 @@ Route::get('/soa/generate', [SOAController::class, 'generate'])->name('soa.gener
 
 Route::get('/sign-procedure/{approval_code}', [SignatureController::class, 'show'])->name('procedure.sign');
 Route::post('/sign-procedure/{approval_code}', [SignatureController::class, 'store'])->name('procedure.sign.store');
+
+
+Route::get('/member-login', MemberLogin::class)->name('member.login');

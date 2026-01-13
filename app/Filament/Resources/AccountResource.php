@@ -142,6 +142,32 @@ class AccountResource extends Resource
                                         ->label('Email')
                                         ->maxLength(255),
 
+                                    Forms\Components\Toggle::make('is_principal')
+                                        ->label('Principal')
+                                        ->reactive()
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            if ($state) {
+                                                $members = $get('../../members') ?? [];
+
+                                                // Find the current item's data
+                                                $currentItem = $get(); // gets this member data
+                                                $currentIndex = collect($members)
+                                                    ->search(
+                                                        fn($member) =>
+                                                        $member['last_name'] === $currentItem['last_name'] &&
+                                                            $member['first_name'] === $currentItem['first_name']
+                                                    );
+
+                                                if ($currentIndex !== false) {
+                                                    foreach ($members as $index => $member) {
+                                                        if ($index !== $currentIndex) {
+                                                            $set("../../members.{$index}.is_principal", false);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }),
+
                                 ])
                                 ->columns(2)
                                 ->collapsible()

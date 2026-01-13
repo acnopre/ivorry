@@ -126,7 +126,7 @@ class CreateAccount extends CreateRecord
                 'middle_name'  => $memberData['middle_name'] ?? null,
                 'last_name'    => $memberData['last_name'],
                 'suffix'       => $memberData['suffix'] ?? null,
-                'member_type'  => $memberData['member_type'] ?? 'DEPENDENT',
+                'member_type' => !empty($memberData['is_principal']) ? 'PRINCIPAL' : 'DEPENDENT',
                 'birthdate'    => $memberData['birthdate'] ?? null,
                 'card_number'  => $this->record->card_used,
                 'gender'       => $memberData['gender'] ?? null,

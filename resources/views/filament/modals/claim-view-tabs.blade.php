@@ -21,7 +21,7 @@
                 <li><span class="font-medium">Service:</span> {{ $record->service?->name ?? 'N/A' }}</li>
                 <li><span class="font-medium">Approval Code:</span> {{ $record->approval_code ?? 'N/A' }}</li>
                 @if($record->remarks)
-                <li><span class="font-medium text-danger-600">Rejection Remarks:</span> {{ $record->remarks }}</li>
+                <li><span class="font-medium text-danger-600">Remarks:</span> {{ $record->remarks }}</li>
                 @endif
             </ul>
         </div>

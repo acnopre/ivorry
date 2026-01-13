@@ -622,14 +622,13 @@ class SearchClaims extends Page implements HasForms, HasTable
         }
 
         // ----------------- Determine Print Count & Copy Label -----------------
-        $printCount = $soa->print_count + 1; // this will be the current print
-        if ($printCount == 1) {
-            $copyLabelOriginal = 'ORIGINAL';
-        } else {
-            $copyLabelOriginal = 'DUPLICATE #' . $printCount;
-        }
+        $printCount = $soa->print_count + 1;
 
-        // ----------------- Original PDF (Server-side Print) -----------------
+        $copyLabelOriginal = $printCount === 1
+            ? 'ORIGINAL'
+            : 'DUPLICATE #' . $printCount;
+
+        // ----------------- ORIGINAL PDF (DOWNLOADABLE) -----------------
         $pdfOriginal = Pdf::loadView($originalView, [
             'claims' => $claims,
             'from' => $data['availment_from'],
@@ -651,31 +650,29 @@ class SearchClaims extends Page implements HasForms, HasTable
             'copyLabel' => $copyLabelOriginal,
         ])->setPaper('a4', 'landscape');
 
-        // ----------------- Ensure temp folder exists -----------------
-        $tempDir = storage_path('app/temp');
-        if (!file_exists($tempDir)) {
-            mkdir($tempDir, 0775, true);
-        }
+        $originalFileName = 'ADC_ORIGINAL_' . $timestamp . '.pdf';
+        $originalPath = 'adc/originals/' . $originalFileName;
 
-        $tempPath = $tempDir . '/ADC_ORIGINAL_' . $timestamp . '.pdf';
-        file_put_contents($tempPath, $pdfOriginal->output());
+        Storage::disk('public')->put($originalPath, $pdfOriginal->output());
 
-        // ----------------- Server Print -----------------
+        // ----------------- PRINT (TEMPORARILY DISABLED) -----------------
+        /*
         $printerName = config('printing.printer_name', 'CLINIC_PRINTER');
         exec("lp -d {$printerName} {$tempPath}");
+        */
 
-        // ----------------- Increment print count & log -----------------
+        // ----------------- Increment print count & log (optional) -----------------
         $soa->increment('print_count');
 
         DB::table('print_logs')->insert([
             'user_id' => auth()->id(),
             'document_id' => $soa->id,
             'copy_type' => $copyLabelOriginal,
-            'printer' => $printerName,
+            'printer' => 'DOWNLOAD_ONLY',
             'created_at' => now(),
         ]);
 
-        // ----------------- Duplicate PDF (Downloadable) -----------------
+        // ----------------- DUPLICATE PDF (Stored Only) -----------------
         $pdfDuplicate = Pdf::loadView($duplicateView, [
             'claims' => $claims,
             'from' => $data['availment_from'],
@@ -699,17 +696,18 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
         $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
+
         Storage::disk('public')->put($duplicatePath, $pdfDuplicate->output());
 
         // ----------------- Update SOA paths -----------------
         $soa->update([
             'duplicate_file_path' => $duplicatePath,
+            'original_file_path' => $originalPath,
         ]);
 
-        // ----------------- Return duplicate download -----------------
-        return Storage::disk('public')->download($duplicatePath, $duplicateFileName);
+        // ----------------- Return ORIGINAL download -----------------
+        return Storage::disk('public')->download($originalPath, $originalFileName);
     }
-
 
     private function parsePercentage(?string $value): float
     {

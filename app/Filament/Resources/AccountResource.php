@@ -12,6 +12,7 @@ use App\Models\AccountServiceHistory;
 use App\Models\EndorsementType;
 use App\Models\Role;
 use App\Models\Service;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -91,6 +92,22 @@ class AccountResource extends Resource
                                 ->options([
                                     'INDIVIDUAL' => 'Individual',
                                     'SHARED' => 'Shared',
+                                ])
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    if ($state !== 'SHARED') {
+                                        $set('members', []);
+                                    }
+                                })
+                                ->required()
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
+
+                            Select::make('coverage_period_type')
+                                ->label('Coverage Period Type')
+                                ->default('ACCOUNT')
+                                ->options([
+                                    'ACCOUNT' => 'Account',
+                                    'MEMBER' => 'Member',
                                 ])
                                 ->reactive()
                                 ->afterStateUpdated(function ($state, Forms\Set $set) {
@@ -183,11 +200,21 @@ class AccountResource extends Resource
                         ->schema([
                             DatePicker::make('effective_date')
                                 ->label('Effective Date')
-                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')),
+                                ->reactive() // Make sure it's reactive
+                                ->disabled(fn(Forms\Get $get) => !($isAmendment($get) || $get('endorsement_type') === 'RENEWAL'))
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    if ($state) {
+                                        // $state is already a date string in 'Y-m-d', so just parse it
+                                        $expiration = Carbon::parse($state)->addYear();
+                                        $set('expiration_date', $expiration->format('Y-m-d'));
+                                    }
+                                }),
 
                             DatePicker::make('expiration_date')
                                 ->label('Expiration Date')
-                                ->disabled(fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')),
+                                ->reactive() // Make it reactive
+                                ->disabled(fn(Forms\Get $get) => !($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')),
+
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')
                                 ->visible($record?->account_status == 'active')

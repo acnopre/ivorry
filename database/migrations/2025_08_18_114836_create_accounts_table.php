@@ -20,6 +20,7 @@ return new class extends Migration
             $table->date('effective_date')->nullable();       // Policy effective date
             $table->date('expiration_date')->nullable();      // Valid until
             $table->enum('plan_type', ['INDIVIDUAL', 'SHARED'])->default('INDIVIDUAL');
+            $table->enum('coverage_period_type', ['ACCOUNT', 'MEMBER'])->default('ACCOUNT');
 
             // endorsement workflow
             $table->enum('endorsement_type', [

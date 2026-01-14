@@ -4,8 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\MemberResource\Pages;
 use App\Imports\MembersImport;
+use App\Models\Account;
 use App\Models\Member;
 use App\Models\Role;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -26,7 +28,7 @@ class MemberResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?int $navigationSort = 2;
 
-    public static function form(Form $form): Form
+    public static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
@@ -40,7 +42,8 @@ class MemberResource extends Resource
                                 modifyQueryUsing: fn($query) => $query->where('account_status', 'active')
                             )
                             ->required()
-                            ->searchable(),
+                            ->searchable()
+                            ->reactive(),
 
                         TextInput::make('card_number')
                             ->label('Card Number')
@@ -51,7 +54,6 @@ class MemberResource extends Resource
                         TextInput::make('last_name')->required()->maxLength(255),
                         TextInput::make('middle_name')->required()->maxLength(255),
                         TextInput::make('suffix')->required()->maxLength(255),
-
 
                         Select::make('member_type')
                             ->options([
@@ -76,6 +78,30 @@ class MemberResource extends Resource
                         TextInput::make('phone')->tel(),
                         // Textarea::make('address')->rows(2),
                     ])->columns(2),
+
+                Section::make('Contract Information')
+                    ->schema([
+                        DatePicker::make('effective_date')
+                            ->label('Effective Date')
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state) {
+                                    $set(
+                                        'expiration_date',
+                                        Carbon::parse($state)->addYear()->format('Y-m-d')
+                                    );
+                                }
+                            }),
+
+                        DatePicker::make('expiration_date')
+                            ->label('Expiration Date'),
+                    ])
+                    ->columns(2)
+                    ->visible(
+                        fn(callable $get) =>
+                        filled($get('account_id')) &&
+                            optional(Account::find($get('account_id')))->coverage_period_type === 'MEMBER'
+                    ),
             ]);
     }
 

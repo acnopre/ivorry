@@ -20,10 +20,17 @@ class Member extends Model
         'phone',
         'address',
         'user_id',
+        'effective_date',
+        'expiration_date'
     ];
+
 
     protected $with = ['account'];
 
+    protected $casts = [
+        'effective_date' => 'date',
+        'expiration_date' => 'date',
+    ];
 
     public function account()
     {

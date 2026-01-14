@@ -27,6 +27,9 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->string('address')->nullable();
+            $table->date('effective_date')->nullable();
+            $table->date('expiration_date')->nullable();
+            $table->enum('status', ['INACTIVE', 'ACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });
     }

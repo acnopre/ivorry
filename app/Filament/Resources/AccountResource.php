@@ -3,13 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AccountResource\Pages;
-use App\Filament\Widgets\AccountStatsWidget;
 use App\Imports\AccountImport;
 use App\Models\Account;
 use App\Models\AccountAmendment;
 use App\Models\AccountService;
-use App\Models\AccountServiceHistory;
 use App\Models\EndorsementType;
+use App\Models\ImportLog;
 use App\Models\Role;
 use App\Models\Service;
 use Carbon\Carbon;
@@ -523,8 +522,14 @@ class AccountResource extends Resource
                         if (!$disk->exists($relativePath)) {
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
+                        // Get the original filename (or just use basename of relative path)
+                        $filename = basename($relativePath);
+                        $log = ImportLog::create([
+                            'filename' => $filename,
+                            'status' => 'processing',
+                        ]);
 
-                        Excel::import(new AccountImport, $absolutePath);
+                        Excel::import(new AccountImport($log), $absolutePath);
                     }),
             ])
             ->actions([

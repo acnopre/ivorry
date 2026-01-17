@@ -139,7 +139,7 @@ class DentistSeeder extends Seeder
                 ]),
 
                 'remarks' => $faker->sentence(),
-
+                'fee_approval' => 'APPROVED',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -148,7 +148,7 @@ class DentistSeeder extends Seeder
             $allServiceIds = DB::table('services')->pluck('id')->toArray();
 
             foreach ($allServiceIds as $serviceId) {
-                DB::table('clinic_service')->insert([
+                DB::table('clinic_services')->insert([
                     'clinic_id' => $clinic->id,
                     'service_id' => $serviceId,
                     'fee' => $faker->randomFloat(2, 300, 3000), // assign random fee for each service

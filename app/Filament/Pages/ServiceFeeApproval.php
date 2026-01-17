@@ -1,0 +1,249 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use Filament\Pages\Page;
+use Filament\Tables;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\DB;
+use App\Models\Clinic;
+use App\Models\Procedure;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
+
+class ServiceFeeApproval extends Page implements HasTable
+{
+    use InteractsWithTable;
+
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
+    protected static string $view = 'filament.pages.service-fee-approval';
+
+    protected static ?string $navigationLabel = 'Service Fee Approval';
+    protected static ?string $navigationGroup = 'Billing';
+
+    /**
+     * Required by Filament: table query
+     */
+    protected function getTableQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return Clinic::query()
+            ->with('services')
+            ->where('fee_approval', 'PENDING');
+    }
+
+    /**
+     * Table columns and actions
+     */
+    protected function getTableColumns(): array
+    {
+        return [
+            Tables\Columns\TextColumn::make('clinic_name')
+                ->searchable()
+                ->sortable(),
+
+            Tables\Columns\BadgeColumn::make('fee_approval')
+                ->colors([
+                    'warning' => 'PENDING',
+                    'success' => 'APPROVED',
+                ]),
+
+            Tables\Columns\TextColumn::make('services')
+                ->label('Services (Old Fee | New Fee | Difference)')
+                ->formatStateUsing(function ($record) {
+                    if (! $record->services->count()) {
+                        return '—';
+                    }
+
+                    $html = '<table class="w-full text-sm">';
+                    $html .= '<thead><tr class="border-b"><th class="text-left px-2 py-1">Service</th><th class="text-right px-2 py-1">Old Fee</th><th class="text-right px-2 py-1">New Fee</th><th class="text-right px-2 py-1">Difference</th></tr></thead>';
+                    $html .= '<tbody>';
+
+                    foreach ($record->services as $service) {
+                        $old = number_format($service->pivot->fee, 2);
+                        $new = number_format($service->pivot->new_fee ?? $service->pivot->fee, 2);
+                        $diff = number_format(($service->pivot->new_fee ?? $service->pivot->fee) - $service->pivot->fee, 2);
+
+                        $html .= '<tr class="border-b">';
+                        $html .= "<td class='px-2 py-1'>{$service->name}</td>";
+                        $html .= "<td class='px-2 py-1 text-right'>₱{$old}</td>";
+                        $html .= "<td class='px-2 py-1 text-right'>₱{$new}</td>";
+                        $html .= "<td class='px-2 py-1 text-right'>₱{$diff}</td>";
+                        $html .= '</tr>';
+                    }
+
+                    $html .= '</tbody></table>';
+
+                    return $html;
+                })
+                ->html(),
+            Tables\Columns\TextColumn::make('services')
+                ->label('Services (Fee / New Fee / Difference)')
+                ->formatStateUsing(function ($record) {
+                    // Only services that have a new_fee
+                    $pendingServices = $record->services->filter(fn($s) => filled($s->pivot->new_fee));
+
+                    if ($pendingServices->isEmpty()) {
+                        return '—';
+                    }
+
+                    $html = '<table class="w-full text-sm">';
+                    $html .= '<thead>
+                                <tr class="border-b">
+                                    <th class="text-left px-2 py-1">Service</th>
+                                    <th class="text-right px-2 py-1">Current Fee</th>
+                                    <th class="text-right px-2 py-1">New Fee</th>
+                                    <th class="text-right px-2 py-1">Difference</th>
+                                </tr>
+                              </thead>';
+                    $html .= '<tbody>';
+
+                    foreach ($pendingServices as $service) {
+                        $fee  = number_format($service->pivot->fee, 2);
+                        $new  = number_format($service->pivot->new_fee, 2);
+                        $diff = number_format($service->pivot->new_fee - $service->pivot->fee, 2);
+
+                        $html .= '<tr class="border-b">';
+                        $html .= "<td class='px-2 py-1'>{$service->name}</td>";
+                        $html .= "<td class='px-2 py-1 text-right'>₱{$fee}</td>";
+                        $html .= "<td class='px-2 py-1 text-right'>₱{$new}</td>";
+                        $html .= "<td class='px-2 py-1 text-right'>₱{$diff}</td>";
+                        $html .= '</tr>';
+                    }
+
+                    $html .= '</tbody></table>';
+
+                    return $html;
+                })
+                ->html(),
+
+
+        ];
+    }
+
+
+    protected function getTableActions(): array
+    {
+        return [
+            Action::make('approve_fees')
+                ->label('Approve Service Fees')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Approve Clinic Service Fees')
+                // Use a dynamic form to show services and procedures info
+                ->form(function (Clinic $record) {
+                    $services = $record->services
+                        ->filter(fn($s) => filled($s->pivot->new_fee))
+                        ->map(function ($s) {
+                            $fee  = number_format($s->pivot->fee, 2);
+                            $new  = number_format($s->pivot->new_fee, 2);
+                            $diff = number_format($s->pivot->new_fee - $s->pivot->fee, 2);
+                            return "{$s->name}: Fee ₱{$fee} → New Fee ₱{$new} | Difference ₱{$diff}";
+                        })
+                        ->implode("\n");
+
+                    // Check if there are any processed procedures
+                    $hasProcessedProcedures = Procedure::query()
+                        ->where('clinic_id', $record->id)
+                        ->whereIn('status', [
+                            Procedure::STATUS_PROCESSED,
+                        ])
+                        ->exists();
+
+                    $procedureNotice = $hasProcessedProcedures
+                        ? "⚠ Some procedures already exist for this clinic. New procedures will be created for fee differences."
+                        : "No existing procedures. Fees will be updated directly.";
+
+                    return [
+                        Textarea::make('modal_summary')
+                            ->label('Pending Service Fees')
+                            ->default("{$services}\n\n{$procedureNotice}")
+                            ->disabled()
+                            ->rows(5)
+                            ->columnSpanFull(),
+                    ];
+                })
+                ->action(function (Clinic $record, array $data, Action $action) {
+                    $this->approveClinicFees($record);
+
+                    // Show success notification
+                    Notification::make()
+                        ->success()
+                        ->title('Service fees approved successfully!')
+                        ->send();
+                }),
+        ];
+    }
+
+
+    /**
+     * This is required by Filament: provide query()
+     */
+    protected function query()
+    {
+        return $this->getTableQuery();
+    }
+
+    /**
+     * Fee approval logic
+     */
+    protected function approveClinicFees(Clinic $clinic): void
+    {
+        DB::transaction(function () use ($clinic) {
+
+            foreach ($clinic->services as $service) {
+
+                if (! filled($service->pivot->new_fee)) {
+                    continue;
+                }
+
+                $oldFee = $service->pivot->fee;
+                $newFee = $service->pivot->new_fee;
+                $difference = $newFee - $oldFee;
+
+                // Check if processed procedures exist
+                $hasProcessedProcedures = Procedure::query()
+                    ->where('clinic_id', $clinic->id)
+                    ->where('service_id', $service->id)
+                    ->whereIn('status', [
+                        Procedure::STATUS_PROCESSED,
+                    ]);
+
+                $hasProcessedProceduresExist = $hasProcessedProcedures->exists();
+
+
+                // Create adjustment procedure if needed
+                if ($hasProcessedProceduresExist && $difference != 0) {
+                    Procedure::create([
+                        'member_id'      => $hasProcessedProcedures->first()->member_id,
+                        'clinic_id'      => $clinic->id,
+                        'service_id'     => $service->id,
+                        'availment_date' => $hasProcessedProcedures->first()->availment_date,
+                        'status'         => Procedure::STATUS_COMPLETED,
+                        'remarks'        => 'Service fee adjustment after approval',
+                        'applied_fee'    => $difference,
+                        // 'quantity'       => 1,
+                    ]);
+                }
+
+                // Apply fee update
+                $clinic->services()->updateExistingPivot(
+                    $service->id,
+                    [
+                        'old_fee' => $oldFee,
+                        'fee'     => $newFee,
+                        'new_fee' => null,
+                    ]
+                );
+            }
+
+            // Update clinic approval
+            $clinic->update([
+                'fee_approval' => 'APPROVED',
+            ]);
+        });
+    }
+}

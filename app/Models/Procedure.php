@@ -19,6 +19,7 @@ class Procedure extends Model
         'approval_code',
         'remarks',
         'quantity',
+        'applied_fee',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ class Procedure extends Model
     public const STATUS_VALID = 'valid';
     public const STATUS_REJECT = 'invalid';
     public const STATUS_RETURN = 'returned';
+    public const STATUS_PROCESSED = 'processed';
 
     protected $with = ['units'];
 

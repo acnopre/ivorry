@@ -332,35 +332,37 @@ class SearchClaims extends Page implements HasForms, HasTable
 
                         $searchData = $this->data;
 
-                        $query = Procedure::query()
+                        $query =  Procedure::query()
                             ->when(
                                 $searchData['member_name'] ?? null,
-                                fn($q, $name) =>
-                                $q->whereHas(
-                                    'member',
-                                    fn($r) =>
-                                    $r->whereRaw(
-                                        "CONCAT(first_name, ' ', last_name) LIKE ?",
-                                        ["%{$name}%"]
-                                    )
-                                )
+                                fn(Builder $q, $name) =>
+                                $q->whereHas('member', function ($r) use ($name) {
+                                    $r->where(function ($sub) use ($name) {
+                                        $sub->where('first_name', 'like', "%{$name}%")
+                                            ->orWhere('last_name', 'like', "%{$name}%")
+                                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                                    });
+                                })
                             )
+
                             ->when(
                                 $searchData['approval_code'] ?? null,
-                                fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%")
+                                fn(Builder $q, $code) =>
+                                $q->where('approval_code', 'like', "%{$code}%")
                             )
                             ->when(
                                 $searchData['clinic_id'] ?? null,
-                                fn($q, $clinic_id) =>
-                                $q->whereHas('clinic', fn($r) => $r->where('id', $clinic_id))
+                                fn(Builder $q, $clinic_id) =>
+                                $q->whereHas('clinic', fn($r) => $r->where('id', '=', $clinic_id))
                             )
                             ->when(
                                 $searchData['status'] ?? null,
-                                fn($q, $status) => $q->where('status', $status)
+                                fn(Builder $q, $status) =>
+                                $q->where('status', $status)
                             )
                             ->when(
                                 isset($searchData['availment_from'], $searchData['availment_to']),
-                                fn($q) =>
+                                fn(Builder $q) =>
                                 $q->whereBetween('availment_date', [
                                     $searchData['availment_from'],
                                     $searchData['availment_to'],
@@ -386,35 +388,37 @@ class SearchClaims extends Page implements HasForms, HasTable
 
                         $searchData = $this->data;
 
-                        $query = Procedure::query()
+                        $query =  Procedure::query()
                             ->when(
                                 $searchData['member_name'] ?? null,
-                                fn($q, $name) =>
-                                $q->whereHas(
-                                    'member',
-                                    fn($r) =>
-                                    $r->whereRaw(
-                                        "CONCAT(first_name, ' ', last_name) LIKE ?",
-                                        ["%{$name}%"]
-                                    )
-                                )
+                                fn(Builder $q, $name) =>
+                                $q->whereHas('member', function ($r) use ($name) {
+                                    $r->where(function ($sub) use ($name) {
+                                        $sub->where('first_name', 'like', "%{$name}%")
+                                            ->orWhere('last_name', 'like', "%{$name}%")
+                                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                                    });
+                                })
                             )
+
                             ->when(
                                 $searchData['approval_code'] ?? null,
-                                fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%")
+                                fn(Builder $q, $code) =>
+                                $q->where('approval_code', 'like', "%{$code}%")
                             )
                             ->when(
                                 $searchData['clinic_id'] ?? null,
-                                fn($q, $clinicId) =>
-                                $q->whereHas('clinic', fn($r) => $r->where('id', $clinicId))
+                                fn(Builder $q, $clinic_id) =>
+                                $q->whereHas('clinic', fn($r) => $r->where('id', '=', $clinic_id))
                             )
                             ->when(
                                 $searchData['status'] ?? null,
-                                fn($q, $status) => $q->where('status', $status)
+                                fn(Builder $q, $status) =>
+                                $q->where('status', $status)
                             )
                             ->when(
                                 isset($searchData['availment_from'], $searchData['availment_to']),
-                                fn($q) =>
+                                fn(Builder $q) =>
                                 $q->whereBetween('availment_date', [
                                     $searchData['availment_from'],
                                     $searchData['availment_to'],
@@ -489,9 +493,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ? $procedure->clinic->services()->where('service_id', $procedure->service_id)->first()
                     : null;
 
-                $serviceFee = $clinicService && $clinicService->pivot
-                    ? (float) $clinicService->pivot->fee
-                    : 0;
+                $serviceFee = $procedure->applied_fee;
 
                 // Percentages
                 $vatRate = $this->parseVatType($procedure->clinic->vat_type ?? null);

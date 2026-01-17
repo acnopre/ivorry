@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->foreignId('member_id')->constrained()->cascadeOnDelete();
             $table->foreignId('clinic_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
+            $table->decimal('applied_fee', 10, 2);
             $table->date('availment_date')->nullable();
             $table->string('quantity')->nullable();
             $table->string('approval_code')->nullable();

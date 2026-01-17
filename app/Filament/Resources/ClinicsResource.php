@@ -277,37 +277,57 @@ class ClinicsResource extends Resource
                     ]),
 
 
-                // BASIC SERVICES
                 Section::make('Basic Dental Services')
                     ->schema(function (Forms\Get $get, $operation, $record) {
                         $services = Service::where('type', 'basic')->get();
 
                         return $services->map(function ($service) use ($record) {
                             return Grid::make(12)->schema([
+                                // Service Name
                                 Placeholder::make("label_{$service->id}")
                                     ->label('')
                                     ->content($service->name)
-                                    ->columnSpan(6),
+                                    ->columnSpan(4),
 
+                                // Fee
                                 TextInput::make("services.basic.{$service->id}")
                                     ->label('Fee')
                                     ->numeric()
-                                    ->columnSpan(6)
+                                    ->columnSpan(4)
+                                    ->disabled(true)
                                     ->formatStateUsing(function ($state, $record) use ($service) {
-                                        // Hydrate the current fee value from pivot table
                                         if (! $record) {
-                                            return $state; // for create mode
+                                            return $state;
                                         }
 
                                         return $record->services()
                                             ->where('service_id', $service->id)
                                             ->value('fee');
                                     }),
+
+                                // Last Updated
+                                // Placeholder::make("updated_at_basic_{$service->id}")
+                                //     ->label('Last Updated')
+                                //     ->content(function () use ($record, $service) {
+                                //         if (! $record) {
+                                //             return '—';
+                                //         }
+
+                                //         $pivot = $record->services()
+                                //             ->where('service_id', $service->id)
+                                //             ->first()?->pivot;
+
+                                //         return $pivot?->updated_at
+                                //             ? $pivot->updated_at->format('M d, Y h:i A')
+                                //             : '—';
+                                //     })
+                                //     ->columnSpan(4)
+                                //     ->extraAttributes(['class' => 'text-sm text-gray-500']),
                             ]);
                         })->toArray();
                     }),
 
-                // PLAN ENHANCEMENTS
+
                 Section::make('Plan Enhancements')
                     ->schema(function (Forms\Get $get, $operation, $record) {
                         $enhancements = Service::where('type', 'enhancement')->get();
@@ -317,12 +337,13 @@ class ClinicsResource extends Resource
                                 Placeholder::make("label_{$enhancement->id}")
                                     ->label('')
                                     ->content($enhancement->name)
-                                    ->columnSpan(6),
+                                    ->columnSpan(4),
 
                                 TextInput::make("services.enhancement.{$enhancement->id}")
                                     ->label('Fee')
                                     ->numeric()
-                                    ->columnSpan(6)
+                                    ->disabled(true)
+                                    ->columnSpan(4)
                                     ->formatStateUsing(function ($state, $record) use ($enhancement) {
                                         if (! $record) {
                                             return $state;
@@ -332,10 +353,42 @@ class ClinicsResource extends Resource
                                             ->where('service_id', $enhancement->id)
                                             ->value('fee');
                                     }),
+
+                                TextInput::make("services.enhancement_new_fee.{$enhancement->id}")
+                                    ->label('New Fee')
+                                    ->numeric()
+                                    ->columnSpan(4)
+                                    ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                        if (! $record) {
+                                            return $state;
+                                        }
+
+                                        return $record->services()
+                                            ->where('service_id', $enhancement->id)
+                                            ->value('new_fee');
+                                    }),
+
+
+                                // Placeholder::make("updated_at_enhancement_{$enhancement->id}")
+                                //     ->label('Last Updated')
+                                //     ->content(function () use ($record, $enhancement) {
+                                //         if (! $record) {
+                                //             return '—';
+                                //         }
+
+                                //         $pivot = $record->services()
+                                //             ->where('service_id', $enhancement->id)
+                                //             ->first()?->pivot;
+
+                                //         return $pivot?->updated_at
+                                //             ? $pivot->updated_at->format('M d, Y h:i A')
+                                //             : '—';
+                                //     })
+                                //     ->columnSpan(4)
+                                //     ->extraAttributes(['class' => 'text-sm text-gray-500']),
                             ]);
                         })->toArray();
                     }),
-
 
                 Forms\Components\Section::make('Status')
                     ->schema([

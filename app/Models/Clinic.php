@@ -53,6 +53,7 @@ class Clinic extends Model
         'account_type',
         'accreditation_status',
         'associate_dentists',
+        'fee_approval'
     ];
 
     // protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];
@@ -99,7 +100,7 @@ class Clinic extends Model
     }
     public function services()
     {
-        return $this->belongsToMany(Service::class, 'clinic_service')->withPivot('fee')->withTimestamps();
+        return $this->belongsToMany(Service::class, 'clinic_services')->withPivot('fee', 'new_fee', 'old_fee')->withTimestamps();
     }
     public function user()
     {

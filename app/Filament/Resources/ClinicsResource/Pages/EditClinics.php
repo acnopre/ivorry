@@ -40,22 +40,34 @@ class EditClinics extends EditRecord
     protected function afterSave(): void
     {
         $account = $this->record;
-    
-        $mergedServices = $this->servicesData['basic'] + $this->servicesData['enhancement'] ;
 
-        if (empty($mergedServices)) {
+        // Get only the enhancement new fees from the form state
+        $enhancementFees = $this->data['services']['enhancement_new_fee'] ?? [];
+
+        if (empty($enhancementFees)) {
             return;
         }
 
-        $filtered = collect($mergedServices)
-            ->filter(fn($fee, $serviceId) => $serviceId)
+        // Prepare pivot data for sync
+        $syncData = collect($enhancementFees)
+            ->filter(fn($fee, $serviceId) => !is_null($serviceId) && $serviceId !== '')
             ->mapWithKeys(fn($fee, $serviceId) => [
-                $serviceId => ['fee' => $fee],
+                $serviceId => ['new_fee' => $fee],
             ])
             ->toArray();
-    
-        // Sync to pivot table (account_service)
-        $account->services()->sync($filtered);
-    }
-}    
 
+        // Sync only the new fees to the pivot table
+        // This will update existing ones and keep other pivot data intact
+        foreach ($syncData as $serviceId => $pivotData) {
+            $account->services()->updateExistingPivot($serviceId, $pivotData);
+        }
+
+        $hasChanges = collect($this->data['services']['enhancement_new_fee'] ?? [])
+            ->filter(fn($fee) => $fee !== null && $fee !== '')
+            ->isNotEmpty();
+
+        if ($hasChanges) {
+            $account->update(['fee_approval' => 'pending']);
+        }
+    }
+}

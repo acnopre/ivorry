@@ -93,6 +93,7 @@ return new class extends Migration
             $table->enum('account_type', ['SAVINGS', 'CURRENT'])->nullable();
             // Status
             $table->enum('accreditation_status', ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT'])->default('INACTIVE');
+            $table->enum('fee_approval', ['PENDING', 'APPROVED', 'UNAPPROVE'])->default('PENDING');
             $table->longText('remarks')->nullable();
             $table->timestamps();
             $table->softDeletes();

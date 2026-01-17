@@ -23,8 +23,7 @@ class ImportLogItemsRelationManager extends RelationManager
                         'danger'  => 'error',
                     ]),
 
-                Tables\Columns\TextColumn::make('message')
-                    ->limit(50)
+                Tables\Columns\TextColumn::make('raw_data')
                     ->wrap()
                     ->toggleable(),
             ]);

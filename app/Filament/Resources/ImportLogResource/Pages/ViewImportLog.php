@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\ImportLogResource\Pages;
 
 use App\Filament\Resources\ImportLogResource;
-use App\Filament\Resources\ImportLogResource\Widgets\ImportLogStats;
+use App\Filament\Widgets\ImportLogStats;
 use App\Models\ImportLog;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;

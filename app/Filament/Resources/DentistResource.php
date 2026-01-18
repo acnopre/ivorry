@@ -16,6 +16,7 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
+use Illuminate\Database\Eloquent\Model;
 
 class DentistResource extends Resource
 {
@@ -70,18 +71,38 @@ class DentistResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ViewAction::make()->visible(auth()->user()->can('dentist.view')),
+                Tables\Actions\EditAction::make()->visible(auth()->user()->can('dentist.update')),
+                Tables\Actions\DeleteAction::make()->visible(auth()->user()->can('dentist.delete'))
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('dentist.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->can('dentist.create');
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()->can('dentist.update');
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()->can('dentist.delete');
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCREDITATION]);
+            && auth()->user()->can('dentist.view');
     }
 
     public static function getPages(): array

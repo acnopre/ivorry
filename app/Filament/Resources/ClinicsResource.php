@@ -36,6 +36,7 @@ use Filament\Notifications\Notification;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\VatType;
+use Illuminate\Database\Eloquent\Model;
 
 class ClinicsResource extends Resource
 {
@@ -421,6 +422,7 @@ class ClinicsResource extends Resource
                 Action::make('importXls')
                     ->label('Import XLS')
                     ->icon('heroicon-o-arrow-up-tray')
+                    ->visible(auth()->user()->can('clinic.import'))
                     ->color('success')
                     ->form([
                         \Filament\Forms\Components\FileUpload::make('file')
@@ -441,9 +443,9 @@ class ClinicsResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ViewAction::make()->visible(auth()->user()->can('clinic.view')),
+                Tables\Actions\EditAction::make()->visible(auth()->user()->can('clinic.update')),
+                Tables\Actions\DeleteAction::make()->visible(auth()->user()->can('clinic.delete')),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
@@ -451,10 +453,30 @@ class ClinicsResource extends Resource
     }
 
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('clinic.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->can('clinic.create');
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()->can('clinic.update');
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()->can('clinic.delete');
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCREDITATION]);
+            && auth()->user()->can('clinic.view');
     }
 
     public static function getPages(): array

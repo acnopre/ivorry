@@ -22,9 +22,7 @@ class UpperManagementSeeder extends Seeder
             'system.manage_permissions',
             'dashboard.view',
             'claim.view',
-            'clinic.view',
 
-            'dentist.view',
 
             'account.view',
             'account.create',
@@ -45,6 +43,18 @@ class UpperManagementSeeder extends Seeder
             'import-logs.details.view',
 
             'fee.approval',
+
+            //clinic and dentist
+            'clinic.view',
+            'clinic.create',
+            'clinic.update',
+            'clinic.delete',
+            'clinic.import',
+            'dentist.view',
+            'dentist.create',
+            'dentist.update',
+            'dentist.delete',
+            'dentist.import',
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

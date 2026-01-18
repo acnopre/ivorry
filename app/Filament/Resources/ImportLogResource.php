@@ -41,7 +41,7 @@ class ImportLogResource extends Resource
                 TextColumn::make('created_at')->dateTime(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ViewAction::make()->visible(auth()->user()->can('import-logs.details.view')),
             ])
             ->defaultSort('created_at', 'desc');
     }
@@ -59,5 +59,16 @@ class ImportLogResource extends Resource
             'index' => Pages\ListImportLogs::route('/'),
             'view'  => Pages\ViewImportLog::route('/{record}'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->can('import-logs.view');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('import-logs.view');
     }
 }

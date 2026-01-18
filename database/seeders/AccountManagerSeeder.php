@@ -20,13 +20,16 @@ class AccountManagerSeeder extends Seeder
             'account.create',
             'account.update',
             'account.delete',
-            'account.upload',
-            'account.renew',
-            'account.expire',
-            'account.activate',
-            'account.deactivate',
-            'account.override',
-            'member.upload',
+            'account.import',
+
+            'member.view',
+            'member.create',
+            'member.update',
+            'member.delete',
+            'member.import',
+            'import-logs.view',
+            'import-logs.details.view'
+
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

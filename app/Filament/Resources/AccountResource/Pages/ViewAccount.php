@@ -37,7 +37,7 @@ class ViewAccount extends ViewRecord
                 ->label('Approve Account')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
-                ->visible(fn(Account $record) => $record->account_status === 'inactive' && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT))
+                ->visible(fn(Account $record) => $record->account_status === 'inactive' && auth()->user()->can('account.approve'))
                 ->requiresConfirmation()
                 ->action(function (Account $record) {
                     $record->update([
@@ -63,7 +63,7 @@ class ViewAccount extends ViewRecord
                 ->visible(
                     fn(Account $record) =>
                     $record->account_status === 'inactive' &&
-                        auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
+                        auth()->user()->can('account.reject')
                 )
                 ->disabled(fn(Account $record) => $record->endorsement_status === 'REJECTED')
                 ->form([
@@ -100,7 +100,7 @@ class ViewAccount extends ViewRecord
                     fn(Account $record) =>
                     $record->endorsement_type === 'RENEWAL'
                         && $record->endorsement_status === 'PENDING'
-                        && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)
+                        && auth()->user()->can('account.renew')
                         && $record->renewals->first() != null
                 )
                 ->requiresConfirmation()
@@ -163,7 +163,7 @@ class ViewAccount extends ViewRecord
                 ->visible(
                     fn(Model $record) =>
                     $record->endorsement_type === 'AMENDMENT'
-                        && auth()->user()?->hasAnyRole([Role::UPPER_MANAGEMENT])
+                        && auth()->user()->can('account.amend')
                 )
                 ->action(function (Account $record) {
                     $amendment = AccountAmendment::where('account_id', $record->id)

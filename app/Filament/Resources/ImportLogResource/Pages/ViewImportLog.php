@@ -72,4 +72,9 @@ class ViewImportLog extends ViewRecord
             'status' => $record->error_rows > 0 ? 'partial' : 'completed',
         ]);
     }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('import-logs.details.view');
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
+use Filament\Enums\ThemeMode;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -40,6 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => '#8B1C52',
             ])
+            ->defaultThemeMode(ThemeMode::Light)
             ->maxContentWidth(MaxWidth::Full)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')

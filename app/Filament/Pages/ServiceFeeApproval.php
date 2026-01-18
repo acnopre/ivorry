@@ -22,7 +22,8 @@ class ServiceFeeApproval extends Page implements HasTable
     protected static string $view = 'filament.pages.service-fee-approval';
 
     protected static ?string $navigationLabel = 'Service Fee Approval';
-    protected static ?string $navigationGroup = 'Billing';
+    protected static ?string $navigationGroup = 'Dental Management';
+    protected static ?int $navigationSort = 2;
 
     /**
      * Required by Filament: table query
@@ -131,6 +132,7 @@ class ServiceFeeApproval extends Page implements HasTable
                 ->label('Approve Service Fees')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
+                ->visible(auth()->user()->can('fee.approval'))
                 ->requiresConfirmation()
                 ->modalHeading('Approve Clinic Service Fees')
                 // Use a dynamic form to show services and procedures info
@@ -245,5 +247,10 @@ class ServiceFeeApproval extends Page implements HasTable
                 'fee_approval' => 'APPROVED',
             ]);
         });
+    }
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->can('fee.approval');
     }
 }

@@ -19,6 +19,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Tables\Actions\Action;
+use Illuminate\Database\Eloquent\Model;
 
 class MemberResource extends Resource
 {
@@ -165,6 +166,7 @@ class MemberResource extends Resource
                 Action::make('importXls')
                     ->label('Import XLS')
                     ->icon('heroicon-o-arrow-up-tray')
+                    ->visible(auth()->user()->can('member.import'))
                     ->color('success')
                     ->form([
                         FileUpload::make('file')
@@ -202,11 +204,32 @@ class MemberResource extends Resource
     }
 
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('member.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->can('member.create');
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()->can('member.update');
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()->can('member.delete');
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCOUNT_MANAGER, Role::CSR]);
+            && auth()->user()->can('member.view');
     }
+
 
     public static function getPages(): array
     {

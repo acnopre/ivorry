@@ -15,55 +15,38 @@ class RolesAndPermissionsSeeder extends Seeder
             'member.create',
             'member.update',
             'member.delete',
-            'member.approve_procedure',
-            'member.deny_procedure',
-            'member.confirm_procedure',
-            'member.search',
-            'member.upload',
+            'member.import',
+            'import-logs.view',
+            'import-logs.details.view',
 
             // Claims
             'claim.view',
             'claim.create',
             'claim.update',
             'claim.delete',
-            'claim.approve',
-            'claim.deny',
-            'claim.appeal',
-            'claim.override',
-            'claim.reprocess',
-            'claim.search',
-            'claim.filter',
-
-            // SOA
-            'soa.view',
-            'soa.generate',
 
             // Accounts
             'account.view',
             'account.create',
             'account.update',
             'account.delete',
-            'account.upload',
+            'account.import',
+            'account.approve',
+            'account.reject',
             'account.renew',
-            'account.expire',
-            'account.activate',
-            'account.deactivate',
-            'account.override',
+            'account.amend',
 
             // Clinics
             'clinic.view',
             'clinic.create',
             'clinic.update',
             'clinic.delete',
-            'clinic.set_status',
-            'clinic.upload',
 
             // Dentists
             'dentist.view',
             'dentist.create',
             'dentist.update',
             'dentist.delete',
-            'dentist.upload',
 
             // System
             'system.logs',

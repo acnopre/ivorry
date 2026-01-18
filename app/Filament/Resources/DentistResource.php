@@ -24,6 +24,7 @@ class DentistResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
     protected static ?string $navigationGroup = 'Dental Management';
     protected static ?string $navigationLabel = 'Dentists';
+    protected static ?int $navigationSort = 0;
 
     public static function form(Form $form): Form
     {

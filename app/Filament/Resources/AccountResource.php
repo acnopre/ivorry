@@ -505,6 +505,7 @@ class AccountResource extends Resource
                     ->label('Import XLS')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('success')
+                    ->visible(fn() => auth()->user()->can('account.import'))
                     ->form([
                         FileUpload::make('file')
                             ->label('Upload Excel File')
@@ -533,115 +534,7 @@ class AccountResource extends Resource
                     }),
             ])
             ->actions([
-                ViewAction::make()
-                    ->modalHeading('Account Details')
-                    ->modalSubmitAction(false)
-                    ->extraModalFooterActions([
-                        // ✅ For regular NEW or AMENDMENT approvals
-                        TableAction::make('approveAccount')
-                            ->label('Approve Account')
-                            ->color('success')
-                            ->icon('heroicon-o-check-circle')
-                            ->visible(
-                                fn(Model $record) =>
-                                in_array($record->endorsement_type, ['NEW', 'AMENDMENT'])
-                            )
-                            ->requiresConfirmation()
-                            ->action(function (Model $record) {
-                                $record->update(['account_status' => 'active']);
-                                Notification::make()
-                                    ->success()
-                                    ->title('Account Approved')
-                                    ->body('The account has been approved successfully.')
-                                    ->send();
-                            }),
-
-                        // ✅ For Renewal approvals (separate button)
-                        TableAction::make('approveRenewal')
-                            ->label('Approve Renewal')
-                            ->color('info')
-                            ->visible(
-                                fn(Model $record) =>
-                                $record->endorsement_type === 'RENEWAL'
-                                    && auth()->user()?->hasAnyRole([Role::UPPER_MANAGEMENT])
-                            )
-                            ->requiresConfirmation()
-                            ->action(function (Model $record) {
-                                // Create a renewal request
-                                $renewal = \App\Models\AccountRenewal::create([
-                                    'account_id' => $record->id,
-                                    'effective_date' => $record->effective_date,
-                                    'expiration_date' => $record->expiration_date,
-                                    'requested_by' => auth()->id(),
-                                    'status' => 'PENDING',
-                                ]);
-
-                                // Save all services as part of the renewal
-                                foreach (['basic', 'enhancement'] as $type) {
-                                    $services = $record->services()->whereHas('service', fn($q) => $q->where('type', $type))->get();
-
-                                    foreach ($services as $service) {
-                                        $renewal->services()->create([
-                                            'service_id' => $service->id,
-                                            'quantity' => $service->pivot->quantity,
-                                            'is_unlimited' => $service->pivot->is_unlimited,
-                                            'remarks' => $service->pivot->remarks,
-                                        ]);
-                                    }
-                                }
-
-                                Notification::make()
-                                    ->success()
-                                    ->title('Renewal Created')
-                                    ->body('Renewal request has been saved and awaits approval.')
-                                    ->send();
-                            }),
-
-                        TableAction::make('approveAmendment')
-                            ->label('Approve Amendment')
-                            ->visible(
-                                fn(Model $record) =>
-                                $record->endorsement_type === 'AMENDMENT'
-                                    && auth()->user()?->hasAnyRole([Role::UPPER_MANAGEMENT])
-                            )
-                            ->action(function (Account $record) {
-
-                                $amendment = AccountAmendment::where('account_id', $record->id)
-                                    ->where('endorsement_status', 'PENDING')
-                                    ->latest()
-                                    ->first();
-
-                                // Update main account
-                                $record->update([
-                                    'company_name'     => $amendment->company_name,
-                                    'policy_code'      => $amendment->policy_code,
-                                    'hip'              => $amendment->hip,
-                                    'card_used'        => $amendment->card_used,
-                                    'effective_date'   => $amendment->effective_date,
-                                    'expiration_date'  => $amendment->expiration_date,
-                                    'endorsement_type' => 'AMENDED',
-                                    'endorsement_status' => 'APPROVED',
-                                ]);
-
-                                // Clear old services & apply amended services
-                                $record->services()->delete();
-
-                                foreach ($amendment->services as $srv) {
-                                    $record->services()->create([
-                                        'service_id'        => $srv->service_id,
-                                        'quantity'          => $srv->quantity,
-                                        'default_quantity'  => $srv->default_quantity,
-                                        'is_unlimited'      => $srv->is_unlimited,
-                                        'remarks'           => $srv->remarks,
-                                    ]);
-                                }
-
-                                $amendment->update(['endorsement_status' => 'APPROVED']);
-                            }),
-
-
-
-                    ]),
+                ViewAction::make(),
                 Tables\Actions\EditAction::make()
                     ->visible(fn() => auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::ACCOUNT_MANAGER)),
 
@@ -655,22 +548,15 @@ class AccountResource extends Resource
             ]);
     }
 
-    // public static function getWidgets(): array
-    // {
-    //     return [
-    //         AccountStatsWidget::class
-    //     ];
-    // }
 
     public static function getNavigationBadge(): ?string
     {
-        if (! auth()->user()?->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT])) {
-            return null; // Do NOT show badge for other roles
+        if (! auth()->user()?->can('account.approve')) {
+            return null;
         }
-        // Count accounts where account_status = 0 (pending)
+
         $pendingCount = Account::where('endorsement_status', 'PENDING')->count();
 
-        // Only show badge if there's at least one pending
         return $pendingCount > 0 ? (string) $pendingCount : null;
     }
 
@@ -679,11 +565,30 @@ class AccountResource extends Resource
         return 'warning';
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('account.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->can('account.create');
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()->can('account.update');
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()->can('account.delete');
+    }
 
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::ACCOUNT_MANAGER, Role::UPPER_MANAGEMENT]);
+            && auth()->user()->can('account.view');
     }
 
     public static function getRelations(): array

@@ -17,18 +17,34 @@ class UpperManagementSeeder extends Seeder
 
         $permissions = [
             'system.logs',
-            'system.audit',
             'system.export',
             'system.manage_users',
             'system.manage_permissions',
             'dashboard.view',
             'claim.view',
-            'soa.view',
-            'account.view',
             'clinic.view',
+
             'dentist.view',
-            'claim.override',
-            'account.override',
+
+            'account.view',
+            'account.create',
+            'account.update',
+            'account.delete',
+            'account.import',
+            'account.approve',
+            'account.reject',
+            'account.renew',
+            'account.amend',
+
+            'member.view',
+            'member.create',
+            'member.update',
+            'member.delete',
+            'member.import',
+            'import-logs.view',
+            'import-logs.details.view',
+
+            'fee.approval',
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

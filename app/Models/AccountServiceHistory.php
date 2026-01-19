@@ -13,12 +13,12 @@ class AccountServiceHistory extends Model
         'remarks',
         'action',
         'effective_date',
-        'expiry_date',
+        'expiration_date',
     ];
 
     protected $casts = [
         'effective_date' => 'date',
-        'expiry_date' => 'date',
+        'expiration_date' => 'date',
     ];
 
     public function service()

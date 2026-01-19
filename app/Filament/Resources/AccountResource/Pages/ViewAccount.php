@@ -108,17 +108,17 @@ class ViewAccount extends ViewRecord
                     $renewal = AccountRenewal::where('account_id', $record->id)
                         ->where('status', 'PENDING')
                         ->firstOrFail();
-
                     $renewalServices = AccountRenewalService::where('renewal_id', $renewal->id)->get();
                     $accountService = AccountService::where('account_id', $renewal->account_id);
-
                     foreach ($accountService->get() as $service) {
                         AccountServiceHistory::create([
                             'account_id' => $record->id,
-                            'service_id' => $service->id,
+                            'service_id' => $service->service_id,
                             'quantity' => $service->quantity ?? null,
                             'remarks' => 'Renewed to default quantity',
                             'action' => 'renewal',
+                            'effective_date' => $record->effective_date,
+                            'expiration_date' => $record->expiration_date,
                         ]);
                     }
 
@@ -551,12 +551,11 @@ class ViewAccount extends ViewRecord
             ->groupBy(function ($item) {
                 // Ensure dates exist before formatting
                 $start = optional($item->effective_date)->format('M d, Y');
-                $end = optional($item->expiry_date)->format('M d, Y');
+                $end = optional($item->expiration_date)->format('M d, Y');
                 return "{$start} - {$end}";
             });
 
         $groups = [];
-
         foreach ($records as $period => $items) {
             $groups[$period] = [
                 'label' => $period,

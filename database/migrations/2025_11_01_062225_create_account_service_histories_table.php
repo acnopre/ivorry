@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->longText('remarks')->nullable();
             $table->string('action')->default('renewal'); // e.g. renewal, adjustment, etc.
             $table->date('effective_date')->nullable();
-            $table->date('expiry_date')->nullable();
+            $table->date('expiration_date')->nullable();
             $table->timestamps();
         });
     }

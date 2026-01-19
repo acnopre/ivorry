@@ -631,12 +631,11 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         // ----------------- Determine Print Count & Copy Label -----------------
         $printCount = $soa->print_count + 1;
-
         $copyLabelOriginal = $printCount === 1
             ? 'ORIGINAL'
             : 'DUPLICATE #' . $printCount;
 
-        // ----------------- ORIGINAL PDF (DOWNLOADABLE) -----------------
+        // ----------------- ORIGINAL PDF -----------------
         $pdfOriginal = Pdf::loadView($originalView, [
             'claims' => $claims,
             'from' => $data['availment_from'],
@@ -660,23 +659,40 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         $originalFileName = 'ADC_ORIGINAL_' . $timestamp . '.pdf';
         $originalPath = 'adc/originals/' . $originalFileName;
-
         Storage::disk('public')->put($originalPath, $pdfOriginal->output());
+        $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
 
-        // ----------------- PRINT (TEMPORARILY DISABLED) -----------------
-        /*
-        $printerName = config('printing.printer_name', 'CLINIC_PRINTER');
-        exec("lp -d {$printerName} {$tempPath}");
-        */
+        // ----------------- Dynamic Printer Selection -----------------
+        $clinicPrinter = $clinicDetails->printer_name ?? null;
+        $printerName = \App\Services\PrinterService::getPrinter($clinicPrinter);
 
-        // ----------------- Increment print count & log (optional) -----------------
+        if ($printerName) {
+            // Print ORIGINAL PDF
+            exec(
+                'lp -o landscape -d ' . escapeshellarg($printerName) . ' ' . escapeshellarg($absoluteOriginalPath),
+                $output,
+                $statusCode
+            );
+
+            if ($statusCode !== 0) {
+                Log::error('SOA printing failed', [
+                    'soa_id' => $soa->id,
+                    'printer' => $printerName,
+                    'output' => $output,
+                ]);
+            }
+        } else {
+            Log::error('No available printer for SOA ID ' . $soa->id);
+        }
+
+        // ----------------- Increment print count & log -----------------
         $soa->increment('print_count');
 
         DB::table('print_logs')->insert([
             'user_id' => auth()->id(),
             'document_id' => $soa->id,
             'copy_type' => $copyLabelOriginal,
-            'printer' => 'DOWNLOAD_ONLY',
+            'printer' => $printerName ?? 'NO_PRINTER_AVAILABLE',
             'created_at' => now(),
         ]);
 
@@ -704,18 +720,19 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
         $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
-
         Storage::disk('public')->put($duplicatePath, $pdfDuplicate->output());
 
         // ----------------- Update SOA paths -----------------
         $soa->update([
-            'duplicate_file_path' => $duplicatePath,
             'original_file_path' => $originalPath,
+            'duplicate_file_path' => $duplicatePath,
         ]);
 
         // ----------------- Return ORIGINAL download -----------------
-        return Storage::disk('public')->download($originalPath, $originalFileName);
+        return Storage::disk('public')->download($duplicatePath, $duplicateFileName);
     }
+
+
 
     private function parsePercentage(?string $value): float
     {

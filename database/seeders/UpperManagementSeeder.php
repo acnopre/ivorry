@@ -21,9 +21,26 @@ class UpperManagementSeeder extends Seeder
             'system.manage_users',
             'system.manage_permissions',
             'dashboard.view',
-            'claim.view',
 
+            // Member
+            'member.view',
+            'member.create',
+            'member.update',
+            'member.delete',
+            'member.import',
+            'import-logs.view',
+            'import-logs.details.view',
 
+            // Claims
+            'claims.view',
+            'claims.search',
+            'claims.generate',
+            'claims.view_details',
+            'claims.valid',
+            'claims.reject',
+            'claims.return',
+
+            // Accounts
             'account.view',
             'account.create',
             'account.update',
@@ -34,27 +51,29 @@ class UpperManagementSeeder extends Seeder
             'account.renew',
             'account.amend',
 
-            'member.view',
-            'member.create',
-            'member.update',
-            'member.delete',
-            'member.import',
-            'import-logs.view',
-            'import-logs.details.view',
-
-            'fee.approval',
-
-            //clinic and dentist
+            // Clinics
             'clinic.view',
             'clinic.create',
             'clinic.update',
             'clinic.delete',
-            'clinic.import',
+
+            // Dentists
+            'dentist.search',
             'dentist.view',
-            'dentist.create',
-            'dentist.update',
-            'dentist.delete',
-            'dentist.import',
+            'dentist.list',
+            'dentist.add-procedure',
+            'dentist.my-procedure',
+
+            // System
+            'system.logs',
+            'system.audit',
+            'system.export',
+            'system.manage_users',
+            'system.manage_permissions',
+
+            // Dashboard & Reports
+            'dashboard.view',
+
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

@@ -16,11 +16,11 @@ class DentistAccountSeeder extends Seeder
         $role = Role::firstOrCreate(['name' => 'Dentist']);
 
         $permissions = [
+            'dentist.search',
             'dentist.view',
-            'claim.create',
-            'claim.view',
-            'claim.appeal',
-            'soa.view',
+            'dentist.list',
+            'dentist.add-procedure',
+            'dentist.my-procedure',
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

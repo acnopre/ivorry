@@ -113,6 +113,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                         ->label('Search Claims')
                         ->icon('heroicon-o-magnifying-glass')
                         ->color('primary')
+                        ->visible(auth()->user()->can('claims.search'))
                         ->action('search'),
                 ]),
         ];
@@ -238,6 +239,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ->label('Valid')
                                 ->icon('heroicon-o-check-circle')
                                 ->color('success')
+                                ->visible(auth()->user()->can('claims.valid'))
                                 ->requiresConfirmation()
                                 ->modalHeading('Confirm Validation')
                                 ->modalDescription('Are you sure you want to mark this claim as valid?')
@@ -257,6 +259,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                             Tables\Actions\Action::make('mark_invalid_modal')
                                 ->label('Rejected')
                                 ->icon('heroicon-o-x-circle')
+                                ->visible(auth()->user()->can('claims.reject'))
                                 ->color('danger')
                                 ->form([
                                     Forms\Components\Textarea::make('remarks')
@@ -285,6 +288,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                             // 🟡 RETURN
                             Tables\Actions\Action::make('mark_returned_modal')
                                 ->label('Return')
+                                ->visible(auth()->user()->can('claims.return'))
                                 ->icon('heroicon-o-arrow-uturn-left')
                                 ->color('warning')
                                 ->form([
@@ -321,6 +325,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->color('success')
                     ->icon('heroicon-o-check-badge')
                     ->requiresConfirmation()
+                    ->visible('claims.generate')
                     ->modalHeading('Approve Dentist Claims')
                     ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED before the ADC is created.')
 
@@ -376,6 +381,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->label('Generate Return')
                     ->color('warning')
                     ->icon('heroicon-o-check-badge')
+                    ->visible(auth()->user()->can('claims.return'))
                     ->requiresConfirmation()
                     ->modalHeading('Generate Return')
                     ->modalDescription('Are you sure you want to generate return claims?')
@@ -735,6 +741,12 @@ class SearchClaims extends Page implements HasForms, HasTable
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::CLAIMS_PROCESSOR]);
+        return auth()->check()
+            && auth()->user()->can('claims.search');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('claims.search');
     }
 }

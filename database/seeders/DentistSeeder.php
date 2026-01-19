@@ -19,8 +19,6 @@ class DentistSeeder extends Seeder
 
         // Create the "Dentist" role
         $role = Role::firstOrCreate(['name' => 'Dentist']);
-        $permissions = ['dentist.view', 'dentist.manage'];
-        $role->syncPermissions(Permission::whereIn('name', $permissions)->get());
 
         // Loop through 5 clinics
         for ($c = 1; $c <= 5; $c++) {

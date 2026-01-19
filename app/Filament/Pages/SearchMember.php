@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\AccountService;
+use App\Models\ClinicService;
 use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureSurface;
@@ -138,7 +139,7 @@ class SearchMember extends Page
 
         // Generate approval code
         $approvalCode = strtoupper(Str::random(8));
-
+        $applidFee = ClinicService::where('clinic_id', $clinicId)->where('service_id', $data['service_id'])->first()->fee;
         // Create procedure
         $procedure = Procedure::create([
             'clinic_id' => $clinicId,
@@ -148,7 +149,9 @@ class SearchMember extends Page
             'status' => Procedure::STATUS_PENDING,
             'quantity' => $data['quantity'],
             'approval_code' => $approvalCode,
+            'applied_fee' => $applidFee,
         ]);
+
 
         // Create associated procedure unit
         $procedureUnit = ProcedureUnit::create([
@@ -382,9 +385,11 @@ class SearchMember extends Page
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([
-                Role::SUPER_ADMIN,
-                Role::DENTIST,
-            ]);
+            && auth()->user()->can('dentist.view');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('dentist.search');
     }
 }

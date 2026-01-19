@@ -25,7 +25,6 @@ class AccreditationSeeder extends Seeder
             'dentist.create',
             'dentist.update',
             'dentist.delete',
-            'dentist.import',
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

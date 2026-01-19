@@ -20,10 +20,13 @@ class RolesAndPermissionsSeeder extends Seeder
             'import-logs.details.view',
 
             // Claims
-            'claim.view',
-            'claim.create',
-            'claim.update',
-            'claim.delete',
+            'claims.view',
+            'claims.search',
+            'claims.generate',
+            'claims.view_details',
+            'claims.valid',
+            'claims.reject',
+            'claims.return',
 
             // Accounts
             'account.view',
@@ -43,10 +46,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'clinic.delete',
 
             // Dentists
+            'dentist.search',
             'dentist.view',
-            'dentist.create',
-            'dentist.update',
-            'dentist.delete',
+            'dentist.list',
+            'dentist.add-procedure',
+            'dentist.my-procedure',
 
             // System
             'system.logs',

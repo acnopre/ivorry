@@ -17,19 +17,13 @@ class ClaimsProcessorSeeder extends Seeder
         $role = Role::firstOrCreate(['name' => 'Claims Processor']);
 
         $permissions = [
-            'claim.view',
-            'claim.create',
-            'claim.update',
-            'claim.delete',
-            'claim.approve',
-            'claim.deny',
-            'claim.appeal',
-            'claim.override',
-            'claim.reprocess',
-            'claim.search',
-            'claim.filter',
-            'soa.view',
-            'soa.generate',
+            'claims.view',
+            'claims.search',
+            'claims.generate',
+            'claims.view_details',
+            'claims.valid',
+            'claims.reject',
+            'claims.return'
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

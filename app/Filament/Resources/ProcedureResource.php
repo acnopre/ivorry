@@ -132,6 +132,11 @@ class ProcedureResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::DENTIST]);
+            && auth()->user()->can('dentist.my-procedure');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('dentist.my-procedure');
     }
 }

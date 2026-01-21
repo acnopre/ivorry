@@ -23,7 +23,8 @@ class ClaimsProcessorSeeder extends Seeder
             'claims.view_details',
             'claims.valid',
             'claims.reject',
-            'claims.return'
+            'claims.return',
+            'claims.print'
         ];
 
         $role->syncPermissions(Permission::whereIn('name', $permissions)->get());

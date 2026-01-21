@@ -27,7 +27,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'claims.valid',
             'claims.reject',
             'claims.return',
-
+            'claims.print',
+            'fee.approval',
             // Accounts
             'account.view',
             'account.create',

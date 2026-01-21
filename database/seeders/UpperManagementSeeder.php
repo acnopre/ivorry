@@ -39,6 +39,8 @@ class UpperManagementSeeder extends Seeder
             'claims.valid',
             'claims.reject',
             'claims.return',
+            'claims.print',
+            'fee.approval',
 
             // Accounts
             'account.view',

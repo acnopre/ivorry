@@ -20,6 +20,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
+use Illuminate\Support\Facades\Log;
 
 class SearchClaims extends Page implements HasForms, HasTable
 {
@@ -552,8 +553,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     'total_net'    => $items->sum('net'),
                 ];
             });
-        // Update procedures status → processed
-        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+
         // 
         $grandTotalRate = $accounts->sum('total_rate');
         $grandTotalVat  = $accounts->sum('total_vat');
@@ -616,6 +616,7 @@ class SearchClaims extends Page implements HasForms, HasTable
         $dentist = $clinicDetails->dentists->where('is_owner', 1)->first();
         $preparedBy = auth()->user()->name ?? 'System Generated';
         $timestamp = now()->format('Y-m-d_His');
+        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
 
         // ----------------- Sequence Number -----------------
         $sequenceNumber = 'ADC' . str_pad($soa->id, 10, '0', STR_PAD_LEFT);
@@ -675,14 +676,25 @@ class SearchClaims extends Page implements HasForms, HasTable
             );
 
             if ($statusCode !== 0) {
-                Log::error('SOA printing failed', [
+                Notification::make()
+                    ->title('ADC Printing Failed')
+                    ->body('Please try to print again')
+                    ->warning()
+                    ->send();
+                Log::error('ADC printing failed', [
                     'soa_id' => $soa->id,
                     'printer' => $printerName,
                     'output' => $output,
                 ]);
             }
+            // Update procedures status → processed
         } else {
-            Log::error('No available printer for SOA ID ' . $soa->id);
+            Notification::make()
+                ->title('ADC Printing Failed')
+                ->body('No available printer for ADC ID ' . $soa->id)
+                ->warning()
+                ->send();
+            Log::error('No available printer for ADC ID ' . $soa->id);
         }
 
         // ----------------- Increment print count & log -----------------

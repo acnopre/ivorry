@@ -8,6 +8,7 @@ class PrinterSettings extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-printer';
     protected static string $view = 'filament.pages.printer-settings';
+    protected static ?string $navigationGroup = 'Settings';
 
     public array $printers = [];
 
@@ -37,5 +38,15 @@ class PrinterSettings extends Page
         }
 
         return $output;
+    }
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->check()
+            && auth()->user()->can('claims.print');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('claims.print');
     }
 }

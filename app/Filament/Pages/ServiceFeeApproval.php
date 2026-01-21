@@ -248,6 +248,23 @@ class ServiceFeeApproval extends Page implements HasTable
             ]);
         });
     }
+
+    public static function getNavigationBadge(): ?string
+    {
+        if (! auth()->user()?->can('fee.approval')) {
+            return null;
+        }
+
+        $pendingCount = Clinic::where('fee_approval', 'PENDING')->count();
+
+        return $pendingCount > 0 ? (string) $pendingCount : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()

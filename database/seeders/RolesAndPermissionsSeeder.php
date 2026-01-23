@@ -52,6 +52,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'dentist.list',
             'dentist.add-procedure',
             'dentist.my-procedure',
+            'dentist.update',
 
             // System
             'system.logs',
@@ -59,6 +60,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'system.export',
             'system.manage_users',
             'system.manage_permissions',
+
+            'reports.view',
 
             // Dashboard & Reports
             'dashboard.view',

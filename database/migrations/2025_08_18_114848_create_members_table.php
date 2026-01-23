@@ -30,6 +30,7 @@ return new class extends Migration
             $table->date('effective_date')->nullable();
             $table->date('expiration_date')->nullable();
             $table->enum('status', ['INACTIVE', 'ACTIVE'])->default('ACTIVE');
+            $table->date('inactive_date')->nullable();
             $table->timestamps();
         });
     }

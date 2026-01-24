@@ -87,7 +87,50 @@ class ReportsPage extends Page implements HasForms, HasTable
                                 'accounts'      => 'Account Status Report',
                             ])
                             ->required()
-                            ->reactive(),
+                            ->live()
+                            ->afterStateUpdated(function () {
+                                $this->hasGenerated = false;
+                            }),
+
+
+                        Forms\Components\TextInput::make('hip')
+                            ->label('HIP')
+                            ->placeholder('Enter HIP')
+                            ->visible(fn($get) => $get('reportType') === 'accounts'),
+
+                        Forms\Components\Select::make('plan_type')
+                            ->label('Filter by Plan Type')
+                            ->options([
+                                'INDIVIDUAL'   => 'Individual',
+                                'SHARED' => 'Shared',
+
+                            ])
+                            ->placeholder('All')
+                            ->visible(fn($get) => $get('reportType') === 'accounts'),
+
+                        Forms\Components\Select::make('coverage_period_type')
+                            ->label('Filter by Coverage Period Type')
+                            ->options([
+                                'ACCOUNT'   => 'Account',
+                                'MEMBER' => 'Member',
+
+                            ])
+                            ->placeholder('All')
+                            ->visible(fn($get) => $get('reportType') === 'accounts'),
+
+                        Forms\Components\Select::make('endorsement_type')
+                            ->label('Filter by Endorsement Type')
+                            ->options([
+                                'NEW' => 'New',
+                                'RENEWAL' => 'Renewal',
+                                'RENEWED' => 'Renewed',
+                                'AMENDMENT' => 'Amendment',
+                                'AMENDED' => 'Amended',
+                            ])
+                            ->placeholder('All')
+                            ->visible(fn($get) => $get('reportType') === 'accounts'),
+
+
 
                         Forms\Components\Select::make('status')
                             ->label('Filter by Accrediation Status')
@@ -161,11 +204,45 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->placeholder('All Clinics')
                             ->visible(fn($get) => $get('reportType') === 'dentists'),
 
-                        Forms\Components\DatePicker::make('fromDate')->label('From Date'),
-                        Forms\Components\DatePicker::make('toDate')->label('To Date'),
+                        Forms\Components\Toggle::make('filter_inactive_date')
+                            ->label('Filter by Inactive Date')
+                            ->reactive()
+                            ->visible(fn($get) => $get('reportType') === 'members'),
+
+                        Forms\Components\DatePicker::make('inactive_date_from')
+                            ->label('Inactive Date From')
+                            ->visible(
+                                fn($get) =>
+                                $get('reportType') === 'members' &&
+                                    $get('filter_inactive_date')
+                            ),
+
+                        Forms\Components\DatePicker::make('inactive_date_to')
+                            ->label('Inactive Date To')
+                            ->visible(
+                                fn($get) =>
+                                $get('reportType') === 'members' &&
+                                    $get('filter_inactive_date')
+                            ),
+                        Forms\Components\DatePicker::make('fromDate')->label('Created From Date'),
+                        Forms\Components\DatePicker::make('toDate')->label('Created To Date'),
+
+
+
                     ]),
                 ])
                 ->footerActions([
+                    Forms\Components\Actions\Action::make('clear')
+                        ->label('Clear Filters')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('gray')
+                        ->action(function () {
+                            // Reset all form fields
+                            $this->form->fill([]);
+
+                            // Optional: reset flags
+                            $this->hasGenerated = false;
+                        }),
                     Forms\Components\Actions\Action::make('generate')
                         ->label('Generate Report')
                         ->icon('heroicon-o-magnifying-glass')
@@ -185,12 +262,12 @@ class ReportsPage extends Page implements HasForms, HasTable
      |-------------------------------------------------*/
     public function table(Table $table): Table
     {
+
         return $table
             ->query(function () {
                 if (! $this->hasGenerated) {
                     return Member::query()->whereRaw('1 = 0'); // EMPTY TABLE
                 }
-
                 return match ($this->reportFilters['reportType']) {
                     'members'    => $this->membersQuery(),
                     'dentists'   => $this->dentistsQuery(),
@@ -207,11 +284,11 @@ class ReportsPage extends Page implements HasForms, HasTable
                     ->label('Export XLS')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    // ->visible(function () {
-                    //     if ($this->hasGenerated) {
-                    //         return true;
-                    //     }
-                    // })
+                    ->visible(function () {
+                        if ($this->hasGenerated) {
+                            return true;
+                        }
+                    })
                     ->action(fn() => $this->exportXls()),
             ])
             ->defaultSort('created_at', 'desc');
@@ -227,7 +304,7 @@ class ReportsPage extends Page implements HasForms, HasTable
             return;
         }
 
-        $type = $this->reportFilters['reportType'];
+        $type = $this->reportFilters['reportType'] ?? null;
 
         $query = match ($type) {
             'members'    => $this->membersQuery(),
@@ -235,7 +312,7 @@ class ReportsPage extends Page implements HasForms, HasTable
             'clinics'    => $this->clinicsQuery(),
             'procedures' => $this->proceduresQuery(),
             'accounts'   => $this->accountsQuery(),
-            default    => null,
+            default      => null,
         };
 
         if (! $query) {
@@ -246,13 +323,24 @@ class ReportsPage extends Page implements HasForms, HasTable
             return;
         }
 
+        $filters = [];
+        if ($type === 'members') {
+            $filters = [
+                'account_name'  => $this->reportFilters['account_name'] ?? 'All',
+                'from_date'     => $this->reportFilters['from_date'] ?? '-',
+                'to_date'       => $this->reportFilters['to_date'] ?? '-',
+                'member_status' => $this->reportFilters['member_status'] ?? 'All',
+            ];
+        }
+
         $filename = strtoupper($type) . '_REPORT_' . now()->format('Ymd_His') . '.xlsx';
 
         return Excel::download(
-            new ReportsExport($query, $type),
+            new \App\Exports\ReportsExport($query, $type, $filters),
             $filename
         );
     }
+
 
 
     /* -------------------------------------------------
@@ -268,10 +356,17 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->when($f['memberType'] ?? null, fn($q, $v) => $q->where('member_type', $v))
             ->when($f['account_id'] ?? null, fn($q, $v) => $q->where('account_id', $v))
             ->when(
+                !empty($f['inactive_date_from']) && !empty($f['inactive_date_to']),
+                fn($q) =>
+                $q->whereBetween('inactive_date', [$f['inactive_date_from'], $f['inactive_date_to']])
+            )
+            ->when(
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) =>
                 $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])
             );
+
+        $this->hasGenerated = false;
     }
 
     protected function dentistsQuery(): Builder
@@ -290,6 +385,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                 $f['specialization_id'] ?? null,
                 fn($q, $v) => $q->whereHas('specializations', fn($q2) => $q2->where('specializations.id', $v))
             );
+        $this->hasGenerated = false;
     }
 
 
@@ -324,7 +420,13 @@ class ReportsPage extends Page implements HasForms, HasTable
         $f = $this->reportFilters;
 
         return Account::query()
-            ->when($f['status'] ?? null, fn($q, $v) => $q->where('account_status', $v)) // filter by account_status
+            ->when($f['hip'] ?? null, fn($q, $v) => $q->where('hip', $v))
+            ->when($f['status'] ?? null, fn($q, $v) => $q->where('account_status', $v))
+            ->when($f['plan_type'] ?? null, fn($q, $v) => $q->where('plan_type', $v))
+            ->when($f['coverage_period_type'] ?? null, fn($q, $v) => $q->where('coverage_period_type', $v))
+            ->when($f['endorsement_type'] ?? null, fn($q, $v) => $q->where('endorsement_type', $v))
+            ->when($f['endorsement_status'] ?? null, fn($q, $v) => $q->where('endorsement_status', $v))
+
             ->when(
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) => $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])

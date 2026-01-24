@@ -92,7 +92,9 @@ return new class extends Migration
             $table->string('bank_branch')->nullable();
             $table->enum('account_type', ['SAVINGS', 'CURRENT'])->nullable();
             // Status
-            $table->enum('accreditation_status', ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT'])->default('INACTIVE');
+            $table->enum('accreditation_status', ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT', 'SPECIFIC HIP'])->default('INACTIVE');
+            $table->foreignId('account_id')->nullable()->constrained()->cascadeOnDelete(); // linked to Accounts
+            $table->foreignId('hip_id')->nullable()->constrained()->cascadeOnDelete(); // linked to Accounts
             $table->enum('fee_approval', ['PENDING', 'APPROVED', 'UNAPPROVE'])->default('PENDING');
             $table->longText('remarks')->nullable();
             $table->timestamps();

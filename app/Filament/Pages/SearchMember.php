@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\AccountService;
+use App\Models\Clinic;
 use App\Models\ClinicService;
 use App\Models\Member;
 use App\Models\Procedure;
@@ -15,10 +16,10 @@ use Filament\Forms;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 class SearchMember extends Page
 {
@@ -88,20 +89,23 @@ class SearchMember extends Page
             return;
         }
 
-        $members = Member::query()
-            ->whereHas(
-                'account',
-                fn($q) =>
-                $q->where('account_status', 'active')
-            )
+        $query = Member::query()
+            ->whereHas('account', fn($q) => $q->where('account_status', 'active'))
             ->when($this->card_number, fn($q) => $q->where('card_number', 'like', "%{$this->card_number}%"))
             ->when($this->first_name, fn($q) => $q->where('first_name', 'like', "%{$this->first_name}%"))
-            ->when($this->last_name, fn($q) => $q->where('last_name', 'like', "%{$this->last_name}%"))
-            ->get();
+            ->when($this->last_name, fn($q) => $q->where('last_name', 'like', "%{$this->last_name}%"));
 
-        $this->members = $members;
+        // Check if current user's clinic is 'SPECIFIC ACCOUNT'
+        $clinic = Clinic::where('user_id', Auth::id())->first();
+        if ($clinic && $clinic->accreditation_status === 'SPECIFIC ACCOUNT') {
+            // Restrict members to this clinic's account_id
+            $query->where('account_id', $clinic->account_id);
+        }
+
+        $this->members = $query->get();
         $this->hasSearched = true;
     }
+
 
     public function openProcedureModal(int $memberId): void
     {

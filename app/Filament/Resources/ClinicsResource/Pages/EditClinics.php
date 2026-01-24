@@ -31,6 +31,12 @@ class EditClinics extends EditRecord
         // Remove from main record fields (pivot only)
         unset($data['services']);
 
+        if ($data['accreditation_status'] === 'SPECIFIC HIP') {
+            $data['account_id'] = null;
+        } elseif ($data['accreditation_status'] === 'SPECIFIC ACCOUNT') {
+            $data['hip_id'] = null;
+        }
+
         return $data;
     }
 

@@ -15,6 +15,8 @@ use Filament\Notifications\Notification;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ReportsExport;
 use App\Models\Account;
+use App\Models\AccreditationStatus;
+use App\Models\BusinessType;
 
 /**
  * MODELS
@@ -23,7 +25,9 @@ use App\Models\Account;
 use App\Models\Member;
 use App\Models\Dentist;
 use App\Models\Clinic;
+use App\Models\Hip;
 use App\Models\Procedure;
+use App\Models\VatType;
 
 class ReportsPage extends Page implements HasForms, HasTable
 {
@@ -143,16 +147,45 @@ class ReportsPage extends Page implements HasForms, HasTable
 
 
                         Forms\Components\Select::make('accreditation_status')
-                            ->label('Filter by Status')
-                            ->options([
-                                'ACTIVE'   => 'Active',
-                                'INACTIVE' => 'Inactive',
-                                'SPECIFIC ACCOUNT' => 'Specific Account',
-                                'SILENT' => 'Silent',
-
-                            ])
+                            ->label('Filter by Accreditation Status')
+                            ->options(AccreditationStatus::pluck('name', 'name'))
+                            ->searchable()
+                            ->reactive()
                             ->placeholder('All')
                             ->visible(fn($get) => $get('reportType') === 'clinics'),
+
+                        Forms\Components\Select::make('hip')
+                            ->label('Select HIP')
+                            ->options(Hip::pluck('name', 'name'))
+                            ->searchable()
+                            ->reactive()
+                            ->placeholder('All')
+                            ->visible(fn($get) => $get('reportType') === 'clinics' && $get('accreditation_status') === 'SPECIFIC HIP'),
+
+                        Forms\Components\Select::make('account_id')
+                            ->label('Select Account')
+                            ->options(function () {
+                                return \App\Models\Account::pluck('company_name', 'id');
+                            })
+                            ->searchable()
+                            ->placeholder('All Accounts')
+                            ->visible(fn($get) => $get('reportType') === 'members' || $get('accreditation_status') === 'SPECIFIC ACCOUNT'),
+
+
+                        Forms\Components\Select::make('vat_type')
+                            ->label('Filter by Vat Type')
+                            ->options(VatType::pluck('name', 'name'))
+                            ->searchable()
+                            ->placeholder('All')
+                            ->visible(fn($get) => $get('reportType') === 'clinics'),
+
+                        Forms\Components\Select::make('business_type')
+                            ->label('Filter by Business Type')
+                            ->options(BusinessType::pluck('name', 'name'))
+                            ->searchable()
+                            ->placeholder('All')
+                            ->visible(fn($get) => $get('reportType') === 'clinics'),
+
 
                         Forms\Components\Select::make('procedure_status')
                             ->label('Filter by Procedure Status')
@@ -177,14 +210,6 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ])
                             ->visible(fn($get) => $get('reportType') === 'members'),
 
-                        Forms\Components\Select::make('account_id')
-                            ->label('Select Account')
-                            ->options(function () {
-                                return \App\Models\Account::pluck('company_name', 'id');
-                            })
-                            ->searchable()
-                            ->placeholder('All Accounts')
-                            ->visible(fn($get) => $get('reportType') === 'members'),
 
                         Forms\Components\Select::make('clinic_id')
                             ->label('Select Clinic')
@@ -226,8 +251,6 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ),
                         Forms\Components\DatePicker::make('fromDate')->label('Created From Date'),
                         Forms\Components\DatePicker::make('toDate')->label('Created To Date'),
-
-
 
                     ]),
                 ])
@@ -392,14 +415,14 @@ class ReportsPage extends Page implements HasForms, HasTable
     protected function clinicsQuery(): Builder
     {
         $f = $this->reportFilters;
-
-        return Clinic::query()
+        $query = Clinic::query()
             ->when($f['accreditation_status'] ?? null, fn($q, $v) => $q->where('accreditation_status', $v))
             ->when(
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) =>
                 $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])
             );
+        return $query;
     }
 
     protected function proceduresQuery(): Builder
@@ -473,7 +496,9 @@ class ReportsPage extends Page implements HasForms, HasTable
             'clinics' => [
                 Tables\Columns\TextColumn::make('clinic_name')->label('Clinic Name'),
                 Tables\Columns\TextColumn::make('registered_name')->label('Registered Name'),
-                Tables\Columns\TextColumn::make('is_branch')->label('Branch'),
+                Tables\Columns\TextColumn::make('is_branch')
+                    ->label('Branch')
+                    ->getStateUsing(fn($record) => $record->is_branch ? 'YES' : 'NO'),
                 Tables\Columns\TextColumn::make('business_type')->label('Business Type'),
                 Tables\Columns\TextColumn::make('vat_type')->label('Vat Type'),
                 Tables\Columns\TextColumn::make('witholding_tax')->label('Witholding Tax'),

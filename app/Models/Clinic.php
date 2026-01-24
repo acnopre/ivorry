@@ -53,7 +53,9 @@ class Clinic extends Model
         'account_type',
         'accreditation_status',
         'associate_dentists',
-        'fee_approval'
+        'fee_approval',
+        'account_id',
+        'hip_id'
     ];
 
     // protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];
@@ -62,6 +64,11 @@ class Clinic extends Model
     public function dentists()
     {
         return $this->hasMany(Dentist::class, 'clinic_id');
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
     }
 
     public function procedures()

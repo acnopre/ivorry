@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\AccountAmendment;
 use App\Models\AccountService;
 use App\Models\EndorsementType;
+use App\Models\Hip;
 use App\Models\ImportLog;
 use App\Models\Role;
 use App\Models\Service;
@@ -75,9 +76,10 @@ class AccountResource extends Resource
                                 ->maxLength(50)
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
-                            TextInput::make('hip')
+                            Select::make('hip')
                                 ->label('HIP')
-                                ->maxLength(255)
+                                ->options(Hip::pluck('name', 'name'))
+                                ->searchable()
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
                             TextInput::make('card_used')

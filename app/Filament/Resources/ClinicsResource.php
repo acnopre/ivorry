@@ -29,6 +29,8 @@ use App\Models\AccountType;
 use App\Models\AccreditationStatus;
 use App\Models\Service;
 use App\Imports\ClinicImport;
+use App\Models\Account;
+use App\Models\Hip;
 use App\Models\Role;
 use App\Models\UpdateInfo1903Types;
 use Filament\Tables\Actions\Action;
@@ -167,17 +169,15 @@ class ClinicsResource extends Resource
 
                         Forms\Components\Select::make('vat_type')
                             ->label('Vat Type')
-                            ->options(VatType::pluck('name', 'name')),
+                            ->options(VatType::pluck('name', 'name'))
+                            ->searchable()
+                            ->required(),
 
                         Forms\Components\Select::make('withholding_tax')
                             ->label('Withholding Tax')
-                            ->options([
-                                'Zero' => 'Zero',
-                                '2%' => '2%',
-                                '5%' => '5%',
-                                '10%' => '10%',
-                                '15%' => '15%',
-                            ]),
+                            ->options(TaxType::pluck('name', 'name'))
+                            ->searchable()
+                            ->required(),
                         Forms\Components\Select::make('business_type')
                             ->label('Business Type')
                             ->options(BusinessType::pluck('name', 'name'))
@@ -397,8 +397,23 @@ class ClinicsResource extends Resource
                             ->label('Accreditation Status')
                             ->options(AccreditationStatus::pluck('name', 'name'))
                             ->searchable()
+                            ->reactive()
                             ->required(),
+                        Select::make('hip_id')
+                            ->label('HIP')
+                            ->options(Hip::pluck('name', 'id'))
+                            ->searchable()
+                            ->visible(fn($get) => $get('accreditation_status') === 'SPECIFIC HIP'),
+
+                        Select::make('account_id')
+                            ->label('Account')
+                            ->options(Account::pluck('company_name', 'id'))
+                            ->searchable()
+                            ->visible(fn($get) => $get('accreditation_status') === 'SPECIFIC ACCOUNT'),
+
                     ]),
+
+
             ]);
     }
 
@@ -417,6 +432,7 @@ class ClinicsResource extends Resource
                     ])
                     ->label('Accreditation Status'),
                 Tables\Columns\TextColumn::make('created_at')->dateTime(),
+
             ])
             ->headerActions([
                 Action::make('importXls')

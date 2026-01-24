@@ -27,6 +27,7 @@ use App\Models\Dentist;
 use App\Models\Clinic;
 use App\Models\Hip;
 use App\Models\Procedure;
+use App\Models\Specializations;
 use App\Models\VatType;
 
 class ReportsPage extends Page implements HasForms, HasTable
@@ -97,10 +98,6 @@ class ReportsPage extends Page implements HasForms, HasTable
                             }),
 
 
-                        Forms\Components\TextInput::make('hip')
-                            ->label('HIP')
-                            ->placeholder('Enter HIP')
-                            ->visible(fn($get) => $get('reportType') === 'accounts'),
 
                         Forms\Components\Select::make('plan_type')
                             ->label('Filter by Plan Type')
@@ -160,7 +157,10 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->searchable()
                             ->reactive()
                             ->placeholder('All')
-                            ->visible(fn($get) => $get('reportType') === 'clinics' && $get('accreditation_status') === 'SPECIFIC HIP'),
+                            ->visible(
+                                fn($get) => ($get('reportType') === 'clinics' && trim(strtoupper($get('accreditation_status'))) === 'SPECIFIC HIP')
+                                    || $get('reportType') === 'accounts'
+                            ),
 
                         Forms\Components\Select::make('account_id')
                             ->label('Select Account')
@@ -307,11 +307,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                     ->label('Export XLS')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->visible(function () {
-                        if ($this->hasGenerated) {
-                            return true;
-                        }
-                    })
+                    ->disabled(fn() => ! $this->hasGenerated)
                     ->action(fn() => $this->exportXls()),
             ])
             ->defaultSort('created_at', 'desc');
@@ -347,14 +343,64 @@ class ReportsPage extends Page implements HasForms, HasTable
         }
 
         $filters = [];
-        if ($type === 'members') {
-            $filters = [
-                'account_name'  => $this->reportFilters['account_name'] ?? 'All',
-                'from_date'     => $this->reportFilters['from_date'] ?? '-',
-                'to_date'       => $this->reportFilters['to_date'] ?? '-',
-                'member_status' => $this->reportFilters['member_status'] ?? 'All',
-            ];
-        }
+        $filters = match ($type) {
+            'members' => (function () {
+                $account = Account::find($this->reportFilters['account_id']);
+
+                return [
+                    'account_name'  => $account?->company_name ?? 'All',
+                    'from_date'     => $this->reportFilters['fromDate'] ?? '-',
+                    'to_date'       => $this->reportFilters['toDate'] ?? '-',
+                    'member_status' => $this->reportFilters['status'] ?? 'All',
+                    'member_type'   => $this->reportFilters['memberType'] ?? 'All',
+                ];
+            })(),
+
+            'dentists' => (function () {
+                $clinic = Clinic::find($this->reportFilters['clinic_id']);
+                $specialization = Specializations::where('id', $this->reportFilters['specialization_id'])->first();
+                return [
+                    'clinic_name'   => $clinic?->clinic_name ?? 'All',
+                    'from_date'      => $this->reportFilters['fromDate'] ?? '-',
+                    'to_date'        => $this->reportFilters['toDate'] ?? '-',
+                    'specializations' => $specialization['name'] ?? 'All',
+                ];
+            })(),
+
+            'clinics' => (function () {
+                return [
+                    'from_date'      => $this->reportFilters['fromDate'] ?? '-',
+                    'to_date'        => $this->reportFilters['toDate'] ?? '-',
+                    'accreditation_status' => $this->reportFilters['accreditation_status'] ?? 'All',
+                    'vat_type' => $this->reportFilters['vat_type'] ?? 'All',
+                    'business_type' => $this->reportFilters['business_type'] ?? 'All',
+                ];
+            })(),
+
+            'procedures' => (function () {
+                return [
+                    'from_date'      => $this->reportFilters['fromDate'] ?? '-',
+                    'to_date'        => $this->reportFilters['toDate'] ?? '-',
+                    'procedure_status' => $this->reportFilters['procedure_status'] ?? 'All',
+                ];
+            })(),
+
+
+            'accounts' => (function () {
+                return [
+                    'from_date'      => $this->reportFilters['fromDate'] ?? '-',
+                    'to_date'        => $this->reportFilters['toDate'] ?? '-',
+                    'hip' => $this->reportFilters['hip'] ?? 'All',
+                    'plan_type' => $this->reportFilters['plan_type'] ?? 'All',
+                    'coverage_period_type' => $this->reportFilters['coverage_period_type'] ?? 'All',
+                    'endorsement_type' => $this->reportFilters['endorsement_type'] ?? 'All',
+
+                ];
+            })(),
+
+            default => [],
+        };
+
 
         $filename = strtoupper($type) . '_REPORT_' . now()->format('Ymd_His') . '.xlsx';
 
@@ -417,6 +463,11 @@ class ReportsPage extends Page implements HasForms, HasTable
         $f = $this->reportFilters;
         $query = Clinic::query()
             ->when($f['accreditation_status'] ?? null, fn($q, $v) => $q->where('accreditation_status', $v))
+            ->when($f['account_id'] ?? null, fn($q, $v) => $q->where('account_id', $v))
+            ->when($f['hip_id'] ?? null, fn($q, $v) => $q->where('hip_id', $v))
+            ->when($f['vat_type'] ?? null, fn($q, $v) => $q->where('vat_type', $v))
+            ->when($f['business_type'] ?? null, fn($q, $v) => $q->where('business_type', $v))
+
             ->when(
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) =>
@@ -473,7 +524,8 @@ class ReportsPage extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('gender'),
                 Tables\Columns\TextColumn::make('email'),
                 Tables\Columns\TextColumn::make('status')->badge(),
-                Tables\Columns\TextColumn::make('inactive_date')->label('Inactive Date')->badge(),
+                Tables\Columns\TextColumn::make('inactive_date')
+                    ->label('Inactive Date'),
                 Tables\Columns\TextColumn::make('created_at')->date()->label('Date Created'),
             ],
 

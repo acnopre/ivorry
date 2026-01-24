@@ -109,35 +109,32 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet;
 
-                // === MEMBER FILTER BOX ===
                 if ($this->type === 'members') {
                     $filters = $this->filters;
 
-                    // Row 1: Filters title
                     $sheet->setCellValue('A1', 'Filters');
                     $sheet->mergeCells('A1:C1');
                     $sheet->getStyle('A1')->applyFromArray([
                         'font' => ['bold' => true, 'size' => 12],
-                        'alignment' => ['horizontal' => 'center'],
+                        'alignment' => ['horizontal' => 'left'],
                     ]);
 
-                    // Row 2: Account Name
-                    $sheet->setCellValue('B2', 'Account Name');
-                    $sheet->setCellValue('C2', $filters['account_name'] ?? 'All');
+                    $sheet->setCellValue('A2', 'Account Name');
+                    $sheet->setCellValue('B2', $filters['account_name'] ?? 'All');
 
-                    // Row 4: Coverage Period
-                    $sheet->setCellValue('B4', 'Coverage Period');
-                    $sheet->setCellValue('B5', 'From Date');
-                    $sheet->setCellValue('C5', $filters['from_date'] ?? '-');
-                    $sheet->setCellValue('B6', 'To Date');
-                    $sheet->setCellValue('C6', $filters['to_date'] ?? '-');
+                    $sheet->setCellValue('A3', 'From Date');
+                    $sheet->setCellValue('B3', $filters['from_date'] ?? '-');
+                    $sheet->setCellValue('A4', 'To Date');
+                    $sheet->setCellValue('B4', $filters['to_date'] ?? '-');
 
-                    // Row 7: Member Status
-                    $sheet->setCellValue('B7', 'Member Status');
-                    $sheet->setCellValue('C7', $filters['member_status'] ?? 'All');
+                    $sheet->setCellValue('A5', 'Member Status');
+                    $sheet->setCellValue('B5', $filters['member_status'] ?? 'All');
+
+                    $sheet->setCellValue('A6', 'Member Type');
+                    $sheet->setCellValue('B6', $filters['member_type'] ?? 'All');
 
                     // Style text & values
-                    $sheet->getStyle('B2:C7')->applyFromArray([
+                    $sheet->getStyle('A2:B6')->applyFromArray([
                         'font' => ['bold' => false, 'size' => 11],
                         'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
                     ]);
@@ -145,6 +142,169 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                     // Add a border box around the filter area
                     $sheet->getStyle('B2:C7')->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+                    $sheet->getStyle('A1:C7')->getAlignment()->setWrapText(true);
+
+                    foreach (range('A', 'Z') as $column) {
+                        $sheet->getColumnDimension($column)->setAutoSize(true);
+                    }
+                } else if ($this->type === 'dentists') {
+                    $filters = $this->filters;
+
+                    $sheet->setCellValue('A1', 'Filters');
+                    $sheet->mergeCells('A1:C1');
+                    $sheet->getStyle('A1')->applyFromArray([
+                        'font' => ['bold' => true, 'size' => 12],
+                        'alignment' => ['horizontal' => 'left'],
+                    ]);
+
+                    $sheet->setCellValue('A2', 'Clinic Name');
+                    $sheet->setCellValue('B2', $filters['clinic_name'] ?? 'All');
+
+                    $sheet->setCellValue('A3', 'From Date');
+                    $sheet->setCellValue('B3', $filters['from_date'] ?? '-');
+                    $sheet->setCellValue('A4', 'To Date');
+                    $sheet->setCellValue('B4', $filters['to_date'] ?? '-');
+
+                    $sheet->setCellValue('A5', 'Specialization');
+                    $sheet->setCellValue('B5', $filters['specializations'] ?? 'All');
+
+                    // Style text & values
+                    $sheet->getStyle('A2:B7')->applyFromArray([
+                        'font' => ['bold' => false, 'size' => 11],
+                        'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
+                    ]);
+
+                    // Add a border box around the filter area
+                    $sheet->getStyle('A2:B5')->getBorders()->getAllBorders()
+                        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+                    $sheet->getStyle('A1:C7')->getAlignment()->setWrapText(true);
+
+                    foreach (range('A', 'Z') as $column) {
+                        $sheet->getColumnDimension($column)->setAutoSize(true);
+                    }
+                } else if ($this->type === 'clinics') {
+                    $filters = $this->filters;
+
+                    $sheet->setCellValue('A1', 'Filters');
+                    $sheet->mergeCells('A1:C1');
+                    $sheet->getStyle('A1')->applyFromArray([
+                        'font' => ['bold' => true, 'size' => 12],
+                        'alignment' => ['horizontal' => 'left'],
+                    ]);
+
+                    $sheet->setCellValue('A2', 'Clinic Name');
+                    $sheet->setCellValue('B2', $filters['clinic_name'] ?? 'All');
+
+                    $sheet->setCellValue('A3', 'From Date');
+                    $sheet->setCellValue('B3', $filters['from_date'] ?? '-');
+                    $sheet->setCellValue('A4', 'To Date');
+                    $sheet->setCellValue('B4', $filters['to_date'] ?? '-');
+
+                    $sheet->setCellValue('A5', 'Accreditation Status');
+                    $sheet->setCellValue('B5', $filters['accreditation_status'] ?? 'All');
+
+                    $sheet->setCellValue('A6', 'Vat Type');
+                    $sheet->setCellValue('B6', $filters['vat_type'] ?? 'All');
+
+                    $sheet->setCellValue('A7', 'Business Type');
+                    $sheet->setCellValue('B7', $filters['business_type'] ?? 'All');
+
+
+
+                    // Style text & values
+                    $sheet->getStyle('A2:B7')->applyFromArray([
+                        'font' => ['bold' => false, 'size' => 11],
+                        'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
+                    ]);
+
+                    // Add a border box around the filter area
+                    $sheet->getStyle('A2:B7')->getBorders()->getAllBorders()
+                        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+                    $sheet->getStyle('A1:C7')->getAlignment()->setWrapText(true);
+
+                    foreach (range('A', 'Z') as $column) {
+                        $sheet->getColumnDimension($column)->setAutoSize(true);
+                    }
+                } else if ($this->type === 'accounts') {
+                    $filters = $this->filters;
+
+                    $sheet->setCellValue('A1', 'Filters');
+                    $sheet->mergeCells('A1:C1');
+                    $sheet->getStyle('A1')->applyFromArray([
+                        'font' => ['bold' => true, 'size' => 12],
+                        'alignment' => ['horizontal' => 'left'],
+                    ]);
+
+                    $sheet->setCellValue('A2', 'HIP');
+                    $sheet->setCellValue('B2', $filters['hip'] ?? 'All');
+
+                    $sheet->setCellValue('A3', 'From Date');
+                    $sheet->setCellValue('B3', $filters['from_date'] ?? '-');
+                    $sheet->setCellValue('A4', 'To Date');
+                    $sheet->setCellValue('B4', $filters['to_date'] ?? '-');
+
+                    $sheet->setCellValue('A5', 'Plan Type');
+                    $sheet->setCellValue('B5', $filters['plan_type'] ?? 'All');
+
+                    $sheet->setCellValue('A5', 'Coverage Period Type');
+                    $sheet->setCellValue('B5', $filters['coverage_period_type'] ?? 'All');
+
+                    $sheet->setCellValue('A6', 'Endorsement Type');
+                    $sheet->setCellValue('B6', $filters['endorsement_type'] ?? 'All');
+
+
+                    // Style text & values
+                    $sheet->getStyle('A2:B7')->applyFromArray([
+                        'font' => ['bold' => false, 'size' => 11],
+                        'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
+                    ]);
+
+                    // Add a border box around the filter area
+                    $sheet->getStyle('A2:B4')->getBorders()->getAllBorders()
+                        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+                    $sheet->getStyle('A1:C4')->getAlignment()->setWrapText(true);
+
+                    foreach (range('A', 'Z') as $column) {
+                        $sheet->getColumnDimension($column)->setAutoSize(true);
+                    }
+                } else if ($this->type === 'procedures') {
+                    $filters = $this->filters;
+
+                    $sheet->setCellValue('A1', 'Filters');
+                    $sheet->mergeCells('A1:C1');
+                    $sheet->getStyle('A1')->applyFromArray([
+                        'font' => ['bold' => true, 'size' => 12],
+                        'alignment' => ['horizontal' => 'left'],
+                    ]);
+
+                    $sheet->setCellValue('A2', 'Procedure Status');
+                    $sheet->setCellValue('B2', $filters['procedure_status'] ?? 'All');
+
+                    $sheet->setCellValue('A3', 'From Date');
+                    $sheet->setCellValue('B3', $filters['from_date'] ?? '-');
+                    $sheet->setCellValue('A4', 'To Date');
+                    $sheet->setCellValue('B4', $filters['to_date'] ?? '-');
+
+
+                    // Style text & values
+                    $sheet->getStyle('A2:B7')->applyFromArray([
+                        'font' => ['bold' => false, 'size' => 11],
+                        'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
+                    ]);
+
+                    // Add a border box around the filter area
+                    $sheet->getStyle('A2:B4')->getBorders()->getAllBorders()
+                        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+                    $sheet->getStyle('A1:C4')->getAlignment()->setWrapText(true);
+
+                    foreach (range('A', 'Z') as $column) {
+                        $sheet->getColumnDimension($column)->setAutoSize(true);
+                    }
                 }
             },
         ];

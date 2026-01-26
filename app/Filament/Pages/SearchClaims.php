@@ -600,7 +600,6 @@ class SearchClaims extends Page implements HasForms, HasTable
             $status
         );
     }
-
     public function generateSOAAfterProcessing(
         $claims,
         $totalClinicFee,
@@ -628,99 +627,115 @@ class SearchClaims extends Page implements HasForms, HasTable
         $financeView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_finance' : null;
         $dentistView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_dentist' : null;
 
-        // Print count / copy label
-        $printCount = $soa->print_count + 1;
-        $copyLabel = $printCount === 1 ? 'ORIGINAL' : 'DUPLICATE #' . $printCount;
+        // ----------------- Closure to generate merged PDF -----------------
+        $generatePdf = function ($copyLabel) use (
+            $financeView,
+            $dentistView,
+            $claims,
+            $data,
+            $clinicDetails,
+            $dentist,
+            $soa,
+            $totalClinicFee,
+            $totalVat,
+            $totalEwt,
+            $totalNet,
+            $accounts,
+            $grandTotalRate,
+            $grandTotalVat,
+            $grandTotalEwt,
+            $grandTotalNet,
+            $sequenceNumber,
+            $preparedBy
+        ) {
+            $financePdf = Pdf::loadView($financeView, [
+                'claims' => $claims,
+                'from' => $data['availment_from'],
+                'to' => $data['availment_to'],
+                'clinicDetails' => $clinicDetails,
+                'dentist' => $dentist,
+                'soa' => $soa,
+                'totalClinicFee' => $totalClinicFee,
+                'totalVat' => $totalVat,
+                'totalEwt' => $totalEwt,
+                'totalNet' => $totalNet,
+                'accounts' => $accounts,
+                'grandTotalRate' => $grandTotalRate,
+                'grandTotalVat' => $grandTotalVat,
+                'grandTotalEwt' => $grandTotalEwt,
+                'grandTotalNet' => $grandTotalNet,
+                'sequenceNumber' => $sequenceNumber,
+                'preparedBy' => $preparedBy,
+                'copyLabel' => $copyLabel,
+            ])->setPaper('a4', 'landscape')->output();
 
-        // ----------------- Generate PDFs -----------------
-        $originalFinanceCopy = Pdf::loadView($financeView, [
-            'claims' => $claims,
-            'from' => $data['availment_from'],
-            'to' => $data['availment_to'],
-            'clinicDetails' => $clinicDetails,
-            'dentist' => $dentist,
-            'soa' => $soa,
-            'totalClinicFee' => $totalClinicFee,
-            'totalVat' => $totalVat,
-            'totalEwt' => $totalEwt,
-            'totalNet' => $totalNet,
-            'accounts' => $accounts,
-            'grandTotalRate' => $grandTotalRate,
-            'grandTotalVat' => $grandTotalVat,
-            'grandTotalEwt' => $grandTotalEwt,
-            'grandTotalNet' => $grandTotalNet,
-            'sequenceNumber' => $sequenceNumber,
-            'preparedBy' => $preparedBy,
-            'copyLabel' => $copyLabel,
-        ])->setPaper('a4', 'landscape')->output();
+            $dentistPdf = Pdf::loadView($dentistView, [
+                'claims' => $claims,
+                'from' => $data['availment_from'],
+                'to' => $data['availment_to'],
+                'clinicDetails' => $clinicDetails,
+                'dentist' => $dentist,
+                'soa' => $soa,
+                'totalClinicFee' => $totalClinicFee,
+                'totalVat' => $totalVat,
+                'totalEwt' => $totalEwt,
+                'totalNet' => $totalNet,
+                'accounts' => $accounts,
+                'grandTotalRate' => $grandTotalRate,
+                'grandTotalVat' => $grandTotalVat,
+                'grandTotalEwt' => $grandTotalEwt,
+                'grandTotalNet' => $grandTotalNet,
+                'sequenceNumber' => $sequenceNumber,
+                'preparedBy' => $preparedBy,
+                'copyLabel' => $copyLabel,
+            ])->setPaper('a4', 'landscape')->output();
 
-        $originalDentistCopy = Pdf::loadView($dentistView, [
-            'claims' => $claims,
-            'from' => $data['availment_from'],
-            'to' => $data['availment_to'],
-            'clinicDetails' => $clinicDetails,
-            'dentist' => $dentist,
-            'soa' => $soa,
-            'totalClinicFee' => $totalClinicFee,
-            'totalVat' => $totalVat,
-            'totalEwt' => $totalEwt,
-            'totalNet' => $totalNet,
-            'accounts' => $accounts,
-            'grandTotalRate' => $grandTotalRate,
-            'grandTotalVat' => $grandTotalVat,
-            'grandTotalEwt' => $grandTotalEwt,
-            'grandTotalNet' => $grandTotalNet,
-            'sequenceNumber' => $sequenceNumber,
-            'preparedBy' => $preparedBy,
-            'copyLabel' => $copyLabel,
-        ])->setPaper('a4', 'landscape')->output();
+            $pdf = new SectionedFpdi();
+            $addSection = function ($pdfContent) use ($pdf) {
+                $pageCount = $pdf->setSourceFile(StreamReader::createByString($pdfContent));
+                for ($i = 1; $i <= $pageCount; $i++) {
+                    $tpl = $pdf->importPage($i);
+                    $size = $pdf->getTemplateSize($tpl);
+                    $orientation = $size['width'] > $size['height'] ? 'L' : 'P';
+                    $pdf->AddPage($orientation, [$size['width'], $size['height']]);
+                    $pdf->useTemplate($tpl);
+                }
+            };
 
-        // ----------------- Merge PDFs -----------------
-        $pdf = new SectionedFpdi();
-        $copyLabel = 'Original';
+            $addSection($financePdf);
+            $addSection($dentistPdf);
 
-        $addSection = function ($pdfContent) use ($pdf) {
-            $pageCount = $pdf->setSourceFile(StreamReader::createByString($pdfContent));
-
-            for ($i = 1; $i <= $pageCount; $i++) {
-                $tpl = $pdf->importPage($i);
-                $size = $pdf->getTemplateSize($tpl);
-                $orientation = $size['width'] > $size['height'] ? 'L' : 'P';
-
-                $pdf->AddPage($orientation, [$size['width'], $size['height']]);
-                $pdf->useTemplate($tpl);
-            }
+            return $pdf;
         };
 
-        // Merge sections
-        $addSection($originalFinanceCopy);
-        $addSection($originalDentistCopy);
-
-
-
-        // ----------------- Save PDF -----------------
+        // ----------------- Save & Print Original -----------------
+        $originalPdf = $generatePdf('ORIGINAL');
         $originalFileName = 'ADC_ORIGINAL_' . $timestamp . '.pdf';
         $originalPath = 'adc/originals/' . $originalFileName;
-        Storage::disk('public')->put($originalPath, $pdf->Output('S'));
-        $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
+        Storage::disk('public')->put($originalPath, $originalPdf->Output('S'));
 
-        // ----------------- Printing (optional) -----------------
+        // Print Original if printer exists
         $clinicPrinter = $clinicDetails->printer_name ?? null;
         $printerName = \App\Services\PrinterService::getPrinter($clinicPrinter);
 
         if ($printerName) {
+            $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
             exec(
                 'lp -o landscape -d ' . escapeshellarg($printerName) . ' ' . escapeshellarg($absoluteOriginalPath),
                 $output,
                 $statusCode
             );
 
-            if ($statusCode !== 0) {
+            if ($statusCode === 0) {
+                // Printing succeeded → mark procedures as processed
+                Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+            } else {
                 Notification::make()
                     ->title('ADC Printing Failed')
                     ->body('Please try to print again')
                     ->warning()
                     ->send();
+
                 Log::error('ADC printing failed', [
                     'soa_id' => $soa->id,
                     'printer' => $printerName,
@@ -733,23 +748,40 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ->body('No available printer for ADC ID ' . $soa->id)
                 ->warning()
                 ->send();
+
             Log::error('No available printer for ADC ID ' . $soa->id);
         }
 
-        // ----------------- Increment print count & log -----------------
+
+        // ----------------- Save Duplicate for Download -----------------
+        $duplicatePdf = $generatePdf('DUPLICATE');
+        $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
+        $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
+        Storage::disk('public')->put($duplicatePath, $duplicatePdf->Output('S'));
+
+        // ----------------- Log print & duplicate -----------------
         $soa->increment('print_count');
 
         DB::table('print_logs')->insert([
             'user_id' => auth()->id(),
             'document_id' => $soa->id,
-            'copy_type' => $copyLabel,
+            'copy_type' => 'ORIGINAL',
             'printer' => $printerName ?? 'NO_PRINTER_AVAILABLE',
             'created_at' => now(),
         ]);
 
-        // ----------------- Return download -----------------
-        return Storage::disk('public')->download($originalPath, $originalFileName);
+        DB::table('print_logs')->insert([
+            'user_id' => auth()->id(),
+            'document_id' => $soa->id,
+            'copy_type' => 'DUPLICATE',
+            'printer' => 'NOT_PRINTED',
+            'created_at' => now(),
+        ]);
+
+        // ----------------- Return duplicate PDF for download -----------------
+        return Storage::disk('public')->download($duplicatePath, $duplicateFileName);
     }
+
 
 
     private function parsePercentage(?string $value): float

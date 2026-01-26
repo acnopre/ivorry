@@ -13,36 +13,69 @@
         <td style="width: 33%; vertical-align: top; border: none; padding: 1;">
             <table class="report-table no-outer-border" style="width: 100%;">
                 <tr>
-                    <th colspan="2" class="text-center">OPERATIONS</th>
+                    <th colspan="4" class="text-center">OPERATIONS</th>
                 </tr>
                 <tr>
-                    <td><strong>Total No. of Forms:</strong>___________</td>
-                    <td><strong>Checked By:</strong><br>_____________________</td>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Total No. of Forms:</strong></td>
+                    <td colspan="3"></td>
+
                 </tr>
                 <tr>
-                    <td><strong>Date:</strong><br>___________</td>
-                    <td><strong>Due Date:</strong><br>___________</td>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Checked By:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
+                </tr>
+                <tr>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Date Processed:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
+
+                </tr>
+
+                <tr>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Due Date:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
+
                 </tr>
             </table>
         </td>
 
+
         <td style="width: 33%; vertical-align: top; border: none; padding: 1;">
             <table class="report-table no-outer-border" style="width: 100%;">
                 <tr>
-                    <th colspan="2" class="text-center">FINANCE</th>
+                    <th colspan="4" class="text-center">FINANCE</th>
                 </tr>
                 <tr>
-                    <th>RECEIVED</th>
-                    <th>PAID</th>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Paid:</strong></td>
+                    <td colspan="3"></td>
+
                 </tr>
                 <tr>
-                    <td>BY:<br>_____________________</td>
-                    <td>CHECK #<br>_______________</td>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Bank:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
                 </tr>
                 <tr>
-                    <td>DATE:<br>________________</td>
-                    <td>DATE:<br>________________</td>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Check #:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
+
                 </tr>
+
+                <tr>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Date:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
+
+                </tr>
+
+                <tr>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Received by:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
+
+                </tr>
+                <tr>
+                    <td style="width: 25%; white-space: normal; word-wrap: break-word;"><strong>Received Date:</strong></td>
+                    <td colspan="3">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</td>
+
+                </tr>
+
             </table>
         </td>
 

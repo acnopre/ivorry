@@ -43,13 +43,6 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesAndPermissionsSeeder::class,
             SuperAdminSeeder::class,
-            CSRSeeder::class,
-            ClaimsProcessorSeeder::class,
-            AccountManagerSeeder::class,
-            AccreditationSeeder::class,
-            MiddleManagementSeeder::class,
-            DentistAccountSeeder::class,
-            UpperManagementSeeder::class,
             AccreditationStatusSeeder::class,
             SpecializationSeeder::class,
             EndorsementTypeSeeder::class,

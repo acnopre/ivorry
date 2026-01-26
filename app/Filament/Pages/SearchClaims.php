@@ -770,13 +770,11 @@ class SearchClaims extends Page implements HasForms, HasTable
             'created_at' => now(),
         ]);
 
-        DB::table('print_logs')->insert([
-            'user_id' => auth()->id(),
-            'document_id' => $soa->id,
-            'copy_type' => 'DUPLICATE',
-            'printer' => 'NOT_PRINTED',
-            'created_at' => now(),
+        $soa->update([
+            'file_path' => $originalPath,
+            'duplicate_file_path' => $duplicatePath,
         ]);
+
 
         // ----------------- Return duplicate PDF for download -----------------
         return Storage::disk('public')->download($duplicatePath, $duplicateFileName);

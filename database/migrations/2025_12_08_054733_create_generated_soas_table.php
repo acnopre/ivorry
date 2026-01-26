@@ -17,6 +17,8 @@ return new class extends Migration
             $table->decimal('total_amount', 12, 2)->nullable();
             $table->string('file_path')->nullable();
             $table->string('duplicate_file_path')->nullable();
+            $table->boolean('is_request_original')->default(false);
+            $table->enum('request_status', ['PENDING', 'APPROVED', 'REJECTED'])->nullable();
             $table->foreignId('generated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('status')->default('generated'); // generated / sent / paid / cancelled
             $table->integer('print_count')->default(0);

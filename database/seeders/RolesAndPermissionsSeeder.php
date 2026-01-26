@@ -3,12 +3,16 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use App\Models\User;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
+        // ----------------- Permissions -----------------
         $permissions = [
             // Member
             'member.view',
@@ -16,6 +20,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'member.update',
             'member.delete',
             'member.import',
+            'member.approve_procedure',
+            'member.deny_procedure',
+            'member.confirm_procedure',
+            'member.search',
+            'member.upload',
             'import-logs.view',
             'import-logs.details.view',
 
@@ -29,6 +38,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'claims.return',
             'claims.print',
             'fee.approval',
+
             // Accounts
             'account.view',
             'account.create',
@@ -61,16 +71,149 @@ class RolesAndPermissionsSeeder extends Seeder
             'system.manage_users',
             'system.manage_permissions',
 
+            // Reports & Dashboard
             'reports.view',
-
-            // Dashboard & Reports
             'dashboard.view',
+
+            'generated_adc.view',
+            'generated_adc.approve',
+            'generated_adc.request',
+            'generated_adc.print_original'
+
         ];
 
+        // Seed permissions
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         $this->command->info('✅ All permissions seeded.');
+
+        // ----------------- Roles & Users -----------------
+        $roles = [
+            'Account Manager' => [
+                'permissions' => [
+                    'account.view',
+                    'account.create',
+                    'account.update',
+                    'account.delete',
+                    'account.import',
+                    'member.view',
+                    'member.create',
+                    'member.update',
+                    'member.delete',
+                    'member.import',
+                    'import-logs.view',
+                    'import-logs.details.view',
+                ],
+                'user' => [
+                    'name' => 'Account Manager',
+                    'email' => 'account@example.com',
+                    'password' => 'password',
+                ],
+            ],
+
+            'Accreditation' => [
+                'permissions' => [
+                    'clinic.view',
+                    'clinic.create',
+                    'clinic.update',
+                    'clinic.delete',
+                    'dentist.view',
+                    'dentist.create',
+                    'dentist.update',
+                    'dentist.delete',
+                ],
+                'user' => [
+                    'name' => 'Accreditation Officer',
+                    'email' => 'accreditation@example.com',
+                    'password' => 'password',
+                ],
+            ],
+
+            'Claims Processor' => [
+                'permissions' => [
+                    'claims.view',
+                    'claims.search',
+                    'claims.generate',
+                    'claims.view_details',
+                    'claims.valid',
+                    'claims.reject',
+                    'claims.return',
+                    'claims.print',
+                    'generated_adc.view',
+                    'generated_adc.request',
+                    'generated_adc.print_original'
+                ],
+                'user' => [
+                    'name' => 'Claims Processor',
+                    'email' => 'claims@example.com',
+                    'password' => 'password',
+                ],
+            ],
+
+            'CSR' => [
+                'permissions' => [
+                    'member.view',
+                    'member.create',
+                    'member.update',
+                    'member.approve_procedure',
+                    'member.deny_procedure',
+                    'member.confirm_procedure',
+                    'member.search',
+                    'member.upload',
+                ],
+                'user' => [
+                    'name' => 'Customer Service Rep',
+                    'email' => 'csr@example.com',
+                    'password' => 'password',
+                ],
+            ],
+
+            'Middle Management' => [
+                'permissions' => [], // will inherit all permissions
+                'user' => [
+                    'name' => 'Middle Manager',
+                    'email' => 'middle@example.com',
+                    'password' => 'password',
+                ],
+            ],
+
+            'Upper Management' => [
+                'permissions' => [], // will inherit all permissions
+                'user' => [
+                    'name' => 'Upper Manager',
+                    'email' => 'upper@example.com',
+                    'password' => 'password',
+                ],
+            ],
+        ];
+
+        // First, create all roles except Upper Management
+        foreach ($roles as $roleName => $roleData) {
+            $role = Role::firstOrCreate(['name' => $roleName]);
+
+            if ($roleName !== 'Upper Management' && !empty($roleData['permissions'])) {
+                $role->syncPermissions(Permission::whereIn('name', $roleData['permissions'])->get());
+            }
+
+            $user = User::firstOrCreate(
+                ['email' => $roleData['user']['email']],
+                [
+                    'name' => $roleData['user']['name'],
+                    'password' => Hash::make($roleData['user']['password']),
+                ]
+            );
+
+            $user->assignRole($role);
+
+            $this->command->info("✅ {$roleName} seeded ({$roleData['user']['email']} / {$roleData['user']['password']})");
+        }
+
+        // Now, Upper Management inherits ALL permissions
+        $upperRole = Role::firstOrCreate(['name' => 'Upper Management']);
+        $upperRole->syncPermissions(Permission::all());
+        $middleRole = Role::firstOrCreate(['name' => 'Middle Management']);
+        $middleRole->syncPermissions(Permission::all());
     }
 }

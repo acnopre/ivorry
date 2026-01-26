@@ -18,7 +18,9 @@ class GeneratedSoa extends Model
         'duplicate_file_path',
         'generated_by',
         'status',
-        'print_count'
+        'print_count',
+        'is_request_original',
+        'request_status',
     ];
 
     public function procedures()

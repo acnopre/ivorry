@@ -140,10 +140,10 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                     ]);
 
                     // Add a border box around the filter area
-                    $sheet->getStyle('B2:C7')->getBorders()->getAllBorders()
+                    $sheet->getStyle('B2:C6')->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
-                    $sheet->getStyle('A1:C7')->getAlignment()->setWrapText(true);
+                    $sheet->getStyle('A1:C6')->getAlignment()->setWrapText(true);
 
                     foreach (range('A', 'Z') as $column) {
                         $sheet->getColumnDimension($column)->setAutoSize(true);

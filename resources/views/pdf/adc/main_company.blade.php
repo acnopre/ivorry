@@ -1,7 +1,7 @@
 <table>
     <thead>
         <tr>
-            <th>Main Company</th>
+            <th>HIP</th>
             <th>Rate</th>
             <th>VAT</th>
             <th>EWT</th>
@@ -11,7 +11,7 @@
     <tbody>
         @foreach($accounts as $data)
         <tr>
-            <td>{{ $data['account_name'] }}</td>
+            <td>{{ $data['hip'] }}</td>
             <td>₱{{ number_format($data['total_rate'], 2) }}</td>
             <td>₱{{ number_format($data['total_vat'], 2) }}</td>
             <td>₱{{ number_format($data['total_ewt'], 2) }}</td>

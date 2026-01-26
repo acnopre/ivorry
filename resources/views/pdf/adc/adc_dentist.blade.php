@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Approved Generated Claims</title>
+    <title>Approved Dental Claims</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -117,7 +117,7 @@
     </style>
 </head>
 <div class="sequence-number">
-    {{ $sequenceNumber }}
+    DENTIST COPY | {{ $sequenceNumber }}
 </div>
 <br>
 <body>
@@ -132,24 +132,20 @@
 
     <!-- Claims Table -->
     @include('pdf.adc.claims_table')
-    <!-- Main Company Totals -->
-    @include('pdf.adc.main_company')
-
-    <!--Footer -->
-    @include('pdf.adc.footer')
-
-    <div class="page-break"></div>
-
-    <!-- Header Information -->
-    @include('pdf.adc.header_information')
-
-    <!-- Claims Table -->
-    @include('pdf.adc.claims_table')
 
     <!-- Footer on second page as well -->
     <div class="footer">
         {{ strtoupper($copyLabel ?? 'ORIGINAL') }} - Printed on {{ now()->format('Y-m-d H:i') }}
     </div>
+    <script type="text/php">
+        if (isset($pdf)) {
+            $font = $fontMetrics->getFont("Helvetica", "normal");
+            $size = 10;
+            $x = 20; // padding from left
+            $y = $pdf->get_height() - 50; // 15 points from bottom
+            $pdf->page_text($x, $y, "Page {PAGE_NUM} of {PAGE_COUNT}", $font, $size);
+        }
+    </script>
 
 </body>
 </html>

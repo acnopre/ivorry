@@ -16,6 +16,8 @@
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
         "phiki/phiki": "^2.0",
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi": "^2.6",
         "simplesoftwareio/simple-qrcode": "*",
         "spatie/laravel-activitylog": "^4.10",
         "spatie/laravel-permission": "^6.21"

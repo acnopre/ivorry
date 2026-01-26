@@ -4,8 +4,6 @@
             <th>Transaction Date</th>
             <th>Name of Patient</th>
             <th>Company</th>
-            {{-- <th>Main Company</th> --}}
-            {{-- <th>Card No.</th> --}}
             <th>Service Name</th>
             <th>Units</th>
             <th>Rate</th>
@@ -21,8 +19,6 @@
             <td>{{ \Carbon\Carbon::parse($claim->availment_date)->format('F d, Y') }}</td>
             <td>{{ $claim->member->first_name }} {{ $claim->member->last_name }}</td>
             <td>{{ $claim->member->account->company_name }}</td>
-            {{-- <td>{{ $claim->member->account->company_name }}</td> --}}
-            {{-- <td>{{ $claim->member->card_number }}</td> --}}
             <td>{{ $claim->service->name }}</td>
             <td>
                 @forelse ($claim->units as $unit)

@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Log;
+use setasign\Fpdi\PdfParser\StreamReader;
+use setasign\Fpdi\Fpdi;
+use App\Pdf\SectionedFpdi;
 
 class SearchClaims extends Page implements HasForms, HasTable
 {
@@ -547,6 +550,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 return [
                     'account_id'   => $items->first()->member->account->id,
                     'account_name' => $items->first()->member->account->company_name ?? 'Unknown Account',
+                    'hip' => $items->first()->member->account->hip ?? 'Unknown HIP',
                     'total_rate'   => $items->sum('clinic_service_fee'),
                     'total_vat'    => $items->sum('vat_amount'),
                     'total_ewt'    => $items->sum('ewt_amount'),
@@ -616,28 +620,20 @@ class SearchClaims extends Page implements HasForms, HasTable
         $dentist = $clinicDetails->dentists->where('is_owner', 1)->first();
         $preparedBy = auth()->user()->name ?? 'System Generated';
         $timestamp = now()->format('Y-m-d_His');
-        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
 
-        // ----------------- Sequence Number -----------------
+        // Sequence number
         $sequenceNumber = 'ADC' . str_pad($soa->id, 10, '0', STR_PAD_LEFT);
 
-        // ----------------- Views -----------------
-        if ($status == Procedure::STATUS_VALID) {
-            $originalView = 'pdf.adc.adc';
-            $duplicateView = 'pdf.adc.adc_duplicate';
-        } else {
-            $originalView = 'pdf.adc.return';
-            $duplicateView = 'pdf.adc.return_duplicate';
-        }
+        // Views
+        $financeView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_finance' : null;
+        $dentistView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_dentist' : null;
 
-        // ----------------- Determine Print Count & Copy Label -----------------
+        // Print count / copy label
         $printCount = $soa->print_count + 1;
-        $copyLabelOriginal = $printCount === 1
-            ? 'ORIGINAL'
-            : 'DUPLICATE #' . $printCount;
+        $copyLabel = $printCount === 1 ? 'ORIGINAL' : 'DUPLICATE #' . $printCount;
 
-        // ----------------- ORIGINAL PDF -----------------
-        $pdfOriginal = Pdf::loadView($originalView, [
+        // ----------------- Generate PDFs -----------------
+        $originalFinanceCopy = Pdf::loadView($financeView, [
             'claims' => $claims,
             'from' => $data['availment_from'],
             'to' => $data['availment_to'],
@@ -655,20 +651,64 @@ class SearchClaims extends Page implements HasForms, HasTable
             'grandTotalNet' => $grandTotalNet,
             'sequenceNumber' => $sequenceNumber,
             'preparedBy' => $preparedBy,
-            'copyLabel' => $copyLabelOriginal,
-        ])->setPaper('a4', 'landscape');
+            'copyLabel' => $copyLabel,
+        ])->setPaper('a4', 'landscape')->output();
 
+        $originalDentistCopy = Pdf::loadView($dentistView, [
+            'claims' => $claims,
+            'from' => $data['availment_from'],
+            'to' => $data['availment_to'],
+            'clinicDetails' => $clinicDetails,
+            'dentist' => $dentist,
+            'soa' => $soa,
+            'totalClinicFee' => $totalClinicFee,
+            'totalVat' => $totalVat,
+            'totalEwt' => $totalEwt,
+            'totalNet' => $totalNet,
+            'accounts' => $accounts,
+            'grandTotalRate' => $grandTotalRate,
+            'grandTotalVat' => $grandTotalVat,
+            'grandTotalEwt' => $grandTotalEwt,
+            'grandTotalNet' => $grandTotalNet,
+            'sequenceNumber' => $sequenceNumber,
+            'preparedBy' => $preparedBy,
+            'copyLabel' => $copyLabel,
+        ])->setPaper('a4', 'landscape')->output();
+
+        // ----------------- Merge PDFs -----------------
+        $pdf = new SectionedFpdi();
+        $copyLabel = 'Original';
+
+        $addSection = function ($pdfContent) use ($pdf) {
+            $pageCount = $pdf->setSourceFile(StreamReader::createByString($pdfContent));
+
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $tpl = $pdf->importPage($i);
+                $size = $pdf->getTemplateSize($tpl);
+                $orientation = $size['width'] > $size['height'] ? 'L' : 'P';
+
+                $pdf->AddPage($orientation, [$size['width'], $size['height']]);
+                $pdf->useTemplate($tpl);
+            }
+        };
+
+        // Merge sections
+        $addSection($originalFinanceCopy);
+        $addSection($originalDentistCopy);
+
+
+
+        // ----------------- Save PDF -----------------
         $originalFileName = 'ADC_ORIGINAL_' . $timestamp . '.pdf';
         $originalPath = 'adc/originals/' . $originalFileName;
-        Storage::disk('public')->put($originalPath, $pdfOriginal->output());
+        Storage::disk('public')->put($originalPath, $pdf->Output('S'));
         $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
 
-        // ----------------- Dynamic Printer Selection -----------------
+        // ----------------- Printing (optional) -----------------
         $clinicPrinter = $clinicDetails->printer_name ?? null;
         $printerName = \App\Services\PrinterService::getPrinter($clinicPrinter);
 
         if ($printerName) {
-            // Print ORIGINAL PDF
             exec(
                 'lp -o landscape -d ' . escapeshellarg($printerName) . ' ' . escapeshellarg($absoluteOriginalPath),
                 $output,
@@ -687,7 +727,6 @@ class SearchClaims extends Page implements HasForms, HasTable
                     'output' => $output,
                 ]);
             }
-            // Update procedures status → processed
         } else {
             Notification::make()
                 ->title('ADC Printing Failed')
@@ -703,47 +742,14 @@ class SearchClaims extends Page implements HasForms, HasTable
         DB::table('print_logs')->insert([
             'user_id' => auth()->id(),
             'document_id' => $soa->id,
-            'copy_type' => $copyLabelOriginal,
+            'copy_type' => $copyLabel,
             'printer' => $printerName ?? 'NO_PRINTER_AVAILABLE',
             'created_at' => now(),
         ]);
 
-        // ----------------- DUPLICATE PDF (Stored Only) -----------------
-        $pdfDuplicate = Pdf::loadView($duplicateView, [
-            'claims' => $claims,
-            'from' => $data['availment_from'],
-            'to' => $data['availment_to'],
-            'clinicDetails' => $clinicDetails,
-            'dentist' => $dentist,
-            'soa' => $soa,
-            'totalClinicFee' => $totalClinicFee,
-            'totalVat' => $totalVat,
-            'totalEwt' => $totalEwt,
-            'totalNet' => $totalNet,
-            'accounts' => $accounts,
-            'grandTotalRate' => $grandTotalRate,
-            'grandTotalVat' => $grandTotalVat,
-            'grandTotalEwt' => $grandTotalEwt,
-            'grandTotalNet' => $grandTotalNet,
-            'sequenceNumber' => $sequenceNumber,
-            'preparedBy' => $preparedBy,
-            'copyLabel' => 'DUPLICATE #' . $printCount,
-        ])->setPaper('a4', 'landscape');
-
-        $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
-        $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
-        Storage::disk('public')->put($duplicatePath, $pdfDuplicate->output());
-
-        // ----------------- Update SOA paths -----------------
-        $soa->update([
-            'original_file_path' => $originalPath,
-            'duplicate_file_path' => $duplicatePath,
-        ]);
-
-        // ----------------- Return ORIGINAL download -----------------
-        return Storage::disk('public')->download($duplicatePath, $duplicateFileName);
+        // ----------------- Return download -----------------
+        return Storage::disk('public')->download($originalPath, $originalFileName);
     }
-
 
 
     private function parsePercentage(?string $value): float

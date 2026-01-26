@@ -20,6 +20,9 @@ class Procedure extends Model
         'remarks',
         'quantity',
         'applied_fee',
+        'adc_number',
+        'is_fee_adjusted',
+        'adc_number_from'
     ];
 
     protected $casts = [

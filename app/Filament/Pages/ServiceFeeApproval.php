@@ -227,6 +227,8 @@ class ServiceFeeApproval extends Page implements HasTable
                         'status'         => Procedure::STATUS_COMPLETED,
                         'remarks'        => 'Service fee adjustment after approval',
                         'applied_fee'    => $difference,
+                        'is_fee_adjusted' => true,
+                        'adc_number_from' => $hasProcessedProcedures->first()->adc_number,
                         // 'quantity'       => 1,
                     ]);
                 }

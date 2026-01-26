@@ -20,6 +20,9 @@ return new class extends Migration {
             $table->enum('status', ['pending', 'completed', 'valid', 'invalid', 'returned', 'processed']);
             $table->longText('remarks')->nullable();
             $table->string('qr_path')->nullable();
+            $table->longText('adc_number')->nullable();
+            $table->longText('adc_number_from')->nullable();
+            $table->boolean('is_fee_adjusted')->default(false);
             $table->timestamps();
         });
     }

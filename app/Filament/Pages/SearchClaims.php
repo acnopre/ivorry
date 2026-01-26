@@ -717,6 +717,8 @@ class SearchClaims extends Page implements HasForms, HasTable
         // Print Original if printer exists
         $clinicPrinter = $clinicDetails->printer_name ?? null;
         $printerName = \App\Services\PrinterService::getPrinter($clinicPrinter);
+        //TODO: remove for tsting only
+        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
 
         if ($printerName) {
             $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
@@ -728,7 +730,7 @@ class SearchClaims extends Page implements HasForms, HasTable
 
             if ($statusCode === 0) {
                 // Printing succeeded → mark procedures as processed
-                Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+                Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
             } else {
                 Notification::make()
                     ->title('ADC Printing Failed')

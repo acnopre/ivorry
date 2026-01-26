@@ -118,6 +118,10 @@
 </head>
 <div class="sequence-number">
     FINANCE COPY | {{ $sequenceNumber }}
+    @if(isset($claims->first()->adc_number_from))
+    <br>ADC NUMBER FROM: {{ $claims->first()->adc_number_from }}
+    <br>
+    @endif
 </div>
 <br>
 <body>

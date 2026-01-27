@@ -21,7 +21,9 @@ class Member extends Model
         'address',
         'user_id',
         'effective_date',
-        'expiration_date'
+        'expiration_date',
+        'status',
+        'inactive_date'
     ];
 
 

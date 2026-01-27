@@ -36,6 +36,7 @@ class SearchClaims extends Page implements HasForms, HasTable
 
     public ?array $data = [];
     public bool $hasSearched = false;
+    public bool $isResultHasValid = false;
 
     public function mount(): void
     {
@@ -178,6 +179,9 @@ class SearchClaims extends Page implements HasForms, HasTable
                         ])
                     )
                     ->latest();
+                $this->isResultHasValid = ! (clone $query)
+                    ->where('status', 'VALID')
+                    ->exists();
                 return $query;
             })
             ->columns([
@@ -334,52 +338,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED before the ADC is created.')
 
                     ->modalSubmitActionLabel('Yes, Approve Claims')
-                    ->visible(function () {
-                        if (! $this->hasSearched) {
-                            return false;
-                        }
-
-                        $searchData = $this->data;
-
-                        $query =  Procedure::query()
-                            ->when(
-                                $searchData['member_name'] ?? null,
-                                fn(Builder $q, $name) =>
-                                $q->whereHas('member', function ($r) use ($name) {
-                                    $r->where(function ($sub) use ($name) {
-                                        $sub->where('first_name', 'like', "%{$name}%")
-                                            ->orWhere('last_name', 'like', "%{$name}%")
-                                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
-                                    });
-                                })
-                            )
-
-                            ->when(
-                                $searchData['approval_code'] ?? null,
-                                fn(Builder $q, $code) =>
-                                $q->where('approval_code', 'like', "%{$code}%")
-                            )
-                            ->when(
-                                $searchData['clinic_id'] ?? null,
-                                fn(Builder $q, $clinic_id) =>
-                                $q->whereHas('clinic', fn($r) => $r->where('id', '=', $clinic_id))
-                            )
-                            ->when(
-                                $searchData['status'] ?? null,
-                                fn(Builder $q, $status) =>
-                                $q->where('status', $status)
-                            )
-                            ->when(
-                                isset($searchData['availment_from'], $searchData['availment_to']),
-                                fn(Builder $q) =>
-                                $q->whereBetween('availment_date', [
-                                    $searchData['availment_from'],
-                                    $searchData['availment_to'],
-                                ])
-                            );
-
-                        return $query->where('status', Procedure::STATUS_VALID)->exists();
-                    })
+                    ->disabled(fn() => $this->isResultHasValid)
+                    // ->visible()
                     ->action(fn() => $this->generateClaims(Procedure::STATUS_VALID)),
                 Tables\Actions\Action::make('generate_return')
                     ->label('Generate Return')
@@ -718,7 +678,7 @@ class SearchClaims extends Page implements HasForms, HasTable
         $clinicPrinter = $clinicDetails->printer_name ?? null;
         $printerName = \App\Services\PrinterService::getPrinter($clinicPrinter);
         //TODO: remove for tsting only
-        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
+        // Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
 
         if ($printerName) {
             $absoluteOriginalPath = storage_path('app/public/' . $originalPath);

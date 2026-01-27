@@ -119,7 +119,7 @@
 <div class="sequence-number">
     DENTIST COPY | {{ $sequenceNumber }}
     @if(isset($claims->first()->adc_number_from))
-    <br>ADC NUMBER FROM: {{ $claims->first()->adc_number_from }}
+    <br>Adjustd to: {{ $claims->first()->adc_number_from }}
     <br>
     @endif
 </div>

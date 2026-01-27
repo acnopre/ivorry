@@ -60,6 +60,8 @@ class MembersImport implements ToModel
             'email'        => $row[9],
             'phone'        => $row[10],
             'address'      => $row[11] ?? null,
+            'status'       => $row[12] ?? null,
+            'inactive_date' => $row[13] ?? null,
         ]);
     }
 }

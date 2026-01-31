@@ -10,8 +10,8 @@ class ClinicService extends Model
     protected $fillable = [
         'clinic_id',
         'service_id',
-        'fee',
-        'old_fee',
-        'new_fee',
+        'fee', //fee to be used
+        'old_fee', //for history
+        'new_fee', //if ever approved
     ];
 }

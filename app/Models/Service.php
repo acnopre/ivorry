@@ -38,6 +38,6 @@ class Service extends Model
     }
     public function accountServices()
     {
-        return $this->hasMany(\App\Models\AccountService::class, 'service_id');
+        return $this->hasMany(\App\Models\AccountService::class, 'service_id')->whereNull('deleted_at');
     }
 }

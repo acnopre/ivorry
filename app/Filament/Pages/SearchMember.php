@@ -12,6 +12,7 @@ use App\Models\ProcedureUnit;
 use App\Models\Role;
 use App\Models\Service;
 use App\Models\Surface;
+use App\Models\Unit;
 use Filament\Forms;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
@@ -113,13 +114,15 @@ class SearchMember extends Page
         $this->procedureFormData = [
             'availment_date_display' => now()->format('F j, Y'),
             'availment_date' => now()->format('Y-m-d'),
-            'quantity' => '1',
+            // 'quantity' => '1',
+            'surface' => [],
+
         ];
         $this->showProcedureModal = true;
     }
     public function saveProcedure(): void
     {
-        $data = $this->procedureFormData;
+        $data = $this->getProcedureForm()->getState(); // This triggers validation
         $clinicId = Auth::user()->clinic->id ?? null;
 
         if (! $clinicId) {
@@ -134,16 +137,21 @@ class SearchMember extends Page
         if ($data['quantity'] > 6) {
             Notification::make()
                 ->title('Quantity Error')
-                ->body('Quantity cannot be greater than 6. Please enter a valid number.')
+                ->body('Quantity cannot be greater than 6.')
                 ->danger()
                 ->send();
-
             return;
         }
 
         // Generate approval code
         $approvalCode = strtoupper(Str::random(8));
-        $applidFee = ClinicService::where('clinic_id', $clinicId)->where('service_id', $data['service_id'])->first()->fee;
+
+        // FIX 1: Add safety check for fee
+        $appliedFee = ClinicService::where('clinic_id', $clinicId)
+            ->where('service_id', $data['service_id'])
+            ->first()
+            ->fee ?? 0;
+
         // Create procedure
         $procedure = Procedure::create([
             'clinic_id' => $clinicId,
@@ -153,9 +161,8 @@ class SearchMember extends Page
             'status' => Procedure::STATUS_PENDING,
             'quantity' => $data['quantity'],
             'approval_code' => $approvalCode,
-            'applied_fee' => $applidFee,
+            'applied_fee' => $appliedFee,
         ]);
-
 
         // Create associated procedure unit
         $procedureUnit = ProcedureUnit::create([
@@ -164,7 +171,11 @@ class SearchMember extends Page
             'quantity' => $data['quantity'] ?? 1,
         ]);
 
-        $selectedSurfaces = $this->procedureFormData['procedure_surface'] ?? [];
+        // FIX 2: REMOVED dd($data); here so the code continues to run
+
+        // FIX 3: Changed 'procedure_surface' to 'surface' to match your Form
+        $selectedSurfaces = $data['surface'] ?? [];
+
         if (!empty($selectedSurfaces)) {
             foreach ($selectedSurfaces as $surfaceId) {
                 ProcedureSurface::create([
@@ -174,15 +185,13 @@ class SearchMember extends Page
             }
         }
 
-
         // Close form modal and show approval modal
         $this->showProcedureModal = false;
         $this->approvalCode = $approvalCode;
         $this->showApprovalModal = true;
 
-        $this->search(); // refresh member list
+        $this->search();
     }
-
 
     public function getProcedureForm(): Forms\Form
     {
@@ -211,13 +220,15 @@ class SearchMember extends Page
                     ->live() // Use live() for better real-time updates
                     ->afterStateUpdated(function ($state, callable $set) {
 
+                        // FIX 4: ALWAYS reset surface when service changes
+                        $set('surface', []);
+
                         // 1. Reset fields if Service is cleared
                         if (! $state) {
                             $set('unit_type_name', null);
                             $set('unit_type_id', null);
                             $set('quantity', null);
                             $set('unit_id', null);
-                            $set('procedure_surface', []);
                             return;
                         }
 
@@ -231,34 +242,8 @@ class SearchMember extends Page
                             $set('unit_type_name', '—');
                             $set('unit_type_id', null);
                         }
-
-                        // 3. Auto-populate Quantity
-                        $accountId = $this->members->first()->account_id ?? null;
-
-                        if ($accountId) {
-                            $accountService = AccountService::where('account_id', $accountId)
-                                ->where('service_id', $state)
-                                ->first();
-
-                            if ($accountService) {
-                                // Priority: Default Quantity -> Fallback to 1
-                                $qty = $accountService->default_quantity ?? 1;
-
-                                // If NOT unlimited, cap it at their remaining balance
-                                if (! $accountService->is_unlimited) {
-                                    $qty = min($qty, $accountService->quantity);
-                                }
-
-                                // Global Max Cap of 6
-                                $qty = min($qty, 6);
-
-                                // IMPORTANT: Force integer cast and set
-                                $set('quantity', (int) $qty);
-                            } else {
-                                $set('quantity', 1);
-                            }
-                        }
                     }),
+
 
                 /*
             |--------------------------------------------------------------------------
@@ -267,35 +252,14 @@ class SearchMember extends Page
             */
                 Forms\Components\Placeholder::make('unit_type_display')
                     ->label('Unit Type')
-                    ->content(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))?->unitType?->name ?? '—'
-                    ),
-
-                /*
-            |--------------------------------------------------------------------------
-            | UNIT SELECT
-            |--------------------------------------------------------------------------
-            */
-                Forms\Components\Select::make('unit_id')
-                    ->label(fn(callable $get) => match (Service::find($get('service_id'))?->unitType?->name) {
-                        'Tooth' => 'Tooth Number',
-                        'Quadrant' => 'Quadrant',
-                        'Canal' => 'Tooth Number',
-                        'Surface' => 'Tooth Number',
-                        default => 'Unit',
-                    })
-                    ->options(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))
-                            ?->unitType?->units?->pluck('name', 'id') ?? collect()
-                    )
-                    ->reactive()
-                    ->required()
                     ->visible(
                         fn(callable $get) =>
                         Service::find($get('service_id'))
                             ?->unitType?->units?->isNotEmpty()
+                    )
+                    ->content(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))?->unitType?->name ?? '—'
                     ),
 
                 /*
@@ -306,7 +270,12 @@ class SearchMember extends Page
                 Forms\Components\TextInput::make('quantity')
                     ->label('Quantity')
                     ->numeric()
-                    ->minValue(1)
+                    ->required()
+                    ->visible(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))
+                            ?->unitType?->units?->isNotEmpty()
+                    )
                     ->maxValue(function (callable $get) {
                         // Dynamic Max Value Logic
                         $accountId = $this->members->first()->account_id ?? null;
@@ -342,16 +311,44 @@ class SearchMember extends Page
 
                         return 'Enter a number between 1 and 3';
                     })
-                    ->rules(['nullable', 'integer'])
-                    ->nullable()
-                    ->live(), // Make live so helper text updates instantly
+                    ->rules(['integer'])
+                    ->live(),
+
+                /*
+            |--------------------------------------------------------------------------
+            | UNIT SELECT
+            |--------------------------------------------------------------------------
+            */
+                Forms\Components\Select::make('unit_id')
+                    ->label(fn(callable $get) => match (Service::find($get('service_id'))?->unitType?->name) {
+                        'Tooth' => 'Tooth Number',
+                        'Quadrant' => 'Quadrant',
+                        'Canal' => 'Tooth Number',
+                        'Surface' => 'Tooth Number',
+                        default => 'Unit',
+                    })
+                    ->options(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))
+                            ?->unitType?->units?->pluck('name', 'id') ?? collect()
+                    )
+                    ->reactive()
+                    ->required()
+                    ->visible(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))
+                            ?->unitType?->units?->isNotEmpty()
+                    ),
+
+
+
 
                 /*
             |--------------------------------------------------------------------------
             | SURFACE SELECTION
             |--------------------------------------------------------------------------
             */
-                Forms\Components\Select::make('procedure_surface')
+                Forms\Components\Select::make('surface')
                     ->label('Surface')
                     ->options(Surface::all()->pluck('name', 'id') ?? collect())
                     ->reactive()

@@ -60,7 +60,7 @@ class Account extends Model
                 'updated_at',
                 'deleted_at',
             ])
-            ->withTimestamps();
+            ->withTimestamps()->whereNull('account_service.deleted_at');
     }
 
     public function getActivitylogOptions(): LogOptions

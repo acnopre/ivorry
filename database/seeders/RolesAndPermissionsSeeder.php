@@ -170,6 +170,23 @@ class RolesAndPermissionsSeeder extends Seeder
                 ],
             ],
 
+
+            'Dentist' => [
+                'permissions' => [
+                    'dentist.search',
+                    'dentist.view',
+                    'dentist.list',
+                    'dentist.add-procedure',
+                    'dentist.my-procedure',
+        
+                ],
+                'user' => [
+                    'name' => 'John Doe Dentist',
+                    'email' => 'dentist@example.com',
+                    'password' => 'password',
+                ],
+            ],
+
             'Middle Management' => [
                 'permissions' => [], // will inherit all permissions
                 'user' => [

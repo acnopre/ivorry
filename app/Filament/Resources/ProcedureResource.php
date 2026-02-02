@@ -48,6 +48,30 @@ class ProcedureResource extends Resource
                     ->sortable()
                     ->searchable(),
 
+                Tables\Columns\TextColumn::make('procedure_units')
+                    ->label('Units')
+                    ->state(function ($record) {
+
+                        return $record->surface_units->map(function ($surfaceUnit) {
+
+                            $unit = \App\Models\Unit::find($surfaceUnit->pivot->unit_id);
+
+                            $unitType = $unit?->unitType?->name ?? '—';
+                            $unitName = $unit?->name ?? '—';
+                            $surface  = $surfaceUnit->name ?? null;
+                            $qty      = $surfaceUnit->pivot->quantity;
+
+                            return "{$unitType}: {$unitName}"
+                                . ($surface ? " | Surface: {$surface}" : '')
+                                . " | Qty: {$qty}";
+                        })->implode("\n");
+                    })
+                    ->wrap(),
+
+
+
+
+
                 Tables\Columns\TextColumn::make('availment_date')
                     ->label('Availment Date')
                     ->date('M d, Y')

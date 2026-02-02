@@ -87,17 +87,29 @@
         <table class="min-w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <thead class="bg-gray-100 dark:bg-gray-800">
                 <tr>
-                    <th class="px-4 py-2 text-left">Unit Name</th>
+                    <th class="px-4 py-2 text-left">Unit</th>
                     <th class="px-4 py-2 text-left">Quantity</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($units as $unit)
                 <tr class="border-t border-gray-200 dark:border-gray-700">
-                    <td class="px-4 py-2">{{ $unit->unitType->name ?? 'N/A' }}</td>
-                    <td class="px-4 py-2">{{ $unit->pivot->quantity ?? 'N/A' }}</td>
+                    <td class="px-4 py-2">
+                        {{ $unit->unitType->name ?? 'N/A' }}:
+                        {{ $unit->name ?? 'N/A' }}
+
+                        @isset($unit->pivot->surface)
+                        — Surface: {{ $unit->pivot->surface->name }}
+                        @endisset
+                    </td>
+
+                    <td class="px-4 py-2">
+                        {{ $unit->pivot->quantity ?? 'N/A' }}
+                    </td>
                 </tr>
                 @endforeach
+
+
             </tbody>
         </table>
         @else

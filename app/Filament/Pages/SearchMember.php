@@ -13,6 +13,7 @@ use App\Models\Role;
 use App\Models\Service;
 use App\Models\Surface;
 use App\Models\Unit;
+use App\Models\UnitType;
 use Filament\Forms;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
@@ -134,10 +135,10 @@ class SearchMember extends Page
             return;
         }
 
-        if ($data['quantity'] > 6) {
+        if ($data['quantity'] > 3) {
             Notification::make()
                 ->title('Quantity Error')
-                ->body('Quantity cannot be greater than 6.')
+                ->body('Quantity cannot be greater than 3.')
                 ->danger()
                 ->send();
             return;
@@ -151,39 +152,30 @@ class SearchMember extends Page
             ->where('service_id', $data['service_id'])
             ->first()
             ->fee ?? 0;
+        foreach ($data['surface'] as $key => $surfaceId) {
+            // Create procedure
+            $procedure = Procedure::create([
+                'clinic_id' => $clinicId,
+                'member_id' => $this->selectedMemberId,
+                'service_id' => $data['service_id'],
+                'availment_date' => $data['availment_date'] ?? null,
+                'status' => Procedure::STATUS_PENDING,
+                'quantity' => $data['quantity'],
+                'approval_code' => $approvalCode,
+                'applied_fee' => $appliedFee,
+            ]);
 
-        // Create procedure
-        $procedure = Procedure::create([
-            'clinic_id' => $clinicId,
-            'member_id' => $this->selectedMemberId,
-            'service_id' => $data['service_id'],
-            'availment_date' => $data['availment_date'] ?? null,
-            'status' => Procedure::STATUS_PENDING,
-            'quantity' => $data['quantity'],
-            'approval_code' => $approvalCode,
-            'applied_fee' => $appliedFee,
-        ]);
-
-        // Create associated procedure unit
-        $procedureUnit = ProcedureUnit::create([
-            'procedure_id' => $procedure->id,
-            'unit_id' => $data['unit_id'] ?? null,
-            'quantity' => $data['quantity'] ?? 1,
-        ]);
-
-        // FIX 2: REMOVED dd($data); here so the code continues to run
-
-        // FIX 3: Changed 'procedure_surface' to 'surface' to match your Form
-        $selectedSurfaces = $data['surface'] ?? [];
-
-        if (!empty($selectedSurfaces)) {
-            foreach ($selectedSurfaces as $surfaceId) {
-                ProcedureSurface::create([
-                    'procedure_unit_id' => $procedureUnit->id,
-                    'surface_id' => $surfaceId,
-                ]);
-            }
+            // Create associated procedure unit
+            $procedureUnit = ProcedureUnit::create([
+                'procedure_id' => $procedure->id,
+                'unit_id' => $data['unit_id'] ?? null,
+                'quantity' => 1,
+                'surface_id' => $surfaceId,
+                'input_quantity' => $data['quantity'],
+            ]);
         }
+
+
 
         // Close form modal and show approval modal
         $this->showProcedureModal = false;
@@ -217,10 +209,9 @@ class SearchMember extends Page
                             ->get()
                             ->pluck('service.name', 'service_id');
                     })
-                    ->live() // Use live() for better real-time updates
+                    ->live()
                     ->afterStateUpdated(function ($state, callable $set) {
 
-                        // FIX 4: ALWAYS reset surface when service changes
                         $set('surface', []);
 
                         // 1. Reset fields if Service is cleared
@@ -276,6 +267,8 @@ class SearchMember extends Page
                         Service::find($get('service_id'))
                             ?->unitType?->units?->isNotEmpty()
                     )
+                    ->reactive()      // Improved reactivity
+                    ->afterStateUpdated(fn(callable $set) => $set('surface', []))
                     ->maxValue(function (callable $get) {
                         // Dynamic Max Value Logic
                         $accountId = $this->members->first()->account_id ?? null;
@@ -311,8 +304,8 @@ class SearchMember extends Page
 
                         return 'Enter a number between 1 and 3';
                     })
-                    ->rules(['integer'])
-                    ->live(),
+
+                    ->rules(['integer']),
 
                 /*
             |--------------------------------------------------------------------------
@@ -320,6 +313,7 @@ class SearchMember extends Page
             |--------------------------------------------------------------------------
             */
                 Forms\Components\Select::make('unit_id')
+
                     ->label(fn(callable $get) => match (Service::find($get('service_id'))?->unitType?->name) {
                         'Tooth' => 'Tooth Number',
                         'Quadrant' => 'Quadrant',
@@ -327,11 +321,18 @@ class SearchMember extends Page
                         'Surface' => 'Tooth Number',
                         default => 'Unit',
                     })
-                    ->options(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))
-                            ?->unitType?->units?->pluck('name', 'id') ?? collect()
-                    )
+                    ->options(function (callable $get) {
+                        $service = Service::find($get('service_id'));
+                        // If service is Surface → use Tooth units
+                        if ($service?->unit_type === 'Surface') {
+                            return UnitType::where('name', 'Tooth')
+                                ->first()
+                                ?->units
+                                ?->pluck('name', 'id') ?? collect();
+                        }
+
+                        return $service?->unitType?->units?->pluck('name', 'id') ?? collect();
+                    })
                     ->reactive()
                     ->required()
                     ->visible(
@@ -350,19 +351,22 @@ class SearchMember extends Page
             */
                 Forms\Components\Select::make('surface')
                     ->label('Surface')
-                    ->options(Surface::all()->pluck('name', 'id') ?? collect())
-                    ->reactive()
+                    ->options(Unit::where('unit_type_id', 5)->pluck('name', 'id') ?? collect())
                     ->multiple()
+                    ->live()
                     ->required()
                     ->visible(function (callable $get) {
-                        $service = Service::find($get('service_id'));
-                        return $service?->unitType?->name === 'Surface' && $get('quantity') > 0;
+                        return Service::find($get('service_id'))
+                            ?->unitType
+                            ?->name === 'Surface'
+                            && filled($get('quantity'));
                     })
                     ->helperText(
                         fn(callable $get) =>
                         'You can select up to ' . ($get('quantity') ?? 0) . ' surface(s)'
                     )
-                    ->maxItems(fn(callable $get) => $get('quantity') ?? 0),
+                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
+
 
                 /*
             |--------------------------------------------------------------------------

@@ -66,11 +66,18 @@ class Procedure extends Model
     public function units()
     {
         return $this->belongsToMany(Unit::class, 'procedure_units', 'procedure_id', 'unit_id')
-            ->withPivot('quantity')
-            ->with('unitType') // eager-load the type for convenience
+            ->using(ProcedureUnit::class)
+            ->withPivot(['quantity', 'surface_id', 'input_quantity'])
             ->withTimestamps();
     }
 
+    public function surface_units()
+    {
+        return $this->belongsToMany(Unit::class, 'procedure_units', 'procedure_id', 'surface_id')
+            ->using(ProcedureUnit::class)
+            ->withPivot(['quantity', 'unit_id', 'input_quantity'])
+            ->withTimestamps();
+    }
     public function getClinicNameAttribute()
     {
         // Get clinic from the service

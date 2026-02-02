@@ -12,7 +12,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('procedure_id')->constrained('procedures')->cascadeOnDelete();
             $table->foreignId('unit_id')->nullable()->constrained('units')->cascadeOnDelete();
+            $table->foreignId('surface_id')->nullable()->constrained('units')->cascadeOnDelete();
             $table->string('quantity')->nullable();
+            $table->string('input_quantity')->nullable();
             $table->timestamps();
         });
     }

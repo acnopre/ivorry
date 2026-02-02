@@ -10,11 +10,11 @@ class ProcedureSurface extends Model
 
     public function surface()
     {
-        return $this->belongsTo(Surface::class);
+        return $this->belongsTo(Surface::class, 'surface_id');
     }
 
     public function procedureUnit()
     {
-        return $this->belongsTo(ProcedureUnit::class);
+        return $this->belongsTo(ProcedureUnit::class, 'procedure_unit_id');
     }
 }

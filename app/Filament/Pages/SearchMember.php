@@ -131,6 +131,9 @@ class SearchMember extends Page
     {
         $data = $this->getProcedureForm()->getState();
         $clinicId = Auth::user()->clinic->id ?? null;
+        $member = Member::where('id', $this->selectedMemberId)->first();
+        $isServiceUnlimited = $member->account->services->find($data['service_id'])->pivot->is_unlimited;
+        $serviceQuantity = $member->account->services->find($data['service_id'])->pivot->quantity;
 
         if (! $clinicId) {
             Notification::make()
@@ -144,14 +147,20 @@ class SearchMember extends Page
             $this->showProcedureExistModal = true;
             return;
         }
-        if ($data['quantity'] > 3) {
-            Notification::make()
-                ->title('Quantity Error')
-                ->body('Quantity cannot be greater than 3.')
-                ->danger()
-                ->send();
+
+        if ($serviceQuantity == 0) {
+
             return;
         }
+
+        // if ($data['quantity'] > 3) {
+        //     Notification::make()
+        //         ->title('Quantity Error')
+        //         ->body('Quantity cannot be greater than 3.')
+        //         ->danger()
+        //         ->send();
+        //     return;
+        // }
 
         $approvalCode = strtoupper(Str::random(8));
 
@@ -161,32 +170,46 @@ class SearchMember extends Page
 
         // Possible unit inputs
         $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
+        if ($isServiceUnlimited) {
+            $procedure = Procedure::create([
+                'clinic_id'      => $clinicId,
+                'member_id'      => $this->selectedMemberId,
+                'service_id'     => $data['service_id'],
+                'availment_date' => $data['availment_date'] ?? null,
+                'status'         => Procedure::STATUS_PENDING,
+                'quantity'       => 1,
+                'approval_code'  => $approvalCode,
+                'applied_fee'    => $appliedFee,
+            ]);
+        } else {
+            //TODO::check now if service quantity is not zero;
+            foreach ($unitInputs as $input) {
+                if (! isset($data[$input])) {
+                    continue;
+                }
+                foreach ($data[$input] as $value) {
+                    $procedure = Procedure::create([
+                        'clinic_id'      => $clinicId,
+                        'member_id'      => $this->selectedMemberId,
+                        'service_id'     => $data['service_id'],
+                        'availment_date' => $data['availment_date'] ?? null,
+                        'status'         => Procedure::STATUS_PENDING,
+                        'quantity'       => $data['quantity'],
+                        'approval_code'  => $approvalCode,
+                        'applied_fee'    => $appliedFee,
+                    ]);
 
-        foreach ($unitInputs as $input) {
-            if (! isset($data[$input])) {
-                continue;
-            }
-            foreach ($data[$input] as $value) {
-                $procedure = Procedure::create([
-                    'clinic_id'      => $clinicId,
-                    'member_id'      => $this->selectedMemberId,
-                    'service_id'     => $data['service_id'],
-                    'availment_date' => $data['availment_date'] ?? null,
-                    'status'         => Procedure::STATUS_PENDING,
-                    'quantity'       => $data['quantity'],
-                    'approval_code'  => $approvalCode,
-                    'applied_fee'    => $appliedFee,
-                ]);
-
-                ProcedureUnit::create([
-                    'procedure_id'   => $procedure->id,
-                    'unit_id'        => $input === 'surface' ? $data['tooth_surface'] : $value,
-                    'quantity'       => 1,
-                    'input_quantity' => $data['quantity'],
-                    'surface_id'     => $input === 'surface' ? $value : null,
-                ]);
+                    ProcedureUnit::create([
+                        'procedure_id'   => $procedure->id,
+                        'unit_id'        => $input === 'surface' ? $data['tooth_surface'] : $value,
+                        'quantity'       => 1,
+                        'input_quantity' => $data['quantity'],
+                        'surface_id'     => $input === 'surface' ? $value : null,
+                    ]);
+                }
             }
         }
+
 
         // UI updates
         $this->showProcedureModal = false;

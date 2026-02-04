@@ -159,7 +159,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->placeholder('All')
                             ->visible(
                                 fn($get) => ($get('reportType') === 'clinics' && trim(strtoupper($get('accreditation_status'))) === 'SPECIFIC HIP')
-                                    || $get('reportType') === 'accounts'
+                                    || $get('reportType') === 'accounts' || $get('reportType') === 'members'
                             ),
 
                         Forms\Components\Select::make('account_id')
@@ -425,6 +425,16 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->when($f['memberType'] ?? null, fn($q, $v) => $q->where('member_type', $v))
             ->when($f['account_id'] ?? null, fn($q, $v) => $q->where('account_id', $v))
             ->when(
+                $f['hip'] ?? null,
+                fn($q, $v) =>
+                $q->whereHas(
+                    'account',
+                    fn($q) =>
+                    $q->where('hip', $v)
+                )
+            )
+
+            ->when(
                 !empty($f['inactive_date_from']) && !empty($f['inactive_date_to']),
                 fn($q) =>
                 $q->whereBetween('inactive_date', [$f['inactive_date_from'], $f['inactive_date_to']])
@@ -518,12 +528,21 @@ class ReportsPage extends Page implements HasForms, HasTable
             'members' => [
                 Tables\Columns\TextColumn::make('account.company_name') // use the relationship
                     ->label('Account'),
+                Tables\Columns\TextColumn::make('account.hip')
+                    ->label('HIP'),
                 Tables\Columns\TextColumn::make('full_name')->label('Member'),
                 Tables\Columns\TextColumn::make('member_type')->label('Member Type'),
                 Tables\Columns\TextColumn::make('card_number')->label('Card Number'),
                 Tables\Columns\TextColumn::make('gender'),
-                Tables\Columns\TextColumn::make('email'),
                 Tables\Columns\TextColumn::make('status')->badge(),
+                Tables\Columns\TextColumn::make('account.effective_date')
+                    ->label('Account Effective Date')
+                    ->date('M d, Y'),
+
+                Tables\Columns\TextColumn::make('account.expiration_date')
+                    ->label('Account Expiration Date')
+                    ->date('M d, Y'),
+
                 Tables\Columns\TextColumn::make('inactive_date')
                     ->label('Inactive Date'),
                 Tables\Columns\TextColumn::make('created_at')->date()->label('Date Created'),

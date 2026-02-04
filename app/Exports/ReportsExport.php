@@ -32,7 +32,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
     public function headings(): array
     {
         return match ($this->type) {
-            'members' => ['Account Name', 'Name',  'Member Type', 'Card Type', 'Gender', 'Email', 'Status', 'Inactive Date', 'Date Added'],
+            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Type', 'Gender', 'Status', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
             'dentists' => ['Clinic Name', 'Dentist Name', 'Specialization', 'Status', 'Date Added'],
             'clinics' => ['Clinic Name', 'Registered Name', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
             'procedures' => ['Member Name', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Availment Date', 'Approval Code', 'Status', 'Date Added'],
@@ -46,12 +46,14 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
         return match ($this->type) {
             'members' => [
                 optional($row->account)->company_name,
+                optional($row->account)->hip,
                 $row->full_name,
                 $row->member_type,
                 $row->card_number,
                 $row->gender,
-                $row->email,
                 $row->status,
+                $row->account->effective_date->format('Y-m-d'),
+                $row->account->expiration_date->format('Y-m-d'),
                 optional($row->inactive_date)?->format('Y-m-d'),
                 optional($row->created_at)?->format('Y-m-d'),
             ],

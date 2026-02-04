@@ -262,5 +262,23 @@
             </div>
         </div>
     </div>
+    <div x-data x-show="$wire.showProcedureExistModal" x-cloak x-trap.noscroll @click.away="$wire.showProcedureExistModal = false" x-on:keydown.escape.window="$wire.showProcedureExistModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md relative text-center">
+
+            <h2 class="text-2xl font-bold text-primary-600 mb-4">Procedure Already Exists</h2>
+
+            <p class="text-gray-600 dark:text-gray-300">
+                This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.
+            </p>
+
+            <div class="mt-6">
+                <x-filament::button color="primary" wire:click="$set('showProcedureExistModal', false)">
+                    Close
+                </x-filament::button>
+            </div>
+        </div>
+    </div>
+
 
 </x-filament-panels::page>

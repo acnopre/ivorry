@@ -42,6 +42,7 @@ class SearchMember extends Page
 
     // 🆕 Modal state for approval confirmation
     public bool $showApprovalModal = false;
+    public bool $showProcedureExistModal = false;
     public ?string $approvalCode = null;
 
     public function mount(): void
@@ -130,6 +131,7 @@ class SearchMember extends Page
     {
         $data = $this->getProcedureForm()->getState();
         $clinicId = Auth::user()->clinic->id ?? null;
+
         if (! $clinicId) {
             Notification::make()
                 ->title('Clinic not found')
@@ -138,7 +140,10 @@ class SearchMember extends Page
                 ->send();
             return;
         }
-
+        if (Procedure::where('service_id', $data['service_id'])->where('member_id', $this->selectedMemberId)->exists()) {
+            $this->showProcedureExistModal = true;
+            return;
+        }
         if ($data['quantity'] > 3) {
             Notification::make()
                 ->title('Quantity Error')

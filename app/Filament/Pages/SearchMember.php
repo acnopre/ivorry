@@ -140,7 +140,7 @@ class SearchMember extends Page
                 ->send();
             return;
         }
-        if (Procedure::where('service_id', $data['service_id'])->where('member_id', $this->selectedMemberId)->exists()) {
+        if (Procedure::where('service_id', $data['service_id'])->where('member_id', $this->selectedMemberId)->where('status', '!=', Procedure::STATUS_VALID)->exists()) {
             $this->showProcedureExistModal = true;
             return;
         }

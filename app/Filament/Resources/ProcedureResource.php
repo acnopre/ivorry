@@ -28,7 +28,6 @@ class ProcedureResource extends Resource
     {
         $clinicId = Auth::user()->clinic->id ?? null;
         $query = Procedure::query();
-
         return $clinicId
             ? $query->where('clinic_id', $clinicId)
             : $query->whereRaw('1 = 0');
@@ -52,24 +51,67 @@ class ProcedureResource extends Resource
                     ->label('Units')
                     ->state(function ($record) {
 
-                        return $record->surface_units->map(function ($surfaceUnit) {
+                        $lines = [];
 
-                            $unit = \App\Models\Unit::find($surfaceUnit->pivot->unit_id);
+                        /*
+                        |--------------------------------------------------------------------------
+                        | NORMAL UNITS (no surface)
+                        |--------------------------------------------------------------------------
+                        */
+                        foreach ($record->units as $unit) {
+                            if (! isset($unit->pivot->surface_id)) {
 
-                            $unitType = $unit?->unitType?->name ?? '—';
-                            $unitName = $unit?->name ?? '—';
-                            $surface  = $surfaceUnit->name ?? null;
-                            $qty      = $surfaceUnit->pivot->quantity;
+                                $unitType = isset($unit->unitType->name)
+                                    ? $unit->unitType->name
+                                    : '—';
 
-                            return "{$unitType}: {$unitName}"
-                                . ($surface ? " | Surface: {$surface}" : '')
-                                . " | Qty: {$qty}";
-                        })->implode("\n");
+                                $unitName = isset($unit->name)
+                                    ? $unit->name
+                                    : '—';
+
+                                $qty = isset($unit->pivot->quantity)
+                                    ? $unit->pivot->quantity
+                                    : 0;
+
+                                $lines[] = "{$unitType}: {$unitName} | Qty: {$qty}";
+                            }
+                        }
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | SURFACE UNITS
+                        |--------------------------------------------------------------------------
+                        */
+                        foreach ($record->surface_units as $surface) {
+
+                            if (! isset($surface->pivot->unit_id)) {
+                                continue;
+                            }
+
+                            $unit = \App\Models\Unit::find($surface->pivot->unit_id);
+
+                            $unitType = isset($unit->unitType->name)
+                                ? $unit->unitType->name
+                                : '—';
+
+                            $unitName = isset($unit->name)
+                                ? $unit->name
+                                : '—';
+
+                            $surfaceName = isset($surface->name)
+                                ? $surface->name
+                                : '—';
+
+                            $qty = isset($surface->pivot->quantity)
+                                ? $surface->pivot->quantity
+                                : 0;
+
+                            $lines[] = "{$unitType}: {$unitName} | Surface: {$surfaceName} | Qty: {$qty}";
+                        }
+
+                        return implode("\n", $lines);
                     })
                     ->wrap(),
-
-
-
 
 
                 Tables\Columns\TextColumn::make('availment_date')

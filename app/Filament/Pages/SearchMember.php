@@ -130,7 +130,6 @@ class SearchMember extends Page
     {
         $data = $this->getProcedureForm()->getState();
         $clinicId = Auth::user()->clinic->id ?? null;
-
         if (! $clinicId) {
             Notification::make()
                 ->title('Clinic not found')
@@ -162,7 +161,6 @@ class SearchMember extends Page
             if (! isset($data[$input])) {
                 continue;
             }
-
             foreach ($data[$input] as $value) {
                 $procedure = Procedure::create([
                     'clinic_id'      => $clinicId,
@@ -177,7 +175,7 @@ class SearchMember extends Page
 
                 ProcedureUnit::create([
                     'procedure_id'   => $procedure->id,
-                    'unit_id'        => $data['unit_id'] ?? null,
+                    'unit_id'        => $input === 'surface' ? $data['tooth_surface'] : $value,
                     'quantity'       => 1,
                     'input_quantity' => $data['quantity'],
                     'surface_id'     => $input === 'surface' ? $value : null,
@@ -192,7 +190,6 @@ class SearchMember extends Page
 
         $this->search();
     }
-
 
 
     public function getProcedureForm(): Forms\Form
@@ -415,6 +412,25 @@ class SearchMember extends Page
             | SURFACE SELECTION
             |--------------------------------------------------------------------------
             */
+
+                Forms\Components\Select::make('tooth_surface')
+                    ->label('Tooth')
+                    ->options(Unit::where('unit_type_id', 3)->pluck('name', 'id') ?? collect())
+                    ->live()
+                    ->required(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))?->unitType?->name === 'Tooth'
+                            && filled($get('quantity'))
+                    )
+
+                    ->visible(function (callable $get) {
+                        return Service::find($get('service_id'))
+                            ?->unitType
+                            ?->name === 'Surface'
+                            && filled($get('quantity'));
+                    }),
+
+
                 Forms\Components\Select::make('surface')
                     ->label('Surface')
                     ->options(Unit::where('unit_type_id', 5)->pluck('name', 'id') ?? collect())

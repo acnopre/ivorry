@@ -223,7 +223,6 @@ class SearchClaims extends Page implements HasForms, HasTable
                         $services = $account->services ?? collect();
                         $member = $record->member;
                         $units = $record->units ?? collect();
-                        $surface = $record->surface_units ?? collect();
 
                         return view('filament.modals.claim-view-tabs', [
                             'record' => $record,

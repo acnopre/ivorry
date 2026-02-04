@@ -117,13 +117,18 @@ class SearchMember extends Page
             'availment_date' => now()->format('Y-m-d'),
             // 'quantity' => '1',
             'surface' => [],
+            'quadrant' => [],
+            'tooth' => [],
+            'canal' => [],
+            'arch' => [],
+            'unit_id' => [],
 
         ];
         $this->showProcedureModal = true;
     }
     public function saveProcedure(): void
     {
-        $data = $this->getProcedureForm()->getState(); // This triggers validation
+        $data = $this->getProcedureForm()->getState();
         $clinicId = Auth::user()->clinic->id ?? null;
 
         if (! $clinicId) {
@@ -144,46 +149,51 @@ class SearchMember extends Page
             return;
         }
 
-        // Generate approval code
         $approvalCode = strtoupper(Str::random(8));
 
-        // FIX 1: Add safety check for fee
         $appliedFee = ClinicService::where('clinic_id', $clinicId)
             ->where('service_id', $data['service_id'])
-            ->first()
-            ->fee ?? 0;
-        foreach ($data['surface'] as $key => $surfaceId) {
-            // Create procedure
-            $procedure = Procedure::create([
-                'clinic_id' => $clinicId,
-                'member_id' => $this->selectedMemberId,
-                'service_id' => $data['service_id'],
-                'availment_date' => $data['availment_date'] ?? null,
-                'status' => Procedure::STATUS_PENDING,
-                'quantity' => $data['quantity'],
-                'approval_code' => $approvalCode,
-                'applied_fee' => $appliedFee,
-            ]);
+            ->value('fee') ?? 0;
 
-            // Create associated procedure unit
-            $procedureUnit = ProcedureUnit::create([
-                'procedure_id' => $procedure->id,
-                'unit_id' => $data['unit_id'] ?? null,
-                'quantity' => 1,
-                'surface_id' => $surfaceId,
-                'input_quantity' => $data['quantity'],
-            ]);
+        // Possible unit inputs
+        $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
+
+        foreach ($unitInputs as $input) {
+            if (! isset($data[$input])) {
+                continue;
+            }
+
+            foreach ($data[$input] as $value) {
+                $procedure = Procedure::create([
+                    'clinic_id'      => $clinicId,
+                    'member_id'      => $this->selectedMemberId,
+                    'service_id'     => $data['service_id'],
+                    'availment_date' => $data['availment_date'] ?? null,
+                    'status'         => Procedure::STATUS_PENDING,
+                    'quantity'       => $data['quantity'],
+                    'approval_code'  => $approvalCode,
+                    'applied_fee'    => $appliedFee,
+                ]);
+
+                ProcedureUnit::create([
+                    'procedure_id'   => $procedure->id,
+                    'unit_id'        => $data['unit_id'] ?? null,
+                    'quantity'       => 1,
+                    'input_quantity' => $data['quantity'],
+                    'surface_id'     => $input === 'surface' ? $value : null,
+                ]);
+            }
         }
 
-
-
-        // Close form modal and show approval modal
+        // UI updates
         $this->showProcedureModal = false;
         $this->approvalCode = $approvalCode;
         $this->showApprovalModal = true;
 
         $this->search();
     }
+
+
 
     public function getProcedureForm(): Forms\Form
     {
@@ -213,6 +223,7 @@ class SearchMember extends Page
                     ->afterStateUpdated(function ($state, callable $set) {
 
                         $set('surface', []);
+                        $set('qudrant', []);
 
                         // 1. Reset fields if Service is cleared
                         if (! $state) {
@@ -267,7 +278,7 @@ class SearchMember extends Page
                         Service::find($get('service_id'))
                             ?->unitType?->units?->isNotEmpty()
                     )
-                    ->reactive()      // Improved reactivity
+                    ->reactive()
                     ->afterStateUpdated(fn(callable $set) => $set('surface', []))
                     ->maxValue(function (callable $get) {
                         // Dynamic Max Value Logic
@@ -309,41 +320,96 @@ class SearchMember extends Page
 
                 /*
             |--------------------------------------------------------------------------
-            | UNIT SELECT
+            | UNIT SELECT: SESSION,  QUADRANT, TOOTH, ARCH, CANAL
             |--------------------------------------------------------------------------
             */
-                Forms\Components\Select::make('unit_id')
 
-                    ->label(fn(callable $get) => match (Service::find($get('service_id'))?->unitType?->name) {
-                        'Tooth' => 'Tooth Number',
-                        'Quadrant' => 'Quadrant',
-                        'Canal' => 'Tooth Number',
-                        'Surface' => 'Tooth Number',
-                        default => 'Unit',
-                    })
-                    ->options(function (callable $get) {
-                        $service = Service::find($get('service_id'));
-                        // If service is Surface → use Tooth units
-                        if ($service?->unit_type === 'Surface') {
-                            return UnitType::where('name', 'Tooth')
-                                ->first()
-                                ?->units
-                                ?->pluck('name', 'id') ?? collect();
-                        }
+                Forms\Components\Select::make('quadrant')
+                    ->label('Quadrant')
+                    ->options(Unit::where('unit_type_id', 2)->pluck('name', 'id'))
+                    ->multiple()
+                    ->live()
 
-                        return $service?->unitType?->units?->pluck('name', 'id') ?? collect();
-                    })
-                    ->reactive()
-                    ->required()
                     ->visible(
                         fn(callable $get) =>
-                        Service::find($get('service_id'))
-                            ?->unitType?->units?->isNotEmpty()
-                    ),
+                        Service::find($get('service_id'))?->unitType?->name === 'Quadrant'
+                            && filled($get('quantity'))
+                    )
+                    ->helperText(
+                        fn(callable $get) =>
+                        'You can select up to ' . ($get('quantity') ?? 0) . ' quadrant(s)'
+                    )
+                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
 
 
 
+                Forms\Components\Select::make('tooth')
+                    ->label('Tooth')
+                    ->options(Unit::where('unit_type_id', 3)->pluck('name', 'id') ?? collect())
+                    ->multiple()
+                    ->live()
+                    ->required(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))?->unitType?->name === 'Tooth'
+                            && filled($get('quantity'))
+                    )
 
+                    ->visible(function (callable $get) {
+                        return Service::find($get('service_id'))
+                            ?->unitType
+                            ?->name === 'Tooth'
+                            && filled($get('quantity'));
+                    })
+                    ->helperText(
+                        fn(callable $get) =>
+                        'You can select up to ' . ($get('quantity') ?? 0) . ' tooth(s)'
+                    )
+                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
+
+                Forms\Components\Select::make('arch')
+                    ->label('Arch')
+                    ->options(Unit::where('unit_type_id', 4)->pluck('name', 'id') ?? collect())
+                    ->multiple()
+                    ->live()
+                    ->required(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))?->unitType?->name === 'Arch'
+                            && filled($get('quantity'))
+                    )
+
+                    ->visible(function (callable $get) {
+                        return Service::find($get('service_id'))
+                            ?->unitType
+                            ?->name === 'Arch'
+                            && filled($get('quantity'));
+                    })
+                    ->helperText(
+                        fn(callable $get) =>
+                        'You can select up to ' . ($get('quantity') ?? 0) . ' arch(s)'
+                    )
+                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
+
+                Forms\Components\Select::make('canal')
+                    ->label('Canal')
+                    ->options(Unit::where('unit_type_id', 6)->pluck('name', 'id') ?? collect())
+                    ->multiple()
+                    ->live()
+                    ->required(
+                        fn(callable $get) =>
+                        Service::find($get('service_id'))?->unitType?->name === 'Canal'
+                            && filled($get('quantity'))
+                    )
+                    ->visible(function (callable $get) {
+                        return Service::find($get('service_id'))
+                            ?->unitType
+                            ?->name === 'Canal'
+                            && filled($get('quantity'));
+                    })
+                    ->helperText(
+                        fn(callable $get) =>
+                        'You can select up to ' . ($get('quantity') ?? 0) . ' canal(s)'
+                    )
+                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
                 /*
             |--------------------------------------------------------------------------
             | SURFACE SELECTION

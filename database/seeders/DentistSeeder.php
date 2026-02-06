@@ -131,9 +131,9 @@ class DentistSeeder extends Seeder
                 // Status
                 'accreditation_status' => $faker->randomElement([
                     'ACTIVE',
-                    'INACTIVE',
-                    'SILENT',
-                    'SPECIFIC ACCOUNT'
+                    // 'INACTIVE',
+                    // 'SILENT',
+                    // 'SPECIFIC ACCOUNT'
                 ]),
 
                 'remarks' => $faker->sentence(),

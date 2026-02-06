@@ -37,9 +37,9 @@ class AccountServicesSeeder extends Seeder
             }
 
             // 🎲 Randomly assign enhancement services (limited)
-            $assignedEnhancements = $enhancementServices->shuffle()->take(rand(3, 7));
+            // $assignedEnhancements = $enhancementServices->shuffle()->take(rand(3, 7));
             $quantity = rand(1, 5);
-            foreach ($assignedEnhancements as $serviceId) {
+            foreach ($enhancementServices as $serviceId) {
                 DB::table('account_service')->insert([
                     'account_id'   => $accountId,
                     'service_id'   => $serviceId,

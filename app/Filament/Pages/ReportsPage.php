@@ -26,7 +26,10 @@ use App\Models\Member;
 use App\Models\Dentist;
 use App\Models\Clinic;
 use App\Models\Hip;
+use App\Models\Municipality;
 use App\Models\Procedure;
+use App\Models\Province;
+use App\Models\Region;
 use App\Models\Specializations;
 use App\Models\VatType;
 
@@ -88,7 +91,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                                 'members'       => 'Member Status Report',
                                 'dentists'      => 'Dentist List Report',
                                 'clinics'       => 'Clinic Accrediation Status Report',
-                                'procedures'    => 'Procedure Status Report',
+                                'procedures'    => 'Availment Report',
                                 'accounts'      => 'Account Status Report',
                             ])
                             ->required()
@@ -159,7 +162,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->placeholder('All')
                             ->visible(
                                 fn($get) => ($get('reportType') === 'clinics' && trim(strtoupper($get('accreditation_status'))) === 'SPECIFIC HIP')
-                                    || $get('reportType') === 'accounts' || $get('reportType') === 'members'
+                                    || $get('reportType') === 'accounts' || $get('reportType') === 'members' || $get('reportType') === 'procedures'
                             ),
 
                         Forms\Components\Select::make('account_id')
@@ -169,7 +172,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                             })
                             ->searchable()
                             ->placeholder('All Accounts')
-                            ->visible(fn($get) => $get('reportType') === 'members' || $get('accreditation_status') === 'SPECIFIC ACCOUNT'),
+                            ->visible(fn($get) => $get('reportType') === 'members' || $get('accreditation_status') === 'SPECIFIC ACCOUNT' || $get('reportType') === 'procedures'),
 
 
                         Forms\Components\Select::make('vat_type')
@@ -218,7 +221,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                             })
                             ->searchable()
                             ->placeholder('All Clinics')
-                            ->visible(fn($get) => $get('reportType') === 'dentists'),
+                            ->visible(fn($get) => $get('reportType') === 'dentists' || $get('reportType') === 'procedures'),
 
                         Forms\Components\Select::make('specialization_id')
                             ->label('Select Specialization')
@@ -228,6 +231,50 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->searchable()
                             ->placeholder('All Clinics')
                             ->visible(fn($get) => $get('reportType') === 'dentists'),
+
+
+                        Forms\Components\Select::make('region_id')
+                            ->label('Select Region')
+                            ->options(\App\Models\Region::pluck('name', 'id'))
+                            ->searchable()
+                            ->placeholder('All Region')
+
+                            ->visible(
+                                fn($get) => ($get('reportType') === 'dentists'
+                                    || $get('reportType') === 'clinics')
+                            ),
+
+                        Forms\Components\Select::make('province_id')
+                            ->label('Select Province')
+                            ->options(function (callable $get) {
+                                $regionId = $get('region_id');
+                                return $regionId
+                                    ? \App\Models\Province::where('region_id', $regionId)->pluck('name', 'id')
+                                    : \App\Models\Province::pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->placeholder('All Province')
+                            ->visible(
+                                fn($get) => ($get('reportType') === 'dentists'
+                                    || $get('reportType') === 'clinics')
+                            ),
+
+                        Forms\Components\Select::make('municipality_id')
+                            ->label('Select Municipality')
+                            ->options(function (callable $get) {
+                                $provinceId = $get('province_id');
+                                return $provinceId
+                                    ? \App\Models\Municipality::where('province_id', $provinceId)->pluck('name', 'id')
+                                    : \App\Models\Municipality::pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->placeholder('All Municipality')
+                            ->visible(
+                                fn($get) => ($get('reportType') === 'dentists'
+                                    || $get('reportType') === 'clinics')
+                            ),
+
+
 
                         Forms\Components\Toggle::make('filter_inactive_date')
                             ->label('Filter by Inactive Date')
@@ -249,8 +296,29 @@ class ReportsPage extends Page implements HasForms, HasTable
                                 $get('reportType') === 'members' &&
                                     $get('filter_inactive_date')
                             ),
-                        Forms\Components\DatePicker::make('fromDate')->label('Created From Date'),
-                        Forms\Components\DatePicker::make('toDate')->label('Created To Date'),
+
+                        Forms\Components\DatePicker::make('availment_from')
+                            ->label('Availment From')
+                            ->visible(
+                                fn($get) =>
+                                $get('reportType') === 'procedures'
+                            ),
+
+
+                        Forms\Components\DatePicker::make('availment_to')
+                            ->label('Availment To')
+                            ->visible(
+                                fn($get) =>
+                                $get('reportType') === 'procedures'
+                            ),
+                        Forms\Components\DatePicker::make('fromDate')->label('Created From Date')->visible(
+                            fn($get) =>
+                            $get('reportType') != 'procedures'
+                        ),
+                        Forms\Components\DatePicker::make('toDate')->label('Created To Date')->visible(
+                            fn($get) =>
+                            $get('reportType') != 'procedures'
+                        ),
 
                     ]),
                 ])
@@ -359,21 +427,35 @@ class ReportsPage extends Page implements HasForms, HasTable
             'dentists' => (function () {
                 $clinic = Clinic::find($this->reportFilters['clinic_id']);
                 $specialization = Specializations::where('id', $this->reportFilters['specialization_id'])->first();
+                $region = Region::find($this->reportFilters['region_id']);
+                $province = Province::find($this->reportFilters['province_id']);
+                $municipality = Municipality::find($this->reportFilters['municipality_id']);
+
                 return [
                     'clinic_name'   => $clinic?->clinic_name ?? 'All',
                     'from_date'      => $this->reportFilters['fromDate'] ?? '-',
                     'to_date'        => $this->reportFilters['toDate'] ?? '-',
                     'specializations' => $specialization['name'] ?? 'All',
+                    'region' => $region?->name,
+                    'province' => $province?->name,
+                    'municipality' => $municipality?->name
+
                 ];
             })(),
 
             'clinics' => (function () {
+                $region = Region::find($this->reportFilters['region_id']);
+                $province = Province::find($this->reportFilters['province_id']);
+                $municipality = Municipality::find($this->reportFilters['municipality_id']);
                 return [
                     'from_date'      => $this->reportFilters['fromDate'] ?? '-',
                     'to_date'        => $this->reportFilters['toDate'] ?? '-',
                     'accreditation_status' => $this->reportFilters['accreditation_status'] ?? 'All',
                     'vat_type' => $this->reportFilters['vat_type'] ?? 'All',
                     'business_type' => $this->reportFilters['business_type'] ?? 'All',
+                    'region' => $region?->name,
+                    'province' => $province?->name,
+                    'municipality' => $municipality?->name,
                 ];
             })(),
 
@@ -454,8 +536,38 @@ class ReportsPage extends Page implements HasForms, HasTable
 
         return Dentist::query()
             ->with('specializations')
+            ->with('clinic')
             ->when($f['status'] ?? null, fn($q, $v) => $q->where('status', $v))
             ->when($f['clinic_id'] ?? null, fn($q, $v) => $q->where('clinic_id', $v))
+            ->when(
+                $f['region_id'] ?? null,
+                fn($q, $v) =>
+                $q->whereHas(
+                    'clinic',
+                    fn($q) =>
+                    $q->where('region_id', $v)
+                )
+            )
+
+            ->when(
+                $f['province_id'] ?? null,
+                fn($q, $v) =>
+                $q->whereHas(
+                    'clinic',
+                    fn($q) =>
+                    $q->where('province_id', $v)
+                )
+            )
+
+            ->when(
+                $f['municipality_id'] ?? null,
+                fn($q, $v) =>
+                $q->whereHas(
+                    'clinic',
+                    fn($q) =>
+                    $q->where('municipality_id', $v)
+                )
+            )
             ->when(
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) => $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])
@@ -478,6 +590,10 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->when($f['vat_type'] ?? null, fn($q, $v) => $q->where('vat_type', $v))
             ->when($f['business_type'] ?? null, fn($q, $v) => $q->where('business_type', $v))
 
+            ->when($f['region_id'] ?? null, fn($q, $v) => $q->where('region_id', $v))
+            ->when($f['province_id'] ?? null, fn($q, $v) => $q->where('province_id', $v))
+            ->when($f['municipality_id'] ?? null, fn($q, $v) => $q->where('municipality_id', $v))
+
             ->when(
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) =>
@@ -491,11 +607,24 @@ class ReportsPage extends Page implements HasForms, HasTable
         $f = $this->reportFilters;
 
         return Procedure::query()
+
             ->when($f['procedure_status'] ?? null, fn($q, $v) => $q->where('status', $v))
+            ->when($f['clinid_id'] ?? null, fn($q, $v) => $q->where('clinid_id', $v))
+            ->when($f['hip'] ?? null, function ($query, $hip) {
+                $query->whereHas('member.account', function ($q) use ($hip) {
+                    $q->where('hip', $hip);
+                });
+            })
+
+            ->when($f['account_id'] ?? null, function ($query, $account_id) {
+                $query->whereHas('member.account', function ($q) use ($account_id) {
+                    $q->where('account_id', $account_id);
+                });
+            })
             ->when(
-                !empty($f['fromDate']) && !empty($f['toDate']),
+                !empty($f['availment_from']) && !empty($f['availment_to']),
                 fn($q) =>
-                $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])
+                $q->whereBetween('availment_date', [$f['availment_from'], $f['availment_to']])
             );
     }
 
@@ -567,6 +696,7 @@ class ReportsPage extends Page implements HasForms, HasTable
             'clinics' => [
                 Tables\Columns\TextColumn::make('clinic_name')->label('Clinic Name'),
                 Tables\Columns\TextColumn::make('registered_name')->label('Registered Name'),
+                Tables\Columns\TextColumn::make('complete_address')->label('Address'),
                 Tables\Columns\TextColumn::make('is_branch')
                     ->label('Branch')
                     ->getStateUsing(fn($record) => $record->is_branch ? 'YES' : 'NO'),
@@ -584,7 +714,20 @@ class ReportsPage extends Page implements HasForms, HasTable
 
                 Tables\Columns\TextColumn::make('clinic.clinic_name')->label('Clinic Name'),
                 Tables\Columns\TextColumn::make('service.name')->label('Procedure Name'),
-                Tables\Columns\TextColumn::make('units')->label('Units'),
+                Tables\Columns\TextColumn::make('units')
+                    ->label('Units')
+                    ->getStateUsing(function ($record) {
+                        return $record->units
+                            ->map(function ($unit) {
+                                $unitTypeName = $unit->unitType->name ?? 'N/A';
+                                $unitName = $unit->name ?? 'N/A';
+
+                                $surface = isset($unit->pivot->surface) ? ' — Surface: ' . $unit->pivot->surface->name : '';
+
+                                return $unitTypeName . ': ' . $unitName . $surface;
+                            })
+                            ->join(', ');
+                    }),
                 Tables\Columns\TextColumn::make('applied_fee')
                     ->label('Applied Fee')
                     ->money('php', true),

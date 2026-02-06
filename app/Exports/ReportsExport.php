@@ -26,7 +26,13 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
     // Column headings start at row 9 (below filter box)
     public function startCell(): string
     {
-        return 'A9';
+        return match ($this->type) {
+            'members' => 'A9',
+            'dentists' => 'A10',
+            'clinics' => 'A12',
+            'procedures' => 'A9',
+            'accounts' => 'A9'
+        };
     }
 
     public function headings(): array
@@ -34,7 +40,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
         return match ($this->type) {
             'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Type', 'Gender', 'Status', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
             'dentists' => ['Clinic Name', 'Dentist Name', 'Specialization', 'Status', 'Date Added'],
-            'clinics' => ['Clinic Name', 'Registered Name', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
+            'clinics' => ['Clinic Name', 'Registered Name', 'Address', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
             'procedures' => ['Member Name', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Availment Date', 'Approval Code', 'Status', 'Date Added'],
             'accounts' => ['Account Name', 'Policy Code', 'HIP', 'Effective Date', 'Expiration Date', 'Plan Type', 'Coverage Period Type', 'Account Status', 'Date Created'],
             default => [],
@@ -69,6 +75,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
             'clinics' => [
                 $row->clinic_name,
                 $row->registered_name,
+                $row->complete_address,
                 $row->is_branch ? 'Yes' : 'No',
                 $row->business_type,
                 $row->vat_type,
@@ -81,13 +88,23 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                 trim($row->member?->first_name . ' ' . $row->member?->last_name),
                 $row->clinic?->clinic_name,
                 $row->service?->name,
-                $row->units,
+                // Parse units from pivot
+                $row->units
+                    ->map(function ($unit) {
+                        $unitTypeName = $unit->unitType?->name ?? 'N/A';
+                        $unitName = $unit->name ?? 'N/A';
+                        $surface = $unit->pivot->surface?->name ? ' — Surface: ' . $unit->pivot->surface->name : '';
+
+                        return $unitTypeName . ': ' . $unitName . $surface;
+                    })
+                    ->join(', '),
                 $row->applied_fee,
                 optional($row->availment_date)->format('Y-m-d'),
                 $row->approval_code,
                 $row->status,
                 optional($row->created_at)->format('Y-m-d'),
             ],
+
 
             'accounts' => [
                 $row->company_name,
@@ -171,6 +188,15 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                     $sheet->setCellValue('A5', 'Specialization');
                     $sheet->setCellValue('B5', $filters['specializations'] ?? 'All');
 
+                    $sheet->setCellValue('A6', 'Region');
+                    $sheet->setCellValue('B6', $filters['region'] ?? 'All');
+
+                    $sheet->setCellValue('A7', 'Province');
+                    $sheet->setCellValue('B7', $filters['province'] ?? 'All');
+
+                    $sheet->setCellValue('A8', 'Municipality');
+                    $sheet->setCellValue('B8', $filters['municipality'] ?? 'All');
+
                     // Style text & values
                     $sheet->getStyle('A2:B7')->applyFromArray([
                         'font' => ['bold' => false, 'size' => 11],
@@ -178,7 +204,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                     ]);
 
                     // Add a border box around the filter area
-                    $sheet->getStyle('A2:B5')->getBorders()->getAllBorders()
+                    $sheet->getStyle('A2:B8')->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
                     $sheet->getStyle('A1:C7')->getAlignment()->setWrapText(true);
@@ -213,19 +239,27 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                     $sheet->setCellValue('A7', 'Business Type');
                     $sheet->setCellValue('B7', $filters['business_type'] ?? 'All');
 
+                    $sheet->setCellValue('A8', 'Region');
+                    $sheet->setCellValue('B8', $filters['region'] ?? 'All');
+
+                    $sheet->setCellValue('A9', 'Province');
+                    $sheet->setCellValue('B9', $filters['province'] ?? 'All');
+
+                    $sheet->setCellValue('A10', 'Municipality');
+                    $sheet->setCellValue('B10', $filters['municipality'] ?? 'All');
 
 
                     // Style text & values
-                    $sheet->getStyle('A2:B7')->applyFromArray([
+                    $sheet->getStyle('A2:B10')->applyFromArray([
                         'font' => ['bold' => false, 'size' => 11],
                         'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
                     ]);
 
                     // Add a border box around the filter area
-                    $sheet->getStyle('A2:B7')->getBorders()->getAllBorders()
+                    $sheet->getStyle('A2:B10')->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
-                    $sheet->getStyle('A1:C7')->getAlignment()->setWrapText(true);
+                    $sheet->getStyle('A1:C10')->getAlignment()->setWrapText(true);
 
                     foreach (range('A', 'Z') as $column) {
                         $sheet->getColumnDimension($column)->setAutoSize(true);

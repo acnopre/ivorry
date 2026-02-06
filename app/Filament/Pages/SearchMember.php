@@ -135,41 +135,20 @@ class SearchMember extends Page
         $isServiceUnlimited = $member->account->services->find($data['service_id'])->pivot->is_unlimited;
         $serviceQuantity = $member->account->services->find($data['service_id'])->pivot->quantity;
 
-        if (! $clinicId) {
-            Notification::make()
-                ->title('Clinic not found')
-                ->body('Please make sure you have a clinic assigned to your account.')
-                ->danger()
-                ->send();
+
+        if (!$this->validateBusinessRules($data, $clinicId)) {
             return;
         }
-        if (Procedure::where('service_id', $data['service_id'])->where('member_id', $this->selectedMemberId)->where('status', '!=', Procedure::STATUS_VALID)->exists()) {
-            $this->showProcedureExistModal = true;
-            return;
-        }
-
-        if ($serviceQuantity == 0) {
-
-            return;
-        }
-
-        // if ($data['quantity'] > 3) {
-        //     Notification::make()
-        //         ->title('Quantity Error')
-        //         ->body('Quantity cannot be greater than 3.')
-        //         ->danger()
-        //         ->send();
-        //     return;
-        // }
 
         $approvalCode = strtoupper(Str::random(8));
-
         $appliedFee = ClinicService::where('clinic_id', $clinicId)
             ->where('service_id', $data['service_id'])
             ->value('fee') ?? 0;
 
         // Possible unit inputs
         $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
+        $basicFields = ['service_id', 'quantity', 'availment_date'];
+        $hasUnits = count(array_diff(array_keys($data), $basicFields)) > 0;
         if ($isServiceUnlimited) {
             $procedure = Procedure::create([
                 'clinic_id'      => $clinicId,
@@ -182,31 +161,44 @@ class SearchMember extends Page
                 'applied_fee'    => $appliedFee,
             ]);
         } else {
-            //TODO::check now if service quantity is not zero;
-            foreach ($unitInputs as $input) {
-                if (! isset($data[$input])) {
-                    continue;
-                }
-                foreach ($data[$input] as $value) {
-                    $procedure = Procedure::create([
-                        'clinic_id'      => $clinicId,
-                        'member_id'      => $this->selectedMemberId,
-                        'service_id'     => $data['service_id'],
-                        'availment_date' => $data['availment_date'] ?? null,
-                        'status'         => Procedure::STATUS_PENDING,
-                        'quantity'       => $data['quantity'],
-                        'approval_code'  => $approvalCode,
-                        'applied_fee'    => $appliedFee,
-                    ]);
+            if ($hasUnits) {
+                foreach ($unitInputs as $input) {
+                    if (! isset($data[$input])) {
 
-                    ProcedureUnit::create([
-                        'procedure_id'   => $procedure->id,
-                        'unit_id'        => $input === 'surface' ? $data['tooth_surface'] : $value,
-                        'quantity'       => 1,
-                        'input_quantity' => $data['quantity'],
-                        'surface_id'     => $input === 'surface' ? $value : null,
-                    ]);
+                        continue;
+                    }
+                    foreach ($data[$input] as $value) {
+                        $procedure = Procedure::create([
+                            'clinic_id'      => $clinicId,
+                            'member_id'      => $this->selectedMemberId,
+                            'service_id'     => $data['service_id'],
+                            'availment_date' => $data['availment_date'] ?? null,
+                            'status'         => Procedure::STATUS_PENDING,
+                            'quantity'       => $data['quantity'],
+                            'approval_code'  => $approvalCode,
+                            'applied_fee'    => $appliedFee,
+                        ]);
+
+                        ProcedureUnit::create([
+                            'procedure_id'   => $procedure->id,
+                            'unit_id'        => $input === 'surface' ? $data['tooth_surface'] : $value,
+                            'quantity'       => 1,
+                            'input_quantity' => $data['quantity'],
+                            'surface_id'     => $input === 'surface' ? $value : null,
+                        ]);
+                    }
                 }
+            } else {
+                $procedure = Procedure::create([
+                    'clinic_id'      => $clinicId,
+                    'member_id'      => $this->selectedMemberId,
+                    'service_id'     => $data['service_id'],
+                    'availment_date' => $data['availment_date'] ?? null,
+                    'status'         => Procedure::STATUS_PENDING,
+                    'quantity'       => 1,
+                    'approval_code'  => $approvalCode,
+                    'applied_fee'    => $appliedFee,
+                ]);
             }
         }
 
@@ -217,6 +209,181 @@ class SearchMember extends Page
         $this->showApprovalModal = true;
 
         $this->search();
+    }
+
+
+    private function validateBusinessRules($data, $clinicId): bool
+    {
+        $serviceName = \App\Models\Service::find($data['service_id'])->name;
+        $availmentDate = $data['availment_date'];
+        $memberId = $this->selectedMemberId;
+        if (! $clinicId) {
+            Notification::make()
+                ->title('Clinic not found')
+                ->body('Please make sure you have a clinic assigned to your account.')
+                ->danger()
+                ->send();
+            return false;
+        }
+        if (Procedure::where('service_id', $data['service_id'])->where('member_id', $this->selectedMemberId)->where('status', '!=', Procedure::STATUS_VALID)->exists()) {
+            // $th
+            Notification::make()
+                ->title('Procedure Already Exist')
+                ->body('This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.')
+                ->danger()
+                ->send();
+
+            return false;
+        }
+        // Rule: Consultation cannot be done together with other procedures same date
+        if ($serviceName === 'Consultation') {
+            $existingProcedures = Procedure::where('member_id', $memberId)
+                ->where('clinic_id', $clinicId)
+                ->where('availment_date', $availmentDate)
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists();
+
+            if ($existingProcedures) {
+                Notification::make()
+                    ->title('Consultation Restriction')
+                    ->body('Consultation cannot be done together with other procedures on the same date.')
+                    ->danger()
+                    ->send();
+                return false;
+            }
+        } else {
+            // Check if Consultation exists on same date
+            $consultationExists = Procedure::where('member_id', $memberId)
+                ->where('clinic_id', $clinicId)
+                ->where('availment_date', $availmentDate)
+                ->whereHas('service', fn($q) => $q->where('name', 'Consultation'))
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists();
+
+            if ($consultationExists) {
+                Notification::make()
+                    ->title('Consultation Restriction')
+                    ->body('No other procedures can be done on the same date as Consultation.')
+                    ->danger()
+                    ->send();
+                return false;
+            }
+        }
+
+        // Rule: Treatment of sores, blisters cannot be done with Oral Prophylaxis same date
+        if ($serviceName === 'Treatment of sores, blisters') {
+            $oralProphylaxisExists = Procedure::where('member_id', $memberId)
+                ->where('availment_date', $availmentDate)
+                ->whereHas('service', fn($q) => $q->where('name', 'Oral Prophylaxis'))
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists();
+
+            if ($oralProphylaxisExists) {
+                Notification::make()
+                    ->title('Treatment Restriction')
+                    ->body('Treatment of sores, blisters cannot be done with Oral Prophylaxis on the same date.')
+                    ->danger()
+                    ->send();
+                return false;
+            }
+        }
+
+        // Rule: Temporary fillings cannot be done on same tooth as permanent filling on same date
+        if ($serviceName === 'Temporary fillings' && isset($data['tooth'])) {
+            foreach ($data['tooth'] as $toothId) {
+                $permanentFillingExists = Procedure::where('member_id', $memberId)
+                    ->where('availment_date', $availmentDate)
+                    ->whereHas('service', fn($q) => $q->whereIn('name', ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']))
+                    ->whereHas('units', fn($q) => $q->where('unit_id', $toothId))
+                    ->where('status', '!=', Procedure::STATUS_VALID)
+                    ->exists();
+
+                if ($permanentFillingExists) {
+                    Notification::make()
+                        ->title('Temporary Filling Restriction')
+                        ->body('Temporary fillings cannot be done on the same tooth as permanent filling on the same date.')
+                        ->danger()
+                        ->send();
+                    return false;
+                }
+            }
+        }
+
+        // Rule: Simple tooth extraction cannot be done with other services same date
+        if ($serviceName === 'Simple tooth extraction') {
+            $existingProcedures = Procedure::where('member_id', $memberId)
+                ->where('clinic_id', $clinicId)
+                ->where('availment_date', $availmentDate)
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists();
+
+            if ($existingProcedures) {
+                Notification::make()
+                    ->title('Extraction Restriction')
+                    ->body('Simple tooth extraction cannot be done with other procedures on the same date.')
+                    ->danger()
+                    ->send();
+                return false;
+            }
+        } else {
+            // Check if extraction exists on same date
+            $extractionExists = Procedure::where('member_id', $memberId)
+                ->where('clinic_id', $clinicId)
+                ->where('availment_date', $availmentDate)
+                ->whereHas('service', fn($q) => $q->where('name', 'Simple tooth extraction'))
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists();
+
+            if ($extractionExists) {
+                Notification::make()
+                    ->title('Extraction Restriction')
+                    ->body('No other procedures can be done on the same date as Simple tooth extraction.')
+                    ->danger()
+                    ->send();
+                return false;
+            }
+        }
+
+        // Rule: Desensitization cannot be done together with Oral prophylaxis
+        if ($serviceName === 'Desensitization of Hypersensitive teeth') {
+            $oralProphylaxisExists = Procedure::where('member_id', $memberId)
+                ->where('availment_date', $availmentDate)
+                ->whereHas('service', fn($q) => $q->where('name', 'Oral Prophylaxis'))
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists();
+
+            if ($oralProphylaxisExists) {
+                Notification::make()
+                    ->title('Desensitization Restriction')
+                    ->body('Desensitization cannot be done together with Oral Prophylaxis on the same date.')
+                    ->danger()
+                    ->send();
+                return false;
+            }
+        }
+
+        // Rule: Desensitization not same tooth with permanent filling
+        if ($serviceName === 'Desensitization of Hypersensitive teeth' && isset($data['tooth'])) {
+            foreach ($data['tooth'] as $toothId) {
+                $permanentFillingExists = Procedure::where('member_id', $memberId)
+                    ->where('availment_date', $availmentDate)
+                    ->whereHas('service', fn($q) => $q->whereIn('name', ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']))
+                    ->whereHas('units', fn($q) => $q->where('unit_id', $toothId))
+                    ->where('status', '!=', Procedure::STATUS_VALID)
+                    ->exists();
+
+                if ($permanentFillingExists) {
+                    Notification::make()
+                        ->title('Desensitization Restriction')
+                        ->body('Desensitization cannot be done on the same tooth with permanent filling on the same date.')
+                        ->danger()
+                        ->send();
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
 
@@ -298,11 +465,17 @@ class SearchMember extends Page
                     ->label('Quantity')
                     ->numeric()
                     ->required()
-                    ->visible(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))
-                            ?->unitType?->units?->isNotEmpty()
-                    )
+                    ->visible(function (callable $get) {
+                        $accountId = $this->members->first()->account_id ?? null;
+                        $serviceId = $get('service_id');
+                        if (!$accountId || !$serviceId) return false;
+
+                        $accountService = AccountService::where('account_id', $accountId)
+                            ->where('service_id', $serviceId)
+                            ->first();
+
+                        return $accountService && !$accountService->is_unlimited || Service::find($serviceId)?->unitType?->units?->isNotEmpty();
+                    })
                     ->reactive()
                     ->afterStateUpdated(fn(callable $set) => $set('surface', []))
                     ->maxValue(function (callable $get) {
@@ -345,7 +518,7 @@ class SearchMember extends Page
 
                 /*
             |--------------------------------------------------------------------------
-            | UNIT SELECT: SESSION,  QUADRANT, TOOTH, ARCH, CANAL
+            | UNIT SELECT:  QUADRANT, TOOTH, ARCH, CANAL
             |--------------------------------------------------------------------------
             */
 

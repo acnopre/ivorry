@@ -40,9 +40,6 @@ class SearchMember extends Page
     public array $procedureFormData = [];
     public bool $hasSearched = false;
 
-    // 🆕 Modal state for approval confirmation
-    public bool $showApprovalModal = false;
-    public bool $showProcedureExistModal = false;
     public ?string $approvalCode = null;
 
     public function mount(): void
@@ -125,7 +122,7 @@ class SearchMember extends Page
             'unit_id' => [],
 
         ];
-        $this->showProcedureModal = true;
+        $this->dispatch('open-modal', id: 'add-procedure');
     }
     public function saveProcedure(): void
     {
@@ -141,25 +138,6 @@ class SearchMember extends Page
         }
 
         $approvalCode = strtoupper(Str::random(8));
-
-        // Check max_per_date limit
-        $service = Service::find($data['service_id']);
-        if ($service->max_per_date) {
-            $existingCount = Procedure::where('clinic_id', $clinicId)
-                ->where('service_id', $data['service_id'])
-                ->where('availment_date', $data['availment_date'])
-                ->distinct('approval_code')
-                ->count('approval_code');
-
-            if ($existingCount >= $service->max_per_date) {
-                Notification::make()
-                    ->title('Service Limit Reached')
-                    ->body("Maximum {$service->max_per_date} {$service->name} allowed per day.")
-                    ->danger()
-                    ->send();
-                return;
-            }
-        }
         $appliedFee = ClinicService::where('clinic_id', $clinicId)
             ->where('service_id', $data['service_id'])
             ->value('fee') ?? 0;
@@ -223,9 +201,9 @@ class SearchMember extends Page
 
 
         // UI updates
-        $this->showProcedureModal = false;
+        $this->dispatch('close-modal', id: 'add-procedure');
+        $this->dispatch('open-modal', id: 'approval-code');
         $this->approvalCode = $approvalCode;
-        $this->showApprovalModal = true;
 
         $this->search();
     }
@@ -272,13 +250,6 @@ class SearchMember extends Page
         if (isset($restrictions[$serviceName])) {
             if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $restrictions[$serviceName])) {
                 return $this->showError('Service Restriction', "{$serviceName} cannot be done with {$restrictions[$serviceName]} on the same date.");
-            }
-        }
-
-        // Fluoride Brushing must be done only together with Oral prophylaxis
-        if ($serviceName === 'Fluoride Brushing') {
-            if (!$this->hasProcedure($memberId, $clinicId, $availmentDate, 'Oral Prophylaxis')) {
-                return $this->showError('Fluoride Brushing Restriction', 'Fluoride Brushing must be done together with Oral Prophylaxis on the same date.');
             }
         }
 
@@ -363,7 +334,7 @@ class SearchMember extends Page
                     ->label('Service')
                     ->options(function () {
                         $accountId = $this->members->first()->account_id ?? null;
-                        if (! $accountId) return collect();
+                        if (!$accountId) return collect();
 
                         return AccountService::where('account_id', $accountId)
                             ->where(function ($query) {
@@ -372,16 +343,16 @@ class SearchMember extends Page
                             })
                             ->with('service')
                             ->get()
-                            ->pluck('service.name', 'service_id');
+                            ->groupBy('service.type')
+                            ->map(fn($group) => $group->pluck('service.name', 'service_id'))
+                            ->toArray();
                     })
                     ->live()
                     ->afterStateUpdated(function ($state, callable $set) {
-
                         $set('surface', []);
                         $set('qudrant', []);
 
-                        // 1. Reset fields if Service is cleared
-                        if (! $state) {
+                        if (!$state) {
                             $set('unit_type_name', null);
                             $set('unit_type_id', null);
                             $set('quantity', null);
@@ -389,7 +360,6 @@ class SearchMember extends Page
                             return;
                         }
 
-                        // 2. Load Unit Type
                         $service = Service::with('unitType')->find($state);
 
                         if ($service && $service->unitType) {
@@ -400,6 +370,9 @@ class SearchMember extends Page
                             $set('unit_type_id', null);
                         }
                     }),
+
+
+
 
 
                 /*

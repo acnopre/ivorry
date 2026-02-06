@@ -52,7 +52,6 @@
                 @if($member->account)
                 <div class="pt-6 mt-6 border-t dark:border-gray-700 space-y-4">
                     <h3 class="text-xl font-bold dark:text-primary-400 mb-4 flex items-center space-x-2">
-                        {{-- Added Icon for visual identity --}}
                         <x-heroicon-o-building-office-2 class="w-5 h-5" />
                         <span> Account Information</span>
                     </h3>
@@ -64,7 +63,6 @@
                         </div>
                         <div>
                             <div class="font-semibold text-gray-500 dark:text-gray-400">Policy Code</div>
-                            {{-- Used font-mono for technical/code data for better distinction --}}
                             <div class="text-gray-900 dark:text-white text-base font-mono">{{ $member->account->policy_code ?? 'N/A' }}</div>
                         </div>
                         <div>
@@ -80,7 +78,7 @@
                             default => 'gray',
                             };
 
-                            $label = ucfirst($status); // Active, Inactive, Expired
+                            $label = ucfirst($status);
                             @endphp
 
                             <x-filament::badge :color="$color" class="mt-1 inline-flex text-xs px-2 py-0.5 rounded-full font-medium">
@@ -90,7 +88,7 @@
 
                     </div>
 
-                    {{-- 🧾 Services (From account_service pivot) --}}
+                    {{-- 🧾 Services --}}
                     <div class="mt-6">
                         <h4 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3 pt-4 border-t dark:border-gray-700 flex items-center space-x-2">
                             <x-heroicon-o-list-bullet class="w-5 h-5 text-primary-600 dark:text-primary-400" />
@@ -98,7 +96,6 @@
                         </h4>
 
                         @if($member->account->services->isNotEmpty())
-                        {{-- Enhanced table container styling to match Filament panels --}}
                         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 fi-ta-has-shadow">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm fi-ta-table">
                                 <thead class="bg-gray-50 dark:bg-gray-700 fi-ta-header">
@@ -116,7 +113,6 @@
                                         <td class="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">{{ $service->name }}</td>
                                         <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ ucfirst($service->type) }}</td>
                                         <td class="px-4 py-3 font-mono"> {{ $service->pivot->quantity ?? '—' }}</td>
-                                        {{-- Used icons instead of 'Yes'/'No' for quicker scanning --}}
                                         <td class="px-4 py-3 text-center">
                                             @if($service->pivot->is_unlimited)
                                             Yes
@@ -131,7 +127,6 @@
                             </table>
                         </div>
                         @else
-                        {{-- Improved "No results" message with icon and better padding --}}
                         <p class="text-gray-500 italic p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
                             <x-heroicon-o-information-circle class="w-4 h-4 inline mr-1 text-gray-400" />
                             No services assigned to this account.
@@ -157,8 +152,7 @@
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Service</th>
-                                    <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Unit Type</th>
-                                    {{-- <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Unit</th> --}}
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Units</th>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Approval Code</th>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Date</th>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Status</th>
@@ -176,10 +170,14 @@
                                 @endphp
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                     <td class="px-4 py-2 text-gray-800 dark:text-gray-200">{{ $procedure->service->name ?? 'N/A' }}</td>
-                                    <td class="px-4 py-2">{{ $unit->unitType->name ?? '-' }}</td>
-                                    {{-- <td class="px-4 py-2">{{ $unit->unit->name ?? '-' }}</td> --}}
+                                    <td class="px-4 py-2">
+                                        @if($unit->pivot->surface_id)
+                                        {{ $unit->unitType->name ?? '-' }}: {{ \App\Models\Unit::find($unit->pivot->unit_id)?->name ?? '-' }} | Surface: {{ $unit->name ?? '-' }}
+                                        @else
+                                        {{ $unit->unitType->name ?? '-' }}: {{ $unit->name ?? '-' }}
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-2">{{ $procedure->approval_code }}</td>
-                                    {{-- <td class="px-4 py-2 font-mono">{{ $unit->quantity ?? '-' }}</td> --}}
                                     <td class="px-4 py-2">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '-' }}</td>
                                     <td class="px-4 py-2">
                                         <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset {{ $statusClass }}">
@@ -200,7 +198,6 @@
             @endforeach
         </div>
         @else
-        {{-- 🕵️ No Results --}}
         <div class="text-center text-gray-500 py-8 border rounded-xl bg-white dark:bg-gray-800 dark:border-gray-700">
             <svg class="w-8 h-8 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9A6 6 0 006 9c0 5 6 9 6 9s6-4 6-9zM10.5 9.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" />
@@ -209,40 +206,37 @@
             <p class="mt-1 text-sm text-gray-500">Please contact HPDAI.</p>
         </div>
         @endif
-
-        {{-- 🩹 Add Procedure Modal --}}
-        <div x-data x-show="$wire.showProcedureModal" x-cloak x-trap.noscroll @click.away="$wire.showProcedureModal = false" x-on:keydown.escape.window="$wire.showProcedureModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-lg relative">
-                <button @click="$wire.showProcedureModal = false" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-
-                <h2 class="text-xl font-bold mb-4 dark:text-white">Add Procedure</h2>
-
-                {{ $this->getProcedureForm() }}
-
-                <div class="flex justify-end space-x-2 mt-6 pt-4 border-t dark:border-gray-700">
-                    <x-filament::button color="secondary" wire:click="$set('showProcedureModal', false)">
-                        Cancel
-                    </x-filament::button>
-                    <x-filament::button color="primary" wire:click="saveProcedure" icon="heroicon-o-check">
-                        Save Procedure
-                    </x-filament::button>
-                </div>
-            </div>
-        </div>
     </div>
-    {{-- ✅ Approval Code Modal --}}
-    <div x-data x-show="$wire.showApprovalModal" x-cloak x-trap.noscroll @click.away="$wire.showApprovalModal = false" x-on:keydown.escape.window="$wire.showApprovalModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md relative text-center">
 
-            <h2 class="text-2xl font-bold text-primary-600 mb-4">Procedure Approved</h2>
+    {{-- Add Procedure Modal --}}
+    <x-filament::modal id="add-procedure" width="lg">
+        <x-slot name="heading">
+            Add Procedure
+        </x-slot>
 
+        {{ $this->getProcedureForm() }}
+
+        <x-slot name="footerActions">
+            <x-filament::button color="secondary" wire:click="$dispatch('close-modal', { id: 'add-procedure' })">
+                Cancel
+            </x-filament::button>
+            <x-filament::button color="primary" wire:click="saveProcedure" icon="heroicon-o-check" class="ml-auto">
+                Save Procedure
+            </x-filament::button>
+        </x-slot>
+
+    </x-filament::modal>
+
+    {{-- Approval Code Modal --}}
+    <x-filament::modal id="approval-code" width="md">
+        <x-slot name="heading">
+            Procedure Approved
+        </x-slot>
+
+        <div class="text-center">
             <p class="text-gray-600 dark:text-gray-300 mb-3">
                 The procedure has been approved successfully.<br>
-                Here’s your unique approval code:
+                Here's your unique approval code:
             </p>
 
             <div class="bg-primary-50 dark:bg-primary-900/30 rounded-lg py-4 px-6 mt-3">
@@ -254,31 +248,12 @@
             <p class="text-xs text-gray-500 mt-3">
                 Please provide this code to the member for reference and verification.
             </p>
-
-            <div class="mt-6">
-                <x-filament::button color="primary" wire:click="$set('showApprovalModal', false)">
-                    Close
-                </x-filament::button>
-            </div>
         </div>
-    </div>
-    <div x-data x-show="$wire.showProcedureExistModal" x-cloak x-trap.noscroll @click.away="$wire.showProcedureExistModal = false" x-on:keydown.escape.window="$wire.showProcedureExistModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
 
-        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md relative text-center">
-
-            <h2 class="text-2xl font-bold text-primary-600 mb-4">Procedure Already Exists</h2>
-
-            <p class="text-gray-600 dark:text-gray-300">
-                This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.
-            </p>
-
-            <div class="mt-6">
-                <x-filament::button color="primary" wire:click="$set('showProcedureExistModal', false)">
-                    Close
-                </x-filament::button>
-            </div>
-        </div>
-    </div>
-
-
+        <x-slot name="footer">
+            <x-filament::button class="ml-auto" color="primary" wire:click="$dispatch('close-modal', { id: 'approval-code' })">
+                Close
+            </x-filament::button>
+        </x-slot>
+    </x-filament::modal>
 </x-filament-panels::page>

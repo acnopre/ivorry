@@ -217,174 +217,111 @@ class SearchMember extends Page
         $serviceName = \App\Models\Service::find($data['service_id'])->name;
         $availmentDate = $data['availment_date'];
         $memberId = $this->selectedMemberId;
-        if (! $clinicId) {
-            Notification::make()
-                ->title('Clinic not found')
-                ->body('Please make sure you have a clinic assigned to your account.')
-                ->danger()
-                ->send();
-            return false;
-        }
-        if (Procedure::where('service_id', $data['service_id'])->where('member_id', $this->selectedMemberId)->where('status', '!=', Procedure::STATUS_VALID)->exists()) {
-            // $th
-            Notification::make()
-                ->title('Procedure Already Exist')
-                ->body('This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.')
-                ->danger()
-                ->send();
 
-            return false;
+        if (!$clinicId) {
+            return $this->showError('Clinic not found', 'Please make sure you have a clinic assigned to your account.');
         }
-        // Rule: Consultation cannot be done together with other procedures same date
-        if ($serviceName === 'Consultation') {
-            $existingProcedures = Procedure::where('member_id', $memberId)
-                ->where('clinic_id', $clinicId)
-                ->where('availment_date', $availmentDate)
-                ->where('status', '!=', Procedure::STATUS_VALID)
-                ->exists();
 
-            if ($existingProcedures) {
-                Notification::make()
-                    ->title('Consultation Restriction')
-                    ->body('Consultation cannot be done together with other procedures on the same date.')
-                    ->danger()
-                    ->send();
-                return false;
+        if (Procedure::where('service_id', $data['service_id'])
+            ->where('member_id', $memberId)
+            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->exists()
+        ) {
+            return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
+        }
+
+        // Exclusive services (cannot be done with any other service on same date)
+        $exclusiveServices = ['Consultation', 'Simple tooth extraction'];
+        if (in_array($serviceName, $exclusiveServices)) {
+            if ($this->hasOtherProcedures($memberId, $clinicId, $availmentDate)) {
+                return $this->showError("{$serviceName} Restriction", "{$serviceName} cannot be done with other procedures on the same date.");
             }
         } else {
-            // Check if Consultation exists on same date
-            $consultationExists = Procedure::where('member_id', $memberId)
-                ->where('clinic_id', $clinicId)
-                ->where('availment_date', $availmentDate)
-                ->whereHas('service', fn($q) => $q->where('name', 'Consultation'))
-                ->where('status', '!=', Procedure::STATUS_VALID)
-                ->exists();
-
-            if ($consultationExists) {
-                Notification::make()
-                    ->title('Consultation Restriction')
-                    ->body('No other procedures can be done on the same date as Consultation.')
-                    ->danger()
-                    ->send();
-                return false;
-            }
-        }
-
-        // Rule: Treatment of sores, blisters cannot be done with Oral Prophylaxis same date
-        if ($serviceName === 'Treatment of sores, blisters') {
-            $oralProphylaxisExists = Procedure::where('member_id', $memberId)
-                ->where('availment_date', $availmentDate)
-                ->whereHas('service', fn($q) => $q->where('name', 'Oral Prophylaxis'))
-                ->where('status', '!=', Procedure::STATUS_VALID)
-                ->exists();
-
-            if ($oralProphylaxisExists) {
-                Notification::make()
-                    ->title('Treatment Restriction')
-                    ->body('Treatment of sores, blisters cannot be done with Oral Prophylaxis on the same date.')
-                    ->danger()
-                    ->send();
-                return false;
-            }
-        }
-
-        // Rule: Temporary fillings cannot be done on same tooth as permanent filling on same date
-        if ($serviceName === 'Temporary fillings' && isset($data['tooth'])) {
-            foreach ($data['tooth'] as $toothId) {
-                $permanentFillingExists = Procedure::where('member_id', $memberId)
-                    ->where('availment_date', $availmentDate)
-                    ->whereHas('service', fn($q) => $q->whereIn('name', ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']))
-                    ->whereHas('units', fn($q) => $q->where('unit_id', $toothId))
-                    ->where('status', '!=', Procedure::STATUS_VALID)
-                    ->exists();
-
-                if ($permanentFillingExists) {
-                    Notification::make()
-                        ->title('Temporary Filling Restriction')
-                        ->body('Temporary fillings cannot be done on the same tooth as permanent filling on the same date.')
-                        ->danger()
-                        ->send();
-                    return false;
+            foreach ($exclusiveServices as $exclusive) {
+                if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $exclusive)) {
+                    return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same date as {$exclusive}.");
                 }
             }
         }
 
-        // Rule: Simple tooth extraction cannot be done with other services same date
-        if ($serviceName === 'Simple tooth extraction') {
-            $existingProcedures = Procedure::where('member_id', $memberId)
-                ->where('clinic_id', $clinicId)
-                ->where('availment_date', $availmentDate)
-                ->where('status', '!=', Procedure::STATUS_VALID)
-                ->exists();
+        // Service pair restrictions
+        $restrictions = [
+            'Treatment of sores, blisters' => 'Oral Prophylaxis',
+            'Desensitization of Hypersensitive teeth' => 'Oral Prophylaxis',
+        ];
 
-            if ($existingProcedures) {
-                Notification::make()
-                    ->title('Extraction Restriction')
-                    ->body('Simple tooth extraction cannot be done with other procedures on the same date.')
-                    ->danger()
-                    ->send();
-                return false;
-            }
-        } else {
-            // Check if extraction exists on same date
-            $extractionExists = Procedure::where('member_id', $memberId)
-                ->where('clinic_id', $clinicId)
-                ->where('availment_date', $availmentDate)
-                ->whereHas('service', fn($q) => $q->where('name', 'Simple tooth extraction'))
-                ->where('status', '!=', Procedure::STATUS_VALID)
-                ->exists();
-
-            if ($extractionExists) {
-                Notification::make()
-                    ->title('Extraction Restriction')
-                    ->body('No other procedures can be done on the same date as Simple tooth extraction.')
-                    ->danger()
-                    ->send();
-                return false;
+        if (isset($restrictions[$serviceName])) {
+            if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $restrictions[$serviceName])) {
+                return $this->showError('Service Restriction', "{$serviceName} cannot be done with {$restrictions[$serviceName]} on the same date.");
             }
         }
 
-        // Rule: Desensitization cannot be done together with Oral prophylaxis
-        if ($serviceName === 'Desensitization of Hypersensitive teeth') {
-            $oralProphylaxisExists = Procedure::where('member_id', $memberId)
-                ->where('availment_date', $availmentDate)
-                ->whereHas('service', fn($q) => $q->where('name', 'Oral Prophylaxis'))
-                ->where('status', '!=', Procedure::STATUS_VALID)
-                ->exists();
-
-            if ($oralProphylaxisExists) {
-                Notification::make()
-                    ->title('Desensitization Restriction')
-                    ->body('Desensitization cannot be done together with Oral Prophylaxis on the same date.')
-                    ->danger()
-                    ->send();
-                return false;
-            }
-        }
-
-        // Rule: Desensitization not same tooth with permanent filling
-        if ($serviceName === 'Desensitization of Hypersensitive teeth' && isset($data['tooth'])) {
+        // Tooth-specific validations
+        if (isset($data['tooth'])) {
             foreach ($data['tooth'] as $toothId) {
-                $permanentFillingExists = Procedure::where('member_id', $memberId)
-                    ->where('availment_date', $availmentDate)
-                    ->whereHas('service', fn($q) => $q->whereIn('name', ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']))
-                    ->whereHas('units', fn($q) => $q->where('unit_id', $toothId))
-                    ->where('status', '!=', Procedure::STATUS_VALID)
-                    ->exists();
+                // Temporary fillings vs Permanent filling
+                if ($serviceName === 'Temporary fillings' && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)'])) {
+                    return $this->showError('Temporary Filling Restriction', 'Temporary fillings cannot be done on the same tooth as permanent filling on the same date.');
+                }
 
-                if ($permanentFillingExists) {
-                    Notification::make()
-                        ->title('Desensitization Restriction')
-                        ->body('Desensitization cannot be done on the same tooth with permanent filling on the same date.')
-                        ->danger()
-                        ->send();
-                    return false;
+                // Desensitization vs Permanent filling
+                if ($serviceName === 'Desensitization of Hypersensitive teeth' && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)'])) {
+                    return $this->showError('Desensitization Restriction', 'Desensitization cannot be done on the same tooth with permanent filling on the same date.');
+                }
+
+                // Extraction can only be done once per tooth
+                if ($serviceName === 'Simple tooth extraction' && $this->hasToothProcedure($memberId, null, $toothId, ['Simple tooth extraction'])) {
+                    return $this->showError('Extraction Restriction', 'Simple tooth extraction can only be done once per tooth.');
+                }
+
+                // Cannot do other services on extracted tooth
+                if ($serviceName !== 'Simple tooth extraction' && $this->hasToothProcedure($memberId, null, $toothId, ['Simple tooth extraction'])) {
+                    return $this->showError('Extracted Tooth Restriction', 'Cannot perform other services on a tooth that has been extracted.');
                 }
             }
         }
 
         return true;
     }
+
+    private function showError(string $title, string $body): bool
+    {
+        Notification::make()->title($title)->body($body)->danger()->send();
+        return false;
+    }
+
+    private function hasOtherProcedures(int $memberId, int $clinicId, string $date): bool
+    {
+        return Procedure::where('member_id', $memberId)
+            ->where('clinic_id', $clinicId)
+            ->where('availment_date', $date)
+            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->exists();
+    }
+
+    private function hasProcedure(int $memberId, int $clinicId, string $date, string $serviceName): bool
+    {
+        return Procedure::where('member_id', $memberId)
+            ->where('clinic_id', $clinicId)
+            ->where('availment_date', $date)
+            ->whereHas('service', fn($q) => $q->where('name', $serviceName))
+            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->exists();
+    }
+
+    private function hasToothProcedure(int $memberId, ?string $date, int $toothId, array $serviceNames): bool
+    {
+        $query = Procedure::where('member_id', $memberId)
+            ->whereHas('service', fn($q) => $q->whereIn('name', $serviceNames))
+            ->whereHas('units', fn($q) => $q->where('unit_id', $toothId));
+
+        if ($date) {
+            $query->where('availment_date', $date)->where('status', '!=', Procedure::STATUS_VALID);
+        }
+
+        return $query->exists();
+    }
+
 
 
     public function getProcedureForm(): Forms\Form

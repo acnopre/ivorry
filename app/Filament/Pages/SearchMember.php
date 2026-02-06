@@ -256,6 +256,13 @@ class SearchMember extends Page
             }
         }
 
+        // Fluoride Brushing must be done only together with Oral prophylaxis
+        if ($serviceName === 'Fluoride Brushing') {
+            if (!$this->hasProcedure($memberId, $clinicId, $availmentDate, 'Oral Prophylaxis')) {
+                return $this->showError('Fluoride Brushing Restriction', 'Fluoride Brushing must be done together with Oral Prophylaxis on the same date.');
+            }
+        }
+
         // Tooth-specific validations
         if (isset($data['tooth'])) {
             foreach ($data['tooth'] as $toothId) {

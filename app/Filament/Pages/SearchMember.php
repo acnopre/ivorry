@@ -141,6 +141,25 @@ class SearchMember extends Page
         }
 
         $approvalCode = strtoupper(Str::random(8));
+
+        // Check max_per_date limit
+        $service = Service::find($data['service_id']);
+        if ($service->max_per_date) {
+            $existingCount = Procedure::where('clinic_id', $clinicId)
+                ->where('service_id', $data['service_id'])
+                ->where('availment_date', $data['availment_date'])
+                ->distinct('approval_code')
+                ->count('approval_code');
+
+            if ($existingCount >= $service->max_per_date) {
+                Notification::make()
+                    ->title('Service Limit Reached')
+                    ->body("Maximum {$service->max_per_date} {$service->name} allowed per day.")
+                    ->danger()
+                    ->send();
+                return;
+            }
+        }
         $appliedFee = ClinicService::where('clinic_id', $clinicId)
             ->where('service_id', $data['service_id'])
             ->value('fee') ?? 0;

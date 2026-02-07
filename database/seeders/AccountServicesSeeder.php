@@ -23,6 +23,10 @@ class AccountServicesSeeder extends Seeder
             ->where('type', 'enhancement')
             ->pluck('id');
 
+        $specialServices = DB::table('services')
+            ->where('type', 'special')
+            ->pluck('id');
+
         foreach ($accounts as $accountId) {
             // ✅ Assign all basic services (unlimited)
             foreach ($basicServices as $serviceId) {
@@ -46,6 +50,20 @@ class AccountServicesSeeder extends Seeder
                     'default_quantity' => $quantity,
                     'quantity'     => $quantity,
                     'remarks'      => rand(0, 1) ? 'Enhancement coverage under plan ' . strtoupper(Str::random(3)) : null,
+                    'is_unlimited' => false,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+
+            $quantity = rand(1, 5);
+            foreach ($specialServices as $serviceId) {
+                DB::table('account_service')->insert([
+                    'account_id'   => $accountId,
+                    'service_id'   => $serviceId,
+                    'default_quantity' => $quantity,
+                    'quantity'     => $quantity,
+                    'remarks'      => rand(0, 1) ? 'Special coverage under plan ' . strtoupper(Str::random(3)) : null,
                     'is_unlimited' => false,
                     'created_at'   => now(),
                     'updated_at'   => now(),

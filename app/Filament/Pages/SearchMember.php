@@ -211,12 +211,17 @@ class SearchMember extends Page
 
     private function validateBusinessRules($data, $clinicId): bool
     {
-        $serviceName = \App\Models\Service::find($data['service_id'])->name;
+        $service = \App\Models\Service::find($data['service_id']);
+        $serviceName = $service->name;
         $availmentDate = $data['availment_date'];
         $memberId = $this->selectedMemberId;
 
         if (!$clinicId) {
             return $this->showError('Clinic not found', 'Please make sure you have a clinic assigned to your account.');
+        }
+
+        if ($service->type === 'special' && !Auth::user()->hasRole('CSR')) {
+            return $this->showError('Special Service Restriction', 'Please call HPDAI for approval to avail this special service.');
         }
 
         if (Procedure::where('service_id', $data['service_id'])

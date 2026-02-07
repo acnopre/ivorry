@@ -28,6 +28,7 @@ class ImportLogResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('filename')->searchable(),
+                TextColumn::make('user.name')->label('Imported By')->searchable(),
                 BadgeColumn::make('status')
                     ->colors([
                         'primary' => 'processing',

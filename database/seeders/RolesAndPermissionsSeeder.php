@@ -27,6 +27,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'member.upload',
             'import-logs.view',
             'import-logs.details.view',
+            'member-myprofile',
+            'member.myaccount',
 
             // Claims
             'claims.view',
@@ -178,11 +180,25 @@ class RolesAndPermissionsSeeder extends Seeder
                     'dentist.list',
                     'dentist.add-procedure',
                     'dentist.my-procedure',
-        
+
                 ],
                 'user' => [
                     'name' => 'John Doe Dentist',
                     'email' => 'dentist@example.com',
+                    'password' => 'password',
+                ],
+            ],
+
+            'Member' => [
+                'permissions' => [
+                    'member.search',
+                    'member-myprofile',
+                    'member.myaccount',
+
+                ],
+                'user' => [
+                    'name' => 'Juliana Saw',
+                    'email' => 'member@example.com',
                     'password' => 'password',
                 ],
             ],

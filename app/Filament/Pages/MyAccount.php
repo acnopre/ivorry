@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class MyAccount extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
-    protected static ?string $navigationGroup = 'My Profile';
+    protected static ?string $navigationGroup = 'Profile';
     protected static ?string $title = 'My Account';
     protected static string $view = 'filament.pages.my-account';
 
@@ -32,11 +32,12 @@ class MyAccount extends Page
     {
         return !is_null($this->account);
     }
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('member.myaccount') || auth()->check() && auth()->user()->member;
+    }
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check()
-            && auth()->user()->hasAnyRole([
-                Role::MEMBER,
-            ]);
+        return auth()->user()->can('member.myaccount') || auth()->check() && auth()->user()->member;
     }
 }

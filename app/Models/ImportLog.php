@@ -22,7 +22,10 @@ class ImportLog extends Model
     {
         return $this->hasMany(ImportLogItem::class);
     }
-
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
     public function isCompleted(): bool
     {
         return in_array($this->status, ['completed', 'partial', 'failed']);

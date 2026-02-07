@@ -1,48 +1,75 @@
 <x-filament::page>
     {{-- Account Information Section (Kept the same for focus) --}}
     @if ($this->hasAccount())
-    <x-filament::section>
-        <x-slot name="heading">
-            Account Information
-        </x-slot>
-
-        <div class="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-4 lg:gap-6 text-sm">
-            <div class="space-y-1">
+    <x-filament::section heading="Account Information">
+        <x-filament::grid :default="1" :sm="2" :lg="2" class="text-sm gap-6">
+            <div>
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Company Name</p>
                 <p class="text-gray-900 dark:text-white">{{ $account->company_name }}</p>
             </div>
-            <div class="space-y-1">
+
+            <div>
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Policy Code</p>
                 <p class="text-gray-900 dark:text-white">{{ $account->policy_code }}</p>
             </div>
-            <div class="space-y-1">
+
+            <div>
+                <p class="font-semibold text-gray-700 dark:text-gray-300">HIP</p>
+                <p class="text-gray-900 dark:text-white">{{ $account->hip ?? 'N/A' }}</p>
+            </div>
+
+            <div>
+                <p class="font-semibold text-gray-700 dark:text-gray-300">Card Used</p>
+                <p class="text-gray-900 dark:text-white">{{ $account->card_used ?? 'N/A' }}</p>
+            </div>
+
+            <div>
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Effective Date</p>
-                <p class="text-gray-900 dark:text-white">{{ $account->effective_date?->format('M d, Y') ?? 'N/A' }}</p>
+                <p class="text-gray-900 dark:text-white">
+                    {{ $account->effective_date?->format('M d, Y') ?? 'N/A' }}
+                </p>
             </div>
-            <div class="space-y-1">
+
+            <div>
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Expiration Date</p>
-                <p class="text-gray-900 dark:text-white">{{ $account->expiration_date?->format('M d, Y') ?? 'N/A' }}</p>
+                <p class="text-gray-900 dark:text-white">
+                    {{ $account->expiration_date?->format('M d, Y') ?? 'N/A' }}
+                </p>
             </div>
+
+            <div>
+                <p class="font-semibold text-gray-700 dark:text-gray-300">Plan Type</p>
+                <p class="text-gray-900 dark:text-white">{{ $account->plan_type ?? 'N/A' }}</p>
+            </div>
+
+            <div>
+                <p class="font-semibold text-gray-700 dark:text-gray-300">Coverage Type</p>
+                <p class="text-gray-900 dark:text-white">
+                    {{ $account->coverage_period_type ?? 'N/A' }}
+                </p>
+            </div>
+
             @php
             $status = $account->account_status;
-
             $color = match ($status) {
             'active' => 'success',
             'inactive' => 'warning',
             'expired' => 'danger',
             default => 'gray',
             };
-
-            $label = ucfirst($status);
             @endphp
-            <div class="space-y-1">
+
+            <div>
                 <p class="font-semibold text-gray-700 dark:text-gray-300">Status</p>
                 <x-filament::badge color="{{ $color }}" size="md" class="inline-flex">
-                    {{ $label }}
+
+                    {{ ucfirst($status) }}
                 </x-filament::badge>
             </div>
-
+        </x-filament::grid>
     </x-filament::section>
+
+
 
     <x-filament::section class="mt-6">
         <x-slot name="heading">
@@ -58,6 +85,9 @@
                         <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">
                             Service Name
                         </th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Type</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Unit Type</th>
+
                         {{-- Removed w-24 --}}
                         <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">
                             Quantity
@@ -73,9 +103,16 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @foreach ($account->services as $service)
+                    @if($service->pivot->quantity > 0 || $service->pivot->is_unlimited)
                     <tr class="bg-white dark:bg-gray-900">
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
                             {{ $service->name }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                            {{ $service->type }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                            {{ $service->unit_type }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
                             {{ $service->pivot->quantity ?? '—' }}
@@ -87,6 +124,7 @@
                             {{ $service->pivot->remarks ?? 'No specific remarks.' }}
                         </td>
                     </tr>
+                    @endif
                     @endforeach
                 </tbody>
             </table>
@@ -101,8 +139,11 @@
         <x-slot name="heading">
             Procedures
         </x-slot>
+        @php
+        $procedures = $account->procedures->where('member_id', auth()->user()->member->id);
+        @endphp
 
-        @if ($account->procedures->isNotEmpty())
+        @if ($procedures->isNotEmpty())
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm table-auto">
                 <thead>
@@ -117,7 +158,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @foreach ($account->procedures as $procedure)
+                    @foreach ($procedures as $procedure)
                     <tr class="bg-white dark:bg-gray-900">
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
                             {{ $procedure->member->first_name }} {{ $procedure->member->last_name }}
@@ -141,5 +182,6 @@
     <x-filament::section>
         <p class="text-gray-600 text-sm">No account is assigned to your user profile.</p>
     </x-filament::section>
+
     @endif
 </x-filament::page>

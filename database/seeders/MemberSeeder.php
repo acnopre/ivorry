@@ -18,8 +18,6 @@ class MemberSeeder extends Seeder
 
         // Create the "Member" role and assign permissions
         $role = Role::firstOrCreate(['name' => 'Member']);
-        $permissions = ['member.view'];
-        $role->syncPermissions(Permission::whereIn('name', $permissions)->get());
 
         // Get all account IDs
         $accountIds = DB::table('accounts')->pluck('id');

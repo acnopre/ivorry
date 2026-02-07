@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('import_log', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('filename');
             $table->string('disk')->default('local');
             $table->string('status')->default('processing'); // processing, completed, failed, partial

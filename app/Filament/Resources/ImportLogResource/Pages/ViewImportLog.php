@@ -16,13 +16,13 @@ class ViewImportLog extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('retryFailed')
-                ->label('Retry Failed Rows')
-                ->icon('heroicon-o-arrow-path')
-                ->color('warning')
-                ->requiresConfirmation()
-                ->visible(fn(ImportLog $record) => $record->error_rows > 0)
-                ->action(fn(ImportLog $record) => $this->retryFailedRows($record)),
+            // Actions\Action::make('retryFailed')
+            //     ->label('Retry Failed Rows')
+            //     ->icon('heroicon-o-arrow-path')
+            //     ->color('warning')
+            //     ->requiresConfirmation()
+            //     ->visible(fn(ImportLog $record) => $record->error_rows > 0)
+            //     ->action(fn(ImportLog $record) => $this->retryFailedRows($record)),
 
             Actions\Action::make('refresh')
                 ->label('Refresh')

@@ -23,9 +23,20 @@ class ImportLogItemsRelationManager extends RelationManager
                         'danger'  => 'error',
                     ]),
 
+                Tables\Columns\TextColumn::make('message')
+                    ->wrap()
+                    ->placeholder('—'),
+
                 Tables\Columns\TextColumn::make('raw_data')
                     ->wrap()
                     ->toggleable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'success' => 'Success',
+                        'error' => 'Error',
+                    ]),
             ]);
     }
 }

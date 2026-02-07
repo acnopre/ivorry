@@ -145,7 +145,8 @@ class ProceduresRelationManager extends RelationManager
                     ->label('Procedure Date')
                     ->date()
                     ->sortable()
-                    ->default('-'),
+                    ->placeholder('—'),
+
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),

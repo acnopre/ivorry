@@ -423,6 +423,78 @@ class AccountResource extends Resource
                                 ])->columns(12);
                             })->toArray();
                         }),
+
+                    Section::make('Special Procedure')
+                        ->schema(function () use ($record, $isAmendment) {
+                            $specials = Service::where('type', 'special')->get();
+
+                            return $specials->map(function ($special) use ($record, $isAmendment) {
+                                return Grid::make(12)->schema([
+                                    Placeholder::make("label_{$special->id}")
+                                        ->label('')
+                                        ->content($special->name)
+                                        ->columnSpan(4),
+
+                                    TextInput::make("services.special.{$special->id}.quantity")
+                                        ->label('Quantity')
+                                        ->numeric()
+                                        ->columnSpan(2)
+                                        ->reactive()
+                                        ->disabled(
+                                            fn(Forms\Get $get) =>
+                                            $get("services.special.{$special->id}.is_unlimited") === true ||
+                                                ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
+                                        )
+                                        ->dehydrated(true)
+                                        ->formatStateUsing(function ($state, $record) use ($special) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $special->id)
+                                                ->value('quantity');
+                                        }),
+
+                                    TextInput::make("services.special.{$special->id}.remarks")
+                                        ->label('Remarks')
+                                        ->columnSpan(4)
+                                        ->maxLength(255)
+                                        ->disabled(
+                                            fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
+                                        )
+                                        ->formatStateUsing(function ($state, $record) use ($special) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $special->id)
+                                                ->value('remarks');
+                                        }),
+
+                                    Toggle::make("services.special.{$special->id}.is_unlimited")
+                                        ->label('Unlimited')
+                                        ->columnSpan(2)
+                                        ->inline(false)
+                                        ->reactive()
+                                        ->disabled(
+                                            fn(Forms\Get $get) => ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
+                                        )
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) use ($special) {
+                                            if ($state === true) {
+                                                $set("services.enspecialhancement.{$special->id}.quantity", null);
+                                            }
+                                        })
+                                        ->formatStateUsing(function ($state, $record) use ($special) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $special->id)
+                                                ->value('is_unlimited');
+                                        }),
+                                ])->columns(12);
+                            })->toArray();
+                        }),
                 ];
             });
     }
@@ -525,15 +597,28 @@ class AccountResource extends Resource
                         if (!$disk->exists($relativePath)) {
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
-                        // Get the original filename (or just use basename of relative path)
+
                         $filename = basename($relativePath);
                         $log = ImportLog::create([
                             'filename' => $filename,
+                            'disk' => 'public',
                             'status' => 'processing',
+                            'user_id' => auth()->id(),
                         ]);
 
                         Excel::import(new AccountImport($log), $absolutePath);
+
+                        $message = "Import completed! {$log->success_rows} accounts imported.";
+                        if ($log->error_rows > 0) {
+                            $message .= " {$log->error_rows} rows failed.";
+                        }
+
+                        Notification::make()
+                            ->title($message)
+                            ->success()
+                            ->send();
                     }),
+
             ])
             ->actions([
                 ViewAction::make(),

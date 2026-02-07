@@ -14,12 +14,14 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\{DatePicker, FileUpload, Section, Select, Textarea, TextInput};
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\{TextColumn, BadgeColumn};
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class MemberResource extends Resource
 {
@@ -139,17 +141,20 @@ class MemberResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('account.account_status')
+                TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->colors([
                         'success' => fn($state) => $state === 'active',
                         'warning' => fn($state) => $state === 'inactive',
-                        'danger'  => fn($state) => $state === 'expired',
-                        'gray'    => fn($state) => !in_array($state, ['active', 'inactive', 'expired']),
                     ])
                     ->formatStateUsing(fn($state) => ucfirst($state)),
 
+                TextColumn::make('inactive_date')
+                    ->date()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->date()
@@ -179,15 +184,36 @@ class MemberResource extends Resource
                     ])
                     ->action(function (array $data): void {
                         $relativePath = $data['file'];
-                        $disk = Storage::disk('public'); // use the public disk
+                        $disk = Storage::disk('public');
                         $absolutePath = $disk->path($relativePath);
 
-                        if (! $disk->exists($relativePath)) {
+                        if (!$disk->exists($relativePath)) {
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
 
-                        Excel::import(new MembersImport, $absolutePath);
-                    }),
+                        $import = new MembersImport($relativePath);
+                        Excel::import($import, $absolutePath);
+
+                        // Update import log
+                        $import->importLog->update([
+                            'status' => count($import->failed) > 0 ? 'partial' : 'completed',
+                            'total_rows' => $import->imported + count($import->failed),
+                            'success_rows' => $import->imported,
+                            'error_rows' => count($import->failed),
+                        ]);
+
+                        $message = "Import completed! {$import->imported} members imported.";
+                        if (count($import->failed) > 0) {
+                            $message .= " " . count($import->failed) . " rows failed.";
+                        }
+
+                        Notification::make()
+                            ->title($message)
+                            ->success()
+                            ->send();
+                    })
+
+
 
             ])
             ->actions([
@@ -202,6 +228,7 @@ class MemberResource extends Resource
                 ]),
             ]);
     }
+
 
 
     public static function canViewAny(): bool

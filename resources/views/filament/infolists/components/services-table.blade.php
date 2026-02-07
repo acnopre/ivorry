@@ -6,8 +6,9 @@
 
     {{-- EMPTY STATE --}}
     @if ($services->isEmpty())
-    <div class="p-10 text-center rounded-2xl border border-dashed border-primary-400 dark:border-primary-700 bg-white dark:bg-gray-900 shadow-md">
-        <x-filament::icon icon="heroicon-o-archive-box-x-mark" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" />
+
+    <div class="p-6 text-center rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
+        <x-filament::icon icon="heroicon-o-archive-box-x-mark" class="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500" />
         <p class="mt-4 text-base font-semibold text-gray-800 dark:text-gray-200">No Active Services Found</p>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Check the account configuration or contact support.</p>
     </div>
@@ -31,7 +32,12 @@
                         <x-filament::icon icon="heroicon-o-rectangle-stack" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {{ $type === 'basic' ? 'Basic Services' : 'Enhancement Services' }}
+                        {{ match($type) {
+        'basic' => 'Basic Services',
+        'enhancement' => 'Enhancement Services',
+        'special' => 'Special Procedures',
+        default => ucfirst($type) . ' Services'
+    } }}
                     </h3>
                 </div>
 

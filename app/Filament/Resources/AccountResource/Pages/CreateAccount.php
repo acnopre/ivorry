@@ -49,8 +49,9 @@ class CreateAccount extends CreateRecord
     {
         $basic = $this->servicesData['basic'] ?? [];
         $enhancement = $this->servicesData['enhancement'] ?? [];
+        $special = $this->servicesData['special'] ?? [];
 
-        $mergedServices = $basic + $enhancement;
+        $mergedServices = $basic + $enhancement + $special;
 
         if (empty($mergedServices)) {
             return;

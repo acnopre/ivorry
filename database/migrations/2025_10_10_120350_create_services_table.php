@@ -12,6 +12,7 @@ return new class extends Migration
         Schema::create('services', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('slug');
             $table->enum('type', ['basic', 'enhancement', 'special'])->default('basic');
             $table->enum('unit_type', ['Session', 'Quadrant', 'Tooth', 'Arch', 'Surface', 'Canal']);
             $table->unsignedTinyInteger('max_per_date')->default(1);

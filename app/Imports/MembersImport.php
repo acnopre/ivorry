@@ -5,63 +5,102 @@ namespace App\Imports;
 use App\Models\Account;
 use App\Models\Member;
 use App\Models\User;
+use App\Models\ImportLog;
+use App\Models\ImportLogItem;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
-class MembersImport implements ToModel
+class MembersImport implements ToModel, WithChunkReading, WithHeadingRow
 {
-    /**
-     * @param array $row
-     * @return \Illuminate\Database\Eloquent\Model|null
-     */
+    public $imported = 0;
+    public $failed = [];
+    public $importLog;
+    private $rowNumber = 1;
+
+    public function __construct($filename)
+    {
+        set_time_limit(0);
+
+        $this->importLog = ImportLog::create([
+            'filename' => $filename,
+            'disk' => 'public',
+            'user_id' => auth()->id(),
+        ]);
+    }
+
     public function model(array $row)
     {
-        // Skip header row
-        if ($row[0] === 'account_name') {
-            return null;
-        }
+        $this->rowNumber++;
 
-        // 1️⃣ Find the Account by name
-        $account = Account::where('company_name', $row[0])->first();
+        $account = Account::where('company_name', $row['account_name'])->first();
 
-        // If account doesn't exist, log and skip this row
         if (!$account) {
-            Log::warning("Skipped member import: Account '{$row[0]}' not found.", [
-                'first_name' => $row[1],
-                'last_name'  => $row[2],
-                'row'        => $row
-            ]);
+            $this->logError($row, "Account '{$row['account_name']}' not found");
             return null;
         }
 
-        // 2️⃣ Create User for this member
-        $user = User::create([
-            'name'     => $row[1] . ' ' . $row[2],
-            'email'    => $row[9] ?? Str::slug($row[1] . $row[2] . rand(100, 999)) . '@example.com',
-            'password' => bcrypt('password'), // default password
-        ]);
+        try {
+            $user = User::create([
+                'name'     => $row['first_name'] . ' ' . $row['last_name'],
+                'email'    => $row['email'] ?? null,
+                'password' => bcrypt('password'),
+            ]);
 
-        // 3️⃣ Create Member
-        return new Member([
-            'user_id'      => $user->id,
-            'account_id'   => $account->id,
-            'first_name'   => $row[1],
-            'last_name'    => $row[2],
-            'middle_name'  => $row[3],
-            'suffix'       => $row[4],
-            'member_type'  => $row[5],
-            'card_number'  => $row[6],
-            'birthdate'    => is_numeric($row[7])
-                ? Date::excelToDateTimeObject($row[7])->format('Y-m-d')
-                : $row[7],
-            'gender'       => $row[8],
-            'email'        => $row[9],
-            'phone'        => $row[10],
-            'address'      => $row[11] ?? null,
-            'status'       => $row[12] ?? null,
-            'inactive_date' => $row[13] ?? null,
+            $user->assignRole('Member');
+
+            $member = new Member([
+                'user_id'       => $user->id,
+                'account_id'    => $account->id,
+                'first_name'    => $row['first_name'],
+                'last_name'     => $row['last_name'],
+                'middle_name'   => $row['middle_name'],
+                'suffix'        => $row['suffix'],
+                'member_type'   => $row['member_type'],
+                'card_number'   => $row['card_number'],
+                'birthdate'     => is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : null,
+                'gender'        => $row['gender'],
+                'email'         => $row['email'],
+                'phone'         => $row['phone'],
+                'address'       => $row['address'] ?? null,
+                'status'        => $row['status'] ?? 'active',
+                'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
+            ]);
+
+            $this->logSuccess($row);
+            $this->imported++;
+            return $member;
+        } catch (\Exception $e) {
+            $this->logError($row, $e->getMessage());
+            return null;
+        }
+    }
+
+    private function logSuccess($row)
+    {
+        ImportLogItem::create([
+            'import_log_id' => $this->importLog->id,
+            'row_number' => $this->rowNumber,
+            'raw_data' => json_encode($row),
+            'status' => 'success',
         ]);
+    }
+
+    private function logError($row, $message)
+    {
+        ImportLogItem::create([
+            'import_log_id' => $this->importLog->id,
+            'row_number' => $this->rowNumber,
+            'raw_data' => json_encode($row),
+            'status' => 'error',
+            'message' => $message,
+        ]);
+        $this->failed[] = "Row {$this->rowNumber}: {$message}";
+    }
+
+    public function chunkSize(): int
+    {
+        return 500;
     }
 }

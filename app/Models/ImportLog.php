@@ -9,6 +9,7 @@ class ImportLog extends Model
     protected $table = 'import_log';
     protected $fillable = [
         'filename',
+        'user_id',
         'disk',
         'status',
         'total_rows',

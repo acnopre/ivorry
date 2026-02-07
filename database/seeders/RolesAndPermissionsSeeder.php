@@ -57,6 +57,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'clinic.create',
             'clinic.update',
             'clinic.delete',
+            'clinic.profile',
 
             // Dentists
             'dentist.search',
@@ -180,6 +181,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'dentist.list',
                     'dentist.add-procedure',
                     'dentist.my-procedure',
+                    'clinic.profile',
 
                 ],
                 'user' => [

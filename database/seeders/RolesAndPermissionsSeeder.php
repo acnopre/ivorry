@@ -165,6 +165,10 @@ class RolesAndPermissionsSeeder extends Seeder
                     'member.confirm_procedure',
                     'member.search',
                     'member.upload',
+                    'dentist.search',
+                    'dentist.add-procedure',
+                    'account.view',
+                    'member.search'
                 ],
                 'user' => [
                     'name' => 'Customer Service Rep',

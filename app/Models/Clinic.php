@@ -113,4 +113,9 @@ class Clinic extends Model
     {
         return $this->belongsTo(User::class)->withDefault();
     }
+
+    public function hip()
+    {
+        return $this->belongsTo(Hip::class);
+    }
 }

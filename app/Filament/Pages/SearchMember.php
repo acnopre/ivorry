@@ -111,6 +111,7 @@ class SearchMember extends Page
     {
         $this->selectedMemberId = $memberId;
         $this->procedureFormData = [
+            'clinic_id' => null,
             'availment_date_display' => now()->format('F j, Y'),
             'availment_date' => now()->format('Y-m-d'),
             // 'quantity' => '1',
@@ -127,7 +128,7 @@ class SearchMember extends Page
     public function saveProcedure(): void
     {
         $data = $this->getProcedureForm()->getState();
-        $clinicId = Auth::user()->clinic->id ?? null;
+        $clinicId = Auth::user()->clinic->id ?? Clinic::where('clinic_name', $data['clinic_search'])->first()->id;
         $member = Member::where('id', $this->selectedMemberId)->first();
         $isServiceUnlimited = $member->account->services->find($data['service_id'])->pivot->is_unlimited;
         $serviceQuantity = $member->account->services->find($data['service_id'])->pivot->quantity;
@@ -325,11 +326,22 @@ class SearchMember extends Page
     }
 
 
-
     public function getProcedureForm(): Forms\Form
     {
         return $this->makeForm()
             ->schema([
+
+                Forms\Components\TextInput::make('clinic_search')
+                    ->label('Clinic')
+                    ->datalist(Clinic::pluck('clinic_name', 'id'))
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        $clinic = Clinic::where('clinic_name', $state)->first();
+                        $set('clinic_id', $clinic?->id);
+                    })
+                    ->required()
+                    ->visible(fn() => Auth::user()->hasRole('CSR')),
+
                 /*
             |--------------------------------------------------------------------------
             | SERVICE DROPDOWN
@@ -614,7 +626,7 @@ class SearchMember extends Page
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()
-            && auth()->user()->can('dentist.view');
+            && auth()->user()->can('dentist.search');
     }
 
     public static function canViewAny(): bool

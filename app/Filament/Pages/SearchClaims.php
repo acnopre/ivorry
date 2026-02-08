@@ -258,10 +258,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                                         ->title('Claim Marked as Valid')
                                         ->success()
                                         ->send();
-
-                                    $this->dispatch('closeModal');
-                                    // $this->dispatch('refreshTable');
-                                }),
+                                })
+                                ->successNotificationTitle('Claim Marked as Valid'),
 
                             // 🔴 REJECTED
                             Tables\Actions\Action::make('mark_invalid_modal')
@@ -284,14 +282,29 @@ class SearchClaims extends Page implements HasForms, HasTable
                                         'remarks' => $data['remarks'],
                                     ]);
 
+                                    // Return deducted quantity
+                                    $member = \App\Models\Member::find($record->member_id);
+                                    if ($member && $member->account) {
+                                        $pivot = $member->account->services()
+                                            ->where('service_id', $record->service_id)
+                                            ->first()
+                                            ?->pivot;
+
+                                        if ($pivot && !$pivot->is_unlimited) {
+                                            $member->account->services()->updateExistingPivot($record->service_id, [
+                                                'quantity' => $pivot->quantity + 1,
+                                            ]);
+                                        }
+                                    }
+
                                     Notification::make()
-                                        ->title('Claim Rejected')
+                                        ->title('Claim Rejected Successfully')
+                                        ->body('The service quantity has been returned to the account.')
                                         ->danger()
                                         ->send();
-
-                                    $this->dispatch('closeModal');
-                                    // $this->dispatch('refreshTable');
-                                }),
+                                })
+                                ->closeModalByClickingAway(false)
+                                ->successNotificationTitle('Claim Rejected Successfully'),
 
                             // 🟡 RETURN
                             Tables\Actions\Action::make('mark_returned_modal')
@@ -315,13 +328,12 @@ class SearchClaims extends Page implements HasForms, HasTable
                                     ]);
 
                                     Notification::make()
-                                        ->title('Claim Return')
-                                        ->danger()
+                                        ->title('Claim Returned Successfully')
+                                        ->warning()
                                         ->send();
-
-                                    $this->dispatch('closeModal');
-                                    // $this->dispatch('refreshTable');
-                                }),
+                                })
+                                ->closeModalByClickingAway(false)
+                                ->successNotificationTitle('Claim Returned Successfully'),
                         ];
                     })
 

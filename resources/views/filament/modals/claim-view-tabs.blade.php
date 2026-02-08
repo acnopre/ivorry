@@ -44,7 +44,7 @@
                 <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
                     <tr>
                         <th class="px-4 py-2 font-medium">Service Name</th>
-                        <th class="px-4 py-2 font-medium">Limit</th>
+                        <th class="px-4 py-2 font-medium">Quantity</th>
                         <th class="px-4 py-2 font-medium">Is Unlimited</th>
                         <th class="px-4 py-2 font-medium">Remarks</th>
                     </tr>
@@ -55,7 +55,11 @@
                     <tr>
                         <td class="px-4 py-2">{{ $service->name ?? 'Service Name Missing' }}</td>
                         <td class="px-4 py-2">
-                            {{ $service->pivot->is_unlimited ? '—' : number_format($service->pivot->quantity ?? 0) }}
+                            @if($service->pivot->is_unlimited)
+                            —
+                            @else
+                            {{ number_format($service->pivot->quantity ?? 0) }} / {{ number_format($service->pivot->default_quantity ?? 0) }}
+                            @endif
                         </td>
                         <td class="px-4 py-2">
                             @if($service->pivot->is_unlimited)

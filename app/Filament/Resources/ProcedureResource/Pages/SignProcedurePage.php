@@ -117,22 +117,18 @@ class SignProcedurePage extends Page
         if ($member && $member->account) {
             $account = $member->account;
             $serviceId = $this->record->service_id;
-            $quantityUsed = $this->record->quantity ?? null;
 
             $pivot = $account->services()
                 ->where('service_id', $serviceId)
                 ->first()
                 ?->pivot;
 
-            if ($pivot) {
-                // Skip deduction if unlimited
-                if (!$pivot->is_unlimited) {
-                    $newQuantity = max(0, $pivot->quantity - $quantityUsed);
+            if ($pivot && !$pivot->is_unlimited) {
+                $newQuantity = max(0, $pivot->quantity - 1);
 
-                    $account->services()->updateExistingPivot($serviceId, [
-                        'quantity' => $newQuantity,
-                    ]);
-                }
+                $account->services()->updateExistingPivot($serviceId, [
+                    'quantity' => $newQuantity,
+                ]);
             }
         }
 

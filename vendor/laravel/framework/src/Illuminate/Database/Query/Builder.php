@@ -319,6 +319,20 @@ class Builder implements BuilderContract
     }
 
     /**
+     * Add a select expression to the query.
+     *
+     * @param  \Illuminate\Contracts\Database\Query\Expression  $expression
+     * @param  string  $as
+     * @return $this
+     */
+    public function selectExpression($expression, $as)
+    {
+        return $this->selectRaw(
+            '('.$expression->getValue($this->grammar).') as '.$this->grammar->wrap($as)
+        );
+    }
+
+    /**
      * Add a new "raw" select expression to the query.
      *
      * @param  string  $expression
@@ -472,7 +486,7 @@ class Builder implements BuilderContract
         $this->ensureConnectionSupportsVectors();
 
         if (is_string($vector)) {
-            Str::of($vector)->toEmbeddings();
+            $vector = Str::of($vector)->toEmbeddings(cache: true);
         }
 
         $this->addBinding(
@@ -1144,7 +1158,7 @@ class Builder implements BuilderContract
     public function whereVectorSimilarTo($column, $vector, $minSimilarity = 0.6, $order = true)
     {
         if (is_string($vector)) {
-            $vector = Str::of($vector)->toEmbeddings();
+            $vector = Str::of($vector)->toEmbeddings(cache: true);
         }
 
         $this->whereVectorDistanceLessThan($column, $vector, 1 - $minSimilarity);
@@ -1170,7 +1184,7 @@ class Builder implements BuilderContract
         $this->ensureConnectionSupportsVectors();
 
         if (is_string($vector)) {
-            Str::of($vector)->toEmbeddings();
+            $vector = Str::of($vector)->toEmbeddings(cache: true);
         }
 
         return $this->whereRaw(
@@ -1525,6 +1539,13 @@ class Builder implements BuilderContract
     public function whereBetweenColumns($column, array $values, $boolean = 'and', $not = false)
     {
         $type = 'betweenColumns';
+
+        if ($this->isQueryable($column)) {
+            [$sub, $bindings] = $this->createSub($column);
+
+            return $this->addBinding($bindings, 'where')
+                ->whereBetweenColumns(new Expression('('.$sub.')'), $values, $boolean, $not);
+        }
 
         $this->wheres[] = compact('type', 'column', 'values', 'boolean', 'not');
 
@@ -2896,7 +2917,7 @@ class Builder implements BuilderContract
         $this->ensureConnectionSupportsVectors();
 
         if (is_string($vector)) {
-            Str::of($vector)->toEmbeddings();
+            $vector = Str::of($vector)->toEmbeddings(cache: true);
         }
 
         $this->addBinding(

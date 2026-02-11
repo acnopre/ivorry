@@ -1,60 +1,55 @@
 <div class="space-y-6">
     @php
     $services = $getRecord()->services()->get();
-    $groupedServices = $services->groupBy('type');
+    $serviceTypes = [
+    'basic' => ['title' => 'Basic Services', 'icon' => 'heroicon-o-rectangle-stack'],
+    'enhancement' => ['title' => 'Enhancement Services', 'icon' => 'heroicon-o-sparkles'],
+    'special' => ['title' => 'Special Procedures', 'icon' => 'heroicon-o-star'],
+    ];
     @endphp
 
     {{-- EMPTY STATE --}}
     @if ($services->isEmpty())
-
     <div class="p-6 text-center rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
         <x-filament::icon icon="heroicon-o-archive-box-x-mark" class="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500" />
         <p class="mt-4 text-base font-semibold text-gray-800 dark:text-gray-200">No Active Services Found</p>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Check the account configuration or contact support.</p>
     </div>
     @else
-    @foreach ($groupedServices as $type => $servicesOfType)
+    @foreach($serviceTypes as $type => $config)
     @php
-    // Filter only visible/active services
-    $visibleServices = $servicesOfType->filter(function($service) {
-    return $service->pivot->deleted_at === null && ($service->pivot->quantity != 0 || $service->pivot->is_unlimited);
+    $visibleServices = $services->filter(function($service) use ($type) {
+    return $service->type === $type &&
+    $service->pivot->deleted_at === null &&
+    ($service->pivot->quantity != 0 || $service->pivot->is_unlimited);
     });
     @endphp
 
-    @if ($visibleServices->isNotEmpty())
+    @if($visibleServices->isNotEmpty())
     <x-filament::section class="rounded-2xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900">
-
-        {{-- Header --}}
         <x-slot name="heading">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="p-2 rounded-md bg-primary-50 dark:bg-primary-900/30">
-                        <x-filament::icon icon="heroicon-o-rectangle-stack" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                        <x-filament::icon :icon="$config['icon']" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {{ match($type) {
-        'basic' => 'Basic Services',
-        'enhancement' => 'Enhancement Services',
-        'special' => 'Special Procedures',
-        default => ucfirst($type) . ' Services'
-    } }}
+                        {{ $config['title'] }}
                     </h3>
                 </div>
-
-                <span class="text-xs font-medium px-3 py-1 rounded-full bg-primary-600 text-white shadow-sm">
+                <x-filament::badge color="primary">
                     {{ $visibleServices->count() }} {{ Str::plural('Item', $visibleServices->count()) }}
-                </span>
+                </x-filament::badge>
             </div>
         </x-slot>
 
-        {{-- Table --}}
         <div class="overflow-x-auto">
             <table class="w-full text-sm border-t border-gray-200 dark:border-gray-800">
                 <thead class="bg-gray-50 dark:bg-gray-900/70 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
                     <tr>
                         <th class="text-left px-6 py-3">Service</th>
                         <th class="text-right px-6 py-3">Quantity</th>
-                        <th class="text-center px-6 py-3">Unlimited</th>
+                        <th class="text-center px-6 py-3">Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -66,14 +61,14 @@
                             </div>
                             @if ($service->pivot->remarks)
                             <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                Remarks: {{ $service->pivot->remarks }}
+                                {{ $service->pivot->remarks }}
                             </div>
                             @endif
                         </td>
 
                         <td class="px-6 py-4 text-right font-mono">
                             @if ($service->pivot->is_unlimited)
-                            <span class="text-gray-400 italic">N/A</span>
+                            <span class="text-gray-400 italic">∞</span>
                             @elseif ($service->pivot->quantity > 0)
                             <span class="text-lg font-bold text-primary-600 dark:text-primary-400">
                                 {{ number_format($service->pivot->quantity) }}
@@ -85,9 +80,13 @@
 
                         <td class="px-6 py-4 text-center">
                             @if ($service->pivot->is_unlimited)
-                            <x-filament::icon icon="heroicon-s-check-circle" class="w-5 h-5 mx-auto fill-green-600 dark:fill-green-500" />
+                            <x-filament::badge color="success">
+                                Unlimited
+                            </x-filament::badge>
                             @else
-                            <x-filament::icon icon="heroicon-s-x-circle" class="w-5 h-5 mx-auto text-gray-300 dark:text-gray-700" title="Limited" />
+                            <x-filament::badge color="gray">
+                                Limited
+                            </x-filament::badge>
                             @endif
                         </td>
                     </tr>

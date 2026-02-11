@@ -150,6 +150,7 @@ class EditAccount extends EditRecord
                             'quantity'         => $serviceData['quantity'] ?? null,
                             'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
                             'remarks'          => $serviceData['remarks'] ?? null,
+                            'default_quantity' => $serviceData['default_quantity'] ?? $serviceData['quantity'] ?? null,
                         ]);
                     }
                 }

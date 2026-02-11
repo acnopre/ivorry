@@ -101,7 +101,7 @@ class SearchMember extends Page
             $query->where('account_id', $clinic->account_id);
         }
 
-        $this->members = $query->get();
+        $this->members = $query->limit(1)->get();
         $this->hasSearched = true;
     }
 

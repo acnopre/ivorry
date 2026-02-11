@@ -32,6 +32,7 @@ use Filament\Forms\Components\{
     Select,
     DatePicker,
     FileUpload,
+    Hidden,
     Placeholder,
     Toggle
 };
@@ -264,6 +265,16 @@ class AccountResource extends Resource
                                         $set("services.enhancement.{$service->service_id}.quantity", $service->default_quantity);
                                         $set("services.enhancement.{$service->service_id}.remarks", $service->remarks);
                                     }
+
+                                    $specialServices = AccountService::where('account_id', $record->id)
+                                        ->whereHas('service', fn($q) => $q->where('type', 'special'))
+                                        ->with('service')
+                                        ->get();
+                                    foreach ($specialServices as $service) {
+                                        $set("services.special.{$service->service_id}.is_unlimited", $service->is_unlimited);
+                                        $set("services.special.{$service->service_id}.quantity", $service->default_quantity);
+                                        $set("services.special.{$service->service_id}.remarks", $service->remarks);
+                                    }
                                 })
 
                                 ->disabled(false),
@@ -321,6 +332,20 @@ class AccountResource extends Resource
                                                 ->where('service_id', $service->id)
                                                 ->value('remarks');
                                         }),
+
+                                    Forms\Components\Hidden::make("services.basic.{$service->id}.default_quantity")
+                                        ->default(fn(Forms\Get $get) => $get("services.basic.{$service->id}.quantity"))
+                                        ->formatStateUsing(function ($state, $record) use ($service) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $service->id)
+                                                ->value('default_quantity') ?? $record->services()
+                                                ->where('service_id', $service->id)
+                                                ->value('quantity');
+                                        }),
+
 
                                     Toggle::make("services.basic.{$service->id}.is_unlimited")
                                         ->label('Unlimited')
@@ -399,6 +424,19 @@ class AccountResource extends Resource
                                                 ->value('remarks');
                                         }),
 
+                                    Hidden::make("services.enhancement.{$enhancement->id}.default_quantity")
+                                        ->default(fn(Forms\Get $get) => $get("services.enhancement.{$enhancement->id}.quantity"))
+                                        ->formatStateUsing(function ($state, $record) use ($enhancement) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $enhancement->id)
+                                                ->value('default_quantity') ?? $record->services()
+                                                ->where('service_id', $enhancement->id)
+                                                ->value('quantity');
+                                        }),
+
                                     Toggle::make("services.enhancement.{$enhancement->id}.is_unlimited")
                                         ->label('Unlimited')
                                         ->columnSpan(2)
@@ -469,6 +507,19 @@ class AccountResource extends Resource
                                             return $record->services()
                                                 ->where('service_id', $special->id)
                                                 ->value('remarks');
+                                        }),
+
+                                    Forms\Components\Hidden::make("services.special.{$special->id}.default_quantity")
+                                        ->default(fn(Forms\Get $get) => $get("services.special.{$special->id}.quantity"))
+                                        ->formatStateUsing(function ($state, $record) use ($special) {
+                                            if (! $record) {
+                                                return $state;
+                                            }
+                                            return $record->services()
+                                                ->where('service_id', $special->id)
+                                                ->value('default_quantity') ?? $record->services()
+                                                ->where('service_id', $special->id)
+                                                ->value('quantity');
                                         }),
 
                                     Toggle::make("services.special.{$special->id}.is_unlimited")

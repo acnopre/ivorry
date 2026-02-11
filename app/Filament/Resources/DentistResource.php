@@ -57,6 +57,12 @@ class DentistResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function ($query) {
+                $user = auth()->user();
+                if (isset($user->clinic->id)) {
+                    $query->where('clinic_id', $user->clinic->id);
+                }
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('clinic.clinic_name')->label('Clinic')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('last_name')->sortable()->searchable(),

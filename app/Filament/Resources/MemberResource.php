@@ -267,12 +267,4 @@ class MemberResource extends Resource
             'view' => Pages\ViewMember::route('/{record}'),
         ];
     }
-
-
-    public static function getRelations(): array
-    {
-        return [
-            \App\Filament\Resources\MemberResource\RelationManagers\ProceduresRelationManager::class,
-        ];
-    }
 }

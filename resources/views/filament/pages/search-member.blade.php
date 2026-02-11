@@ -9,84 +9,133 @@
 
         {{-- 🧍 Member Results --}}
         @if($members->isNotEmpty())
-        <div class="space-y-6">
+        <div class="space-y-4">
             @foreach ($members as $member)
-            <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border-l-4 border-primary-500 space-y-4">
-
-                {{-- 🧩 Member Header --}}
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4 dark:border-gray-700">
-                    <div class="space-y-1">
-                        <div class="font-bold text-2xl text-gray-900 dark:text-white">{{ trim("{$member->first_name} " . ($member->middle_name ? substr($member->middle_name,0,1).'. ' : '') . "{$member->last_name}" . ($member->suffix ? ', '.$member->suffix : '')) }}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:ring-white/10 overflow-hidden hover:shadow-md transition">
+                <div class="p-6">
+                    {{-- 🧩 Member Header --}}
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div class="flex-1">
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">
+                                {{ trim("{$member->first_name} " . ($member->middle_name ? substr($member->middle_name,0,1).'. ' : '') . "{$member->last_name}" . ($member->suffix ? ', '.$member->suffix : '')) }}
+                            </h3>
+                            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <x-heroicon-o-identification class="w-4 h-4" />
+                                <span class="font-medium">{{ $member->card_number }}</span>
+                            </div>
                         </div>
-                        <div class="text-base text-gray-600 dark:text-gray-400">
-                            <span class="font-semibold">Card #:</span> {{ $member->card_number }}
+
+                        <x-filament::button 
+                            color="primary" 
+                            wire:click="openProcedureModal({{ $member->id }})" 
+                            icon="heroicon-o-document-plus" 
+                            :disabled="!$this->canAddProcedure($member)"
+                            :tooltip="!$this->canAddProcedure($member) ? 'Member or account is inactive or outside coverage dates' : null">
+                            Add Procedure
+                        </x-filament::button>
+                    </div>
+
+                    {{-- 👤 Member Info --}}
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Type</div>
+                            <div class="text-sm text-gray-900 dark:text-white font-medium">{{ $member->member_type }}</div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Birthdate</div>
+                            <div class="text-sm text-gray-900 dark:text-white font-medium">{{ $member->birthdate }}</div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Email</div>
+                            <div class="text-sm text-gray-900 dark:text-white font-medium truncate">{{ $member->email }}</div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Phone</div>
+                            <div class="text-sm text-gray-900 dark:text-white font-medium">{{ $member->phone }}</div>
                         </div>
                     </div>
-
-                    <x-filament::button color="primary" wire:click="openProcedureModal({{ $member->id }})" icon="heroicon-o-document-plus" class="mt-3 sm:mt-0">
-                        Add Procedure
-                    </x-filament::button>
-                </div>
-
-                {{-- 👤 Member Info --}}
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                    <div>
-                        <div class="font-medium text-gray-500 dark:text-gray-400">Type</div>
-                        <div class="text-gray-900 dark:text-white truncate">{{ $member->member_type }}</div>
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-500 dark:text-gray-400">Birthdate</div>
-                        <div class="text-gray-900 dark:text-white truncate">{{ $member->birthdate }}</div>
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-500 dark:text-gray-400">Email</div>
-                        <div class="text-gray-900 dark:text-white truncate">{{ $member->email }}</div>
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-500 dark:text-gray-400">Phone</div>
-                        <div class="text-gray-900 dark:text-white truncate">{{ $member->phone }}</div>
-                    </div>
-                </div>
 
                 {{-- 🏢 Account Info --}}
                 @if($member->account)
-                <div class="pt-6 mt-6 border-t dark:border-gray-700 space-y-4">
-                    <h3 class="text-xl font-bold dark:text-primary-400 mb-4 flex items-center space-x-2">
-                        <x-heroicon-o-building-office-2 class="w-5 h-5" />
-                        <span> Account Information</span>
+                <div class="border-t dark:border-gray-700 pt-6">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <x-heroicon-o-building-office-2 class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                        Account Information
                     </h3>
 
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                        <div>
-                            <div class="font-semibold text-gray-500 dark:text-gray-400">Company Name</div>
-                            <div class="text-gray-900 dark:text-white text-base font-medium">{{ $member->account->company_name ?? 'N/A' }}</div>
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Company</div>
+                            <div class="text-sm text-gray-900 dark:text-white font-medium">{{ $member->account->company_name ?? 'N/A' }}</div>
                         </div>
-                        <div>
-                            <div class="font-semibold text-gray-500 dark:text-gray-400">Policy Code</div>
-                            <div class="text-gray-900 dark:text-white text-base font-mono">{{ $member->account->policy_code ?? 'N/A' }}</div>
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Policy Code</div>
+                            <div class="text-sm text-gray-900 dark:text-white font-mono font-medium">{{ $member->account->policy_code ?? 'N/A' }}</div>
                         </div>
-                        <div>
-                            <div class="font-semibold text-gray-500 dark:text-gray-400">Status</div>
-
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</div>
                             @php
                             $status = $member->account->account_status;
-
                             $color = match ($status) {
-                            'active' => 'success',
-                            'inactive' => 'warning',
-                            'expired' => 'danger',
-                            default => 'gray',
+                                'active' => 'success',
+                                'inactive' => 'warning',
+                                'expired' => 'danger',
+                                default => 'gray',
                             };
-
-                            $label = ucfirst($status);
                             @endphp
-
-                            <x-filament::badge :color="$color" class="mt-1 inline-flex text-xs px-2 py-0.5 rounded-full font-medium">
-                                {{ $label }}
+                            <x-filament::badge :color="$color" class="inline-flex">
+                                {{ ucfirst($status) }}
                             </x-filament::badge>
                         </div>
-
                     </div>
+
+                    {{-- Contract Dates --}}
+                    @if(isset($member->effective_date) || isset($member->expiration_date) || isset($member->account->effective_date) || isset($member->account->expiration_date))
+                    <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mt-4">
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                            <x-heroicon-o-calendar class="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                            Contract Dates
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            @if(isset($member->effective_date))
+                            <div class="flex items-center gap-2">
+                                <div class="flex-shrink-0 w-2 h-2 rounded-full bg-success-500"></div>
+                                <div class="flex-1">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Member Effective</div>
+                                    <div class="font-medium text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($member->effective_date)->format('M d, Y') }}</div>
+                                </div>
+                            </div>
+                            @endif
+                            @if(isset($member->expiration_date))
+                            <div class="flex items-center gap-2">
+                                <div class="flex-shrink-0 w-2 h-2 rounded-full bg-danger-500"></div>
+                                <div class="flex-1">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Member Expiration</div>
+                                    <div class="font-medium text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($member->expiration_date)->format('M d, Y') }}</div>
+                                </div>
+                            </div>
+                            @endif
+                            @if(isset($member->account->effective_date))
+                            <div class="flex items-center gap-2">
+                                <div class="flex-shrink-0 w-2 h-2 rounded-full bg-success-500"></div>
+                                <div class="flex-1">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Account Effective</div>
+                                    <div class="font-medium text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($member->account->effective_date)->format('M d, Y') }}</div>
+                                </div>
+                            </div>
+                            @endif
+                            @if(isset($member->account->expiration_date))
+                            <div class="flex items-center gap-2">
+                                <div class="flex-shrink-0 w-2 h-2 rounded-full bg-danger-500"></div>
+                                <div class="flex-1">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Account Expiration</div>
+                                    <div class="font-medium text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($member->account->expiration_date)->format('M d, Y') }}</div>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
 
                     {{-- 🧾 Services --}}
                     <div class="mt-6">

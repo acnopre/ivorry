@@ -128,6 +128,7 @@ class EditAccount extends EditRecord
                     'expiration_date'   => $data['expiration_date'] ?? null,
                     'endorsement_type'  => 'AMENDMENT',
                     'endorsement_status' => 'PENDING',
+                    'coverage_period_type' => $data['coverage_period_type'] ?? null,
                     'remarks'           => $data['remarks'] ?? null,
                     'requested_by'      => auth()->id(),
                 ]);

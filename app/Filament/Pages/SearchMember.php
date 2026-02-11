@@ -90,7 +90,7 @@ class SearchMember extends Page
         }
 
         $query = Member::query()
-            ->whereHas('account', fn($q) => $q->where('account_status', 'active'))
+            ->with('account')
             ->when($this->card_number, fn($q) => $q->where('card_number', 'like', "%{$this->card_number}%"))
             ->when($this->first_name, fn($q) => $q->where('first_name', 'like', "%{$this->first_name}%"))
             ->when($this->last_name, fn($q) => $q->where('last_name', 'like', "%{$this->last_name}%"));
@@ -98,12 +98,38 @@ class SearchMember extends Page
         // Check if current user's clinic is 'SPECIFIC ACCOUNT'
         $clinic = Clinic::where('user_id', Auth::id())->first();
         if ($clinic && $clinic->accreditation_status === 'SPECIFIC ACCOUNT') {
-            // Restrict members to this clinic's account_id
             $query->where('account_id', $clinic->account_id);
         }
 
         $this->members = $query->get();
         $this->hasSearched = true;
+    }
+
+    public function canAddProcedure($member): bool
+    {
+        $today = now()->startOfDay();
+
+        // Check member dates first
+        if ($member->effective_date && $today->lt(\Carbon\Carbon::parse($member->effective_date)->startOfDay())) {
+            return false;
+        }
+        if ($member->expiration_date && $today->gt(\Carbon\Carbon::parse($member->expiration_date)->endOfDay())) {
+            return false;
+        }
+
+        // Check account status and dates
+        if (!$member->account || $member->account->account_status !== 'active') {
+            return false;
+        }
+
+        if ($member->account->effective_date && $today->lt(\Carbon\Carbon::parse($member->account->effective_date)->startOfDay())) {
+            return false;
+        }
+        if ($member->account->expiration_date && $today->gt(\Carbon\Carbon::parse($member->account->expiration_date)->endOfDay())) {
+            return false;
+        }
+
+        return true;
     }
 
 

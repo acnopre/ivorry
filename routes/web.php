@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SignatureController;
 use App\Filament\Pages\MemberLogin;
 
-// Route::get('/', function () {
-//     return view('welcome');
-// });
+Route::get('/', function () {
+    return redirect('/admin/login');
+});
 
 // Route::get('/set-email', SetEmail::class)
 // ->name('set-email')

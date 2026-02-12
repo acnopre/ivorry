@@ -32,7 +32,7 @@ class MyAccount extends Page
     {
         return !is_null($this->account);
     }
-    public static function canViewAny(): bool
+    public static function canAccess(): bool
     {
         return auth()->user()->can('member.myaccount') || auth()->check() && auth()->user()->member;
     }

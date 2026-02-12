@@ -22,7 +22,7 @@ class ClinicProfile extends Page
         return auth()->check() && auth()->user()->clinic && auth()->user()->can('clinic.profile');
     }
 
-    public static function canViewAny(): bool
+    public static function canAccess(): bool
     {
         return auth()->check() && auth()->user()->clinic && auth()->user()->can('clinic.profile');
     }

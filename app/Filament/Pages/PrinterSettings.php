@@ -45,7 +45,7 @@ class PrinterSettings extends Page
             && auth()->user()->can('claims.print');
     }
 
-    public static function canViewAny(): bool
+    public static function canAccess(): bool
     {
         return auth()->user()->can('claims.print');
     }

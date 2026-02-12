@@ -194,7 +194,7 @@ class SearchClinics extends Page
             && auth()->user()->can('member.search');
     }
 
-    public static function canViewAny(): bool
+    public static function canAccess(): bool
     {
         return auth()->user()->can('member.search');
     }

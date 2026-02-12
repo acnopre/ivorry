@@ -655,7 +655,7 @@ class SearchMember extends Page
             && auth()->user()->can('dentist.search');
     }
 
-    public static function canViewAny(): bool
+    public static function canAccess(): bool
     {
         return auth()->user()->can('dentist.search');
     }

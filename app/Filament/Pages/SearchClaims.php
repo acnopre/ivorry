@@ -784,7 +784,7 @@ class SearchClaims extends Page implements HasForms, HasTable
             && auth()->user()->can('claims.search');
     }
 
-    public static function canViewAny(): bool
+    public static function canAccess(): bool
     {
         return auth()->user()->can('claims.search');
     }

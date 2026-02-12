@@ -36,7 +36,7 @@ class DashboardStats extends BaseWidget
                 ->icon('heroicon-o-hand-thumb-up')
                 ->color('success'),
 
-            Stat::make('Completed Procedures', Procedure::where('status', 'completed')->count())
+            Stat::make('Sign Procedures', Procedure::where('status', 'sign')->count())
                 ->description('Approved and finished services')
                 ->icon('heroicon-o-check-circle')
                 ->color('success'),

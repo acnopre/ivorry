@@ -97,7 +97,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                         Forms\Components\Select::make('status')
                             ->options([
                                 'pending' => 'Pending',
-                                'completed' => 'Completed',
+                                'sign' => 'Signed',
                                 'valid' => 'Valid',
                                 'invalid' => 'Rejected',
                                 'returned' => 'Returned',
@@ -204,7 +204,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->formatStateUsing(fn($state) => ucfirst($state))
                     ->color(fn(string $state): string => match ($state) {
                         'pending' => 'warning',
-                        'completed' => 'info',
+                        'sign' => 'info',
                         'valid' => 'success',
                         'invalid' => 'danger',
                         'returned' => 'warning',

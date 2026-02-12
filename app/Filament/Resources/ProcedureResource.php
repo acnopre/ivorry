@@ -125,7 +125,7 @@ class ProcedureResource extends Resource
                     ->formatStateUsing(fn($state) => ucfirst($state))
                     ->colors([
                         'warning' => 'pending',
-                        'success' => 'completed',
+                        'success' => 'sign',
                         'danger'  => 'rejected',
                         'warning'    => 'returned',
                         'success' => 'valid',
@@ -142,7 +142,7 @@ class ProcedureResource extends Resource
                     ->label('Status')
                     ->options([
                         'pending'   => 'Pending',
-                        'completed' => 'Completed',
+                        'sign' => 'Sign',
                         'valid'     => 'Valid',
                         'rejected'  => 'Rejected',
                         'returned'  => 'Returned',
@@ -168,7 +168,7 @@ class ProcedureResource extends Resource
                     ->modalSubheading('Are you sure you want to resubmit this procedure?')
                     ->visible(fn($record) => $record->status === 'returned')
                     ->action(function (Procedure $record) {
-                        $record->status = 'completed';
+                        $record->status = 'sign';
                         $record->save();
 
                         \Filament\Notifications\Notification::make()

@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->date('availment_date')->nullable();
             $table->string('quantity')->nullable();
             $table->string('approval_code')->nullable();
-            $table->enum('status', ['pending', 'completed', 'valid', 'invalid', 'returned', 'processed']);
+            $table->enum('status', ['pending', 'sign', 'valid', 'invalid', 'returned', 'processed']);
             $table->longText('remarks')->nullable();
             $table->string('qr_path')->nullable();
             $table->longText('adc_number')->nullable();

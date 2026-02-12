@@ -194,7 +194,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->label('Filter by Procedure Status')
                             ->options([
                                 \App\Models\Procedure::STATUS_PENDING   => 'Pending',
-                                \App\Models\Procedure::STATUS_COMPLETED => 'Completed',
+                                \App\Models\Procedure::STATUS_SIGN => 'Signed',
                                 \App\Models\Procedure::STATUS_VALID     => 'Valid',
                                 \App\Models\Procedure::STATUS_REJECT    => 'Invalid',
                                 \App\Models\Procedure::STATUS_RETURN    => 'Returned',

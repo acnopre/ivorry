@@ -109,7 +109,7 @@ class SignProcedurePage extends Page
             ]);
         }
         // --- 4. Finalize Procedure ---
-        $this->record->update(['status' => 'completed']);
+        $this->record->update(['status' => 'sign']);
 
         // 🧮 Deduct service quantity from account_service pivot
         $member = Member::find($this->record->member_id);
@@ -134,7 +134,7 @@ class SignProcedurePage extends Page
 
         Notification::make()
             ->title('Procedure Signed Successfully! 🎉')
-            ->body('All required documentation has been saved. This procedure is now marked as completed.')
+            ->body('All required documentation has been saved. This procedure is now marked as sign.')
             ->success()
             ->send();
 

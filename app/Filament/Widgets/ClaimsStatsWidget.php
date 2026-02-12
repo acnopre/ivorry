@@ -20,10 +20,10 @@ class ClaimsStatsWidget extends BaseWidget
                 ->color('primary')
                 ->description('All procedures recorded'),
 
-            Stat::make('Completed Procedures', $procedureQuery->where('status', 'completed')->count())
+            Stat::make('Sign Procedures', $procedureQuery->where('status', 'sign')->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
-                ->description('Procedures marked as completed'),
+                ->description('Procedures marked as sign'),
 
             Stat::make('Pending Procedures', $procedureQuery->where('status', 'pending')->count())
                 ->icon('heroicon-o-clock')

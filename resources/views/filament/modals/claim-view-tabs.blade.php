@@ -128,7 +128,7 @@
         </h4>
 
         @if (!empty($data->signature_path))
-        <img src="{{ Storage::url($data->signature_path) }}" alt="{{ $data->signer_type }} Signature" class="h-32 border rounded shadow-sm">
+        <img src="{{ asset('storage/' . $data->signature_path) }}" alt="{{ $data->signer_type }} Signature" class="h-32 border rounded shadow-sm">
         @else
         <p class="text-gray-500 italic">No signature image uploaded.</p>
         @endif

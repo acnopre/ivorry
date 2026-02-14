@@ -297,7 +297,7 @@ class ClinicsResource extends Resource
                                     ->label('Fee')
                                     ->numeric()
                                     ->columnSpan(4)
-                                    ->disabled(true)
+                                    ->disabled(fn($record) => $record !== null)
                                     ->formatStateUsing(function ($state, $record) use ($service) {
                                         if (! $record) {
                                             return $state;
@@ -345,7 +345,7 @@ class ClinicsResource extends Resource
                                 TextInput::make("services.enhancement.{$enhancement->id}")
                                     ->label('Fee')
                                     ->numeric()
-                                    ->disabled(true)
+                                    ->disabled(fn($record) => $record !== null)
                                     ->columnSpan(4)
                                     ->formatStateUsing(function ($state, $record) use ($enhancement) {
                                         if (! $record) {
@@ -361,6 +361,7 @@ class ClinicsResource extends Resource
                                     ->label('New Fee')
                                     ->numeric()
                                     ->columnSpan(4)
+                                    ->visible(fn($record) => $record !== null)
                                     ->formatStateUsing(function ($state, $record) use ($enhancement) {
                                         if (! $record) {
                                             return $state;

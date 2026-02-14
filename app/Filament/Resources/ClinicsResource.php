@@ -38,6 +38,8 @@ use Filament\Notifications\Notification;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\VatType;
+use App\Models\ImportLog;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Model;
 
 class ClinicsResource extends Resource
@@ -438,22 +440,43 @@ class ClinicsResource extends Resource
                 Action::make('importXls')
                     ->label('Import XLS')
                     ->icon('heroicon-o-arrow-up-tray')
-                    ->visible(auth()->user()->can('clinic.import'))
                     ->color('success')
+                    ->visible(fn() => auth()->user()->can('clinic.import'))
                     ->form([
-                        \Filament\Forms\Components\FileUpload::make('file')
+                        Forms\Components\FileUpload::make('file')
                             ->label('Upload Excel File')
-                            ->required()
-                            ->acceptedFileTypes(['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
+                            ->acceptedFileTypes([
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->required(),
                     ])
                     ->action(function (array $data): void {
-                        $file = $data['file'];
+                        $relativePath = $data['file'];
+                        $disk = Storage::disk('public');
+                        $absolutePath = $disk->path($relativePath);
 
-                        // Use Laravel Excel to import
-                        Excel::import(new ClinicImport, $file->getRealPath());
+                        if (!$disk->exists($relativePath)) {
+                            throw new \Exception("File not found at: {$absolutePath}");
+                        }
+
+                        $filename = basename($relativePath);
+                        $log = ImportLog::create([
+                            'filename' => $filename,
+                            'disk' => 'public',
+                            'status' => 'processing',
+                            'user_id' => auth()->id(),
+                        ]);
+
+                        Excel::import(new ClinicImport($log), $absolutePath);
+
+                        $message = "Import completed! {$log->success_rows} clinics imported.";
+                        if ($log->error_rows > 0) {
+                            $message .= " {$log->error_rows} rows failed.";
+                        }
 
                         Notification::make()
-                            ->title('Clinics Imported Successfully!')
+                            ->title($message)
                             ->success()
                             ->send();
                     }),

@@ -66,6 +66,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'dentist.add-procedure',
             'dentist.my-procedure',
             'dentist.update',
+            'clinic.import',
 
             // System
             'system.logs',
@@ -131,6 +132,9 @@ class RolesAndPermissionsSeeder extends Seeder
                     'dentist.create',
                     'dentist.update',
                     'dentist.delete',
+                    'clinic.import',
+                    'import-logs.view',
+                    'import-logs.details.view',
                 ],
                 'user' => [
                     'name' => 'Accreditation Officer',
@@ -258,7 +262,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $upperRole = Role::firstOrCreate(['name' => 'Upper Management']);
         $allPermissions = Permission::all();
         $upperRole->syncPermissions($allPermissions);
-        
+
         $middleRole = Role::firstOrCreate(['name' => 'Middle Management']);
         $allPermissionsExceptMember = Permission::whereNotIn('name', ['member-myprofile', 'member.myaccount'])->get();
         $middleRole->syncPermissions($allPermissionsExceptMember);

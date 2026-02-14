@@ -7,13 +7,17 @@ use App\Models\Member;
 use App\Models\User;
 use App\Models\ImportLog;
 use App\Models\ImportLogItem;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
+use Maatwebsite\Excel\Concerns\SkipsErrors;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-class MembersImport implements ToModel, WithChunkReading, WithHeadingRow
+class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsOnError
 {
+    use SkipsErrors;
     public $imported = 0;
     public $failed = [];
     public $importLog;
@@ -41,17 +45,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow
             return null;
         }
 
+        DB::beginTransaction();
         try {
-            $user = User::create([
-                'name'     => $row['first_name'] . ' ' . $row['last_name'],
-                'email'    => $row['email'] ?? null,
-                'password' => bcrypt('password'),
-            ]);
-
-            $user->assignRole('Member');
-
             $member = new Member([
-                'user_id'       => $user->id,
                 'account_id'    => $account->id,
                 'first_name'    => $row['first_name'],
                 'last_name'     => $row['last_name'],
@@ -67,14 +63,35 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow
                 'status'        => $row['status'] ?? 'active',
                 'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
             ]);
+            $member->save();
 
+            $user = User::create([
+                'name'     => $row['first_name'] . ' ' . $row['last_name'],
+                'email'    => $row['email'] ?? null,
+                'password' => bcrypt('password'),
+            ]);
+
+            $user->assignRole('Member');
+            $member->update(['user_id' => $user->id]);
+
+            DB::commit();
             $this->logSuccess($row);
             $this->imported++;
             return $member;
         } catch (\Exception $e) {
-            $this->logError($row, $e->getMessage());
+            DB::rollBack();
+            $this->logError($row, $this->sanitizeErrorMessage($e));
             return null;
         }
+    }
+
+    private function sanitizeErrorMessage(\Exception $e): string
+    {
+        $message = $e->getMessage();
+
+
+        // Return actual error message for debugging
+        return $message;
     }
 
     private function logSuccess($row)
@@ -102,5 +119,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow
     public function chunkSize(): int
     {
         return 500;
+    }
+
+    public function onError(\Throwable $e)
+    {
+        // Log any uncaught errors and continue
+        \Log::error('Import error', [
+            'row' => $this->rowNumber,
+            'message' => $this->sanitizeErrorMessage($e instanceof \Exception ? $e : new \Exception($e->getMessage())),
+        ]);
     }
 }

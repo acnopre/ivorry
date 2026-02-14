@@ -13,9 +13,12 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
+use Maatwebsite\Excel\Concerns\SkipsErrors;
 
-class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, WithHeadingRow
+class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, WithHeadingRow, SkipsOnError
 {
+    use SkipsErrors;
     public function __construct(protected ImportLog $log)
     {
         set_time_limit(0);
@@ -33,25 +36,48 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         $header = $rows->first()->toArray();
         $serviceColumns = array_slice(array_keys($header), 8);
         $services = Service::all()->keyBy('name');
-        $accountsToUpsert = [];
-        $pivotData = [];
 
         foreach ($rows as $index => $row) {
             if (empty($row['company_name'])) continue;
 
             $this->log->increment('total_rows');
 
+            DB::beginTransaction();
             try {
-                $accountsToUpsert[] = [
-                    'company_name' => $row['company_name'],
-                    'policy_code' => $row['policy_code'],
-                    'hip' => $row['hip'],
-                    'card_used' => $row['card_used'],
-                    'effective_date' => $this->transformDate($row['effective_date']),
-                    'expiration_date' => $this->transformDate($row['expiration_date']),
-                    'plan_type' => $row['plan_type'],
-                    'coverage_period_type' => $row['coverage_type'],
-                ];
+                $account = Account::updateOrCreate(
+                    [
+                        'company_name' => $row['company_name'],
+                        'policy_code' => $row['policy_code'],
+                    ],
+                    [
+                        'hip' => $row['hip'],
+                        'card_used' => $row['card_used'],
+                        'effective_date' => $this->transformDate($row['effective_date']),
+                        'expiration_date' => $this->transformDate($row['expiration_date']),
+                        'plan_type' => $row['plan_type'],
+                        'coverage_period_type' => $row['coverage_type'],
+                    ]
+                );
+
+                $pivotData = [];
+                foreach ($serviceColumns as $serviceName) {
+                    $quantity = $row[$serviceName] ?? 0;
+                    $service = $services->firstWhere('slug', $serviceName);
+
+                    if ($service) {
+                        $pivotData[$service->id] = [
+                            'quantity' => $service->type === 'basic' ? null : $quantity,
+                            'default_quantity' => $service->type === 'basic' ? null : $quantity,
+                            'is_unlimited' => $service->type === 'basic',
+                        ];
+                    }
+                }
+
+                if (!empty($pivotData)) {
+                    $account->services()->sync($pivotData);
+                }
+
+                DB::commit();
 
                 ImportLogItem::create([
                     'import_log_id' => $this->log->id,
@@ -62,67 +88,30 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
                 $this->log->increment('success_rows');
             } catch (\Throwable $e) {
+                DB::rollBack();
+
                 ImportLogItem::create([
                     'import_log_id' => $this->log->id,
                     'row_number' => $index + 2,
                     'raw_data' => json_encode($row),
                     'status' => 'error',
-                    'message' => $e->getMessage(),
+                    'message' => $this->sanitizeErrorMessage($e),
                 ]);
+
                 $this->log->increment('error_rows');
             }
         }
 
-        DB::transaction(function () use ($accountsToUpsert, $rows, $serviceColumns, $services) {
-            Account::upsert($accountsToUpsert, ['company_name', 'policy_code'], [
-                'hip',
-                'card_used',
-                'effective_date',
-                'expiration_date',
-                'plan_type',
-                'coverage_period_type'
-            ]);
+        $this->log->update([
+            'status' => $this->log->error_rows > 0 ? 'partial' : 'completed',
+        ]);
+    }
 
-            $accountMap = Account::whereIn('company_name', collect($accountsToUpsert)->pluck('company_name'))
-                ->whereIn('policy_code', collect($accountsToUpsert)->pluck('policy_code'))
-                ->get()
-                ->keyBy(fn($a) => $a->company_name);
+    private function sanitizeErrorMessage(\Throwable $e): string
+    {
+        $message = $e->getMessage();
 
-            $pivotData = [];
-            foreach ($rows as $row) {
-                if (empty($row['company_name'])) continue;
-
-                $accountKey = $row['company_name'];
-                $accountId = $accountMap[$accountKey]['id'] ?? null;
-                if (!$accountId) continue;
-
-                foreach ($serviceColumns as $serviceName) {
-                    $quantity = $row[$serviceName] ?? 0;
-                    $service = $services->firstWhere('slug', $serviceName);
-
-                    if (isset($service)) {
-                        $pivotData[] = [
-                            'account_id' => $accountId,
-                            'service_id' => $service->id,
-                            'quantity' => $service->type === 'basic' ? null : $quantity,
-                            'default_quantity' => $service->type === 'basic' ? null : $quantity,
-                            'is_unlimited' => $service->type === 'basic',
-                        ];
-                    }
-                }
-            }
-            if (!empty($pivotData)) {
-                $accountIds = collect($pivotData)->pluck('account_id')->unique();
-                DB::table('account_service')->whereIn('account_id', $accountIds)->delete();
-                DB::table('account_service')->insert($pivotData);
-            }
-
-
-
-            $this->log->update([
-                'status' => $this->log->error_rows > 0 ? 'partial' : 'completed',
-            ]);
-        });
+        return $message;
     }
 
     private function transformDate($value)
@@ -132,5 +121,12 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    public function onError(\Throwable $e)
+    {
+        \Log::error('Account import error', [
+            'message' => $this->sanitizeErrorMessage($e),
+        ]);
     }
 }

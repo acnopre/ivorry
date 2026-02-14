@@ -8,6 +8,8 @@ use App\Models\ImportLog;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ImportLogDetailsExport;
 
 class ViewImportLog extends ViewRecord
 {
@@ -16,13 +18,14 @@ class ViewImportLog extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            // Actions\Action::make('retryFailed')
-            //     ->label('Retry Failed Rows')
-            //     ->icon('heroicon-o-arrow-path')
-            //     ->color('warning')
-            //     ->requiresConfirmation()
-            //     ->visible(fn(ImportLog $record) => $record->error_rows > 0)
-            //     ->action(fn(ImportLog $record) => $this->retryFailedRows($record)),
+            Actions\Action::make('exportDetails')
+                ->label('Export Details')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action(fn(ImportLog $record) => Excel::download(
+                    new ImportLogDetailsExport($record->id),
+                    'import-log-' . $record->id . '-details.xlsx'
+                )),
 
             Actions\Action::make('refresh')
                 ->label('Refresh')

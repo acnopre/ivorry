@@ -19,8 +19,12 @@ use Maatwebsite\Excel\Concerns\SkipsErrors;
 class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, WithHeadingRow, SkipsOnError
 {
     use SkipsErrors;
-    public function __construct(protected ImportLog $log)
+
+    protected $userId;
+
+    public function __construct(protected ImportLog $log, ?int $userId = null)
     {
+        $this->userId = $userId;
         set_time_limit(0);
     }
 
@@ -56,6 +60,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                         'expiration_date' => $this->transformDate($row['expiration_date']),
                         'plan_type' => $row['plan_type'],
                         'coverage_period_type' => $row['coverage_type'],
+                        'created_by' => $this->userId,
                     ]
                 );
 

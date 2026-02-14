@@ -23,7 +23,8 @@ class Account extends Model
         'endorsement_status',
         'plan_type',
         'coverage_period_type',
-        'remarks'
+        'remarks',
+        'created_by'
     ];
     protected $casts = [
         'effective_date' => 'date',
@@ -31,6 +32,11 @@ class Account extends Model
     ];
 
     protected $with = ['services', 'renewals'];
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
     public function members()
     {

@@ -36,6 +36,7 @@ return new class extends Migration
             $table->enum('account_status', ['inactive', 'active', 'expired'])
                 ->default('inactive');
             $table->longText('remarks')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

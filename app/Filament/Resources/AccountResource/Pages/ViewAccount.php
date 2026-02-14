@@ -50,10 +50,13 @@ class ViewAccount extends ViewRecord
                         ->success()
                         ->send();
 
-                    Mail::raw("The account {$record->company_name} has been approved.", function ($message) {
-                        $message->to('acnopre@upsitf.org')
-                            ->subject('Account Approved');
-                    });
+                    $createdByEmail = $record->createdBy?->email;
+                    if ($createdByEmail) {
+                        Mail::raw("The account {$record->company_name} has been approved.", function ($message) use ($createdByEmail) {
+                            $message->to($createdByEmail)
+                                ->subject('Account Approved');
+                        });
+                    }
                 }),
 
             Actions\Action::make('rejectAccount')
@@ -86,10 +89,13 @@ class ViewAccount extends ViewRecord
                         ->danger()
                         ->send();
 
-                    Mail::raw("The account {$record->company_name} has been rejected. Reason: {$data['remarks']}", function ($message) {
-                        $message->to('acnopre@upsitf.org')
-                            ->subject('Account Rejected');
-                    });
+                    $createdByEmail = $record->createdBy?->email;
+                    if ($createdByEmail) {
+                        Mail::raw("The account {$record->company_name} has been rejected. Reason: {$data['remarks']}", function ($message) use ($createdByEmail) {
+                            $message->to($createdByEmail)
+                                ->subject('Account Rejected');
+                        });
+                    }
                 }),
 
             Actions\Action::make('renewAccount')
@@ -151,10 +157,13 @@ class ViewAccount extends ViewRecord
                         ->success()
                         ->send();
 
-                    Mail::raw("The account {$record->company_name} has been renewed and approved.", function ($message) {
-                        $message->to('acnopre@upsitf.org')
-                            ->subject('Account Renewal Approved');
-                    });
+                    $createdByEmail = $record->createdBy?->email;
+                    if ($createdByEmail) {
+                        Mail::raw("The account {$record->company_name} has been renewed and approved.", function ($message) use ($createdByEmail) {
+                            $message->to($createdByEmail)
+                                ->subject('Account Renewal Approved');
+                        });
+                    }
                 }),
 
             Actions\Action::make('approveAmendment')
@@ -199,10 +208,13 @@ class ViewAccount extends ViewRecord
 
                     $amendment->update(['endorsement_status' => 'APPROVED']);
 
-                    Mail::raw("The amendment for account {$record->company_name} has been approved.", function ($message) {
-                        $message->to('acnopre@upsitf.org')
-                            ->subject('Account Amendment Approved');
-                    });
+                    $createdByEmail = $record->createdBy?->email;
+                    if ($createdByEmail) {
+                        Mail::raw("The amendment for account {$record->company_name} has been approved.", function ($message) use ($createdByEmail) {
+                            $message->to($createdByEmail)
+                                ->subject('Account Amendment Approved');
+                        });
+                    }
                 }),
         ];
     }

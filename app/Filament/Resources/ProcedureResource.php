@@ -176,11 +176,13 @@ class ProcedureResource extends Resource
                             ->success()
                             ->send();
 
-                        // Send email notification
-                        Mail::raw("The procedure '{$record->title}' has been resubmitted.", function ($message) use ($record) {
-                            $message->to('acnopre@upsitf.org')
-                                ->subject('Procedure Resubmitted');
-                        });
+                        $dentistEmail = $record->clinic?->user?->email;
+                        if ($dentistEmail) {
+                            Mail::raw("The procedure '{$record->title}' has been resubmitted.", function ($message) use ($dentistEmail) {
+                                $message->to($dentistEmail)
+                                    ->subject('Procedure Resubmitted');
+                            });
+                        }
                     }),
             ])
             ->bulkActions([]);

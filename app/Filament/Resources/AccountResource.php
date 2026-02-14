@@ -657,7 +657,7 @@ class AccountResource extends Resource
                             'user_id' => auth()->id(),
                         ]);
 
-                        Excel::import(new AccountImport($log), $absolutePath);
+                        Excel::import(new AccountImport($log, auth()->id()), $absolutePath);
 
                         $message = "Import completed! {$log->success_rows} accounts imported.";
                         if ($log->error_rows > 0) {

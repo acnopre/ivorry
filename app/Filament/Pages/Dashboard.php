@@ -7,6 +7,7 @@ use App\Filament\Widgets\AccreditationStatsWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 use App\Filament\Widgets\ActivityTimeline;
 use App\Filament\Widgets\ClaimsStatsWidget;
+use App\Filament\Widgets\CSRStatsWidget;
 use App\Filament\Widgets\DashboardStats;
 use App\Filament\Widgets\DentistStatsWidget;
 use App\Filament\Widgets\DependentMemberStatsWidget;
@@ -54,6 +55,10 @@ class Dashboard extends BaseDashboard
         } else if (auth()->user()?->hasAnyRole(Role::MEMBER)) {
             return [
                 DependentMemberStatsWidget::class,
+            ];
+        } else if (auth()->user()?->hasAnyRole(Role::CSR)) {
+            return [
+                CSRStatsWidget::class,
             ];
         } else {
             return [];

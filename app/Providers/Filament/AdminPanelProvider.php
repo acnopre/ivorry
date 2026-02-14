@@ -55,6 +55,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Widgets\DashboardStats::class,
                 \App\Filament\Widgets\AccountStatsWidget::class,
                 \App\Filament\Widgets\RecentClaimsTable::class,
+                \App\Filament\Widgets\CSRStatsWidget::class,
             ])
             ->navigationGroups([
                 'Accounts & Members',

@@ -55,8 +55,8 @@ class MemberResource extends Resource
 
                         TextInput::make('first_name')->required()->maxLength(255),
                         TextInput::make('last_name')->required()->maxLength(255),
-                        TextInput::make('middle_name')->required()->maxLength(255),
-                        TextInput::make('suffix')->required()->maxLength(255),
+                        TextInput::make('middle_name')->maxLength(255),
+                        TextInput::make('suffix')->maxLength(255),
 
                         Select::make('member_type')
                             ->options([

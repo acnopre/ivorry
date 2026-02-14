@@ -108,29 +108,36 @@ class SearchMember extends Page
 
     public function canAddProcedure($member): bool
     {
+        return $this->getCanAddProcedureReason($member) === null;
+    }
+
+    public function getCanAddProcedureReason($member): ?string
+    {
         $today = now()->startOfDay();
 
-        // Check member dates first
         if ($member->effective_date && $today->lt(\Carbon\Carbon::parse($member->effective_date)->startOfDay())) {
-            return false;
+            return 'Member coverage has not started yet';
         }
         if ($member->expiration_date && $today->gt(\Carbon\Carbon::parse($member->expiration_date)->endOfDay())) {
-            return false;
+            return 'Member coverage has expired';
         }
 
-        // Check account status and dates
-        if (!$member->account || $member->account->account_status !== 'active') {
-            return false;
+        if (!$member->account) {
+            return 'No account found';
+        }
+        
+        if ($member->account->account_status !== 'active') {
+            return 'Account is not active';
         }
 
         if ($member->account->effective_date && $today->lt(\Carbon\Carbon::parse($member->account->effective_date)->startOfDay())) {
-            return false;
+            return 'Account coverage has not started yet';
         }
         if ($member->account->expiration_date && $today->gt(\Carbon\Carbon::parse($member->account->expiration_date)->endOfDay())) {
-            return false;
+            return 'Account coverage has expired';
         }
 
-        return true;
+        return null;
     }
 
 

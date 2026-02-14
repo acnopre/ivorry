@@ -25,9 +25,22 @@
                             </div>
                         </div>
 
-                        <x-filament::button color="primary" wire:click="openProcedureModal({{ $member->id }})" icon="heroicon-o-document-plus" :disabled="!$this->canAddProcedure($member)" :tooltip="!$this->canAddProcedure($member) ? 'Member or account is inactive or outside coverage dates' : null">
-                            Add Procedure
-                        </x-filament::button>
+                        <div class="flex flex-col items-end gap-2">
+                            <x-filament::button 
+                                color="primary" 
+                                wire:click="openProcedureModal({{ $member->id }})" 
+                                icon="heroicon-o-document-plus" 
+                                :disabled="!$this->canAddProcedure($member)"
+                            >
+                                Add Procedure
+                            </x-filament::button>
+                            @if(!$this->canAddProcedure($member))
+                                <div class="flex items-center gap-1 text-xs text-danger-600 dark:text-danger-400">
+                                    <x-heroicon-o-exclamation-circle class="w-4 h-4" />
+                                    <span>{{ $this->getCanAddProcedureReason($member) }}</span>
+                                </div>
+                            @endif
+                        </div>
                     </div>
 
                     {{-- 👤 Member Info --}}

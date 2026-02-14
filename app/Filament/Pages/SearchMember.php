@@ -28,6 +28,7 @@ class SearchMember extends Page
     protected static ?string $title = 'Search Member';
     protected static string $view = 'filament.pages.search-member';
     protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static ?string $navigationGroup = 'Search';
 
     public ?string $card_number = null;
     public ?string $first_name = null;

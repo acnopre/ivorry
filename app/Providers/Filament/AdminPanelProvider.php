@@ -58,10 +58,12 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Widgets\CSRStatsWidget::class,
             ])
             ->navigationGroups([
+                'Search',
                 'Accounts & Members',
                 'Dental Management',
                 'Claims Management',
                 'Reports',
+                'Imports',
                 'Lookup Tables',
                 'Settings',
                 'System',

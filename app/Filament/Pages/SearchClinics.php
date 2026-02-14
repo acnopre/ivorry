@@ -21,6 +21,8 @@ class SearchClinics extends Page
     protected static ?string $title = 'Search Clinics';
     protected static string $view = 'filament.pages.search-clinics';
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
+    protected static ?string $navigationGroup = 'Search';
+    protected static ?int $navigationSort = 3;
 
     public ?int $region = null;
     public ?int $province = null;

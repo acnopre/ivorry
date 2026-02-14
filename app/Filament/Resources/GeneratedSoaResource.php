@@ -25,7 +25,7 @@ class GeneratedSoaResource extends Resource
     protected static ?string $model = GeneratedSoa::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Approved Dentist Claims';
+    protected static ?string $navigationGroup = 'Claims Management';
     protected static ?string $label = 'Generated ADC';
 
 

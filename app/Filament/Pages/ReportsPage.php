@@ -40,6 +40,7 @@ class ReportsPage extends Page implements HasForms, HasTable
 
     protected static string $view = 'filament.pages.reports-page';
     protected static ?string $navigationIcon = 'heroicon-o-document-chart-bar';
+    protected static ?string $navigationGroup = 'Reports';
     protected static ?string $title = 'Reports';
 
     public ?array $reportFilters = [];

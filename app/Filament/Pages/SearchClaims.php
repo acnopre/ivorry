@@ -33,6 +33,8 @@ class SearchClaims extends Page implements HasForms, HasTable
     protected static ?string $title = 'Search Claims';
     protected static string $view = 'filament.pages.search-claims';
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
+    protected static ?string $navigationGroup = 'Search';
+    protected static ?int $navigationSort = 2;
 
     public ?array $data = [];
     public bool $hasSearched = false;

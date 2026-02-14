@@ -73,6 +73,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'system.export',
             'system.manage_users',
             'system.manage_permissions',
+            'view_any_system::version',
+            'view_system::version',
+            'create_system::version',
+            'update_system::version',
+            'delete_system::version',
 
             // Reports & Dashboard
             'reports.view',
@@ -249,12 +254,13 @@ class RolesAndPermissionsSeeder extends Seeder
             $this->command->info("✅ {$roleName} seeded ({$roleData['user']['email']} / {$roleData['user']['password']})");
         }
 
-        // Now, Upper Management inherits ALL permissions except member-specific ones
+        // Now, Upper Management inherits ALL permissions
         $upperRole = Role::firstOrCreate(['name' => 'Upper Management']);
-        $allPermissionsExceptMember = Permission::whereNotIn('name', ['member-myprofile', 'member.myaccount'])->get();
-        $upperRole->syncPermissions($allPermissionsExceptMember);
+        $allPermissions = Permission::all();
+        $upperRole->syncPermissions($allPermissions);
         
         $middleRole = Role::firstOrCreate(['name' => 'Middle Management']);
+        $allPermissionsExceptMember = Permission::whereNotIn('name', ['member-myprofile', 'member.myaccount'])->get();
         $middleRole->syncPermissions($allPermissionsExceptMember);
     }
 }

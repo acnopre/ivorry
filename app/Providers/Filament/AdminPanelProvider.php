@@ -74,8 +74,13 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-user'),
 
                 'role' => MenuItem::make()
-                    ->label(fn() => 'Role: ' . Filament::auth()->user()?->role)
+                    ->label(fn() => 'Role: ' . (Filament::auth()->user()?->roles->first()?->name ?? 'N/A'))
                     ->icon('heroicon-o-identification'),
+
+                'version' => MenuItem::make()
+                    ->label('Version ' . (\App\Models\SystemVersion::current() ?? config('version.current')))
+                    ->icon('heroicon-o-information-circle')
+                    ->url('#'),
 
                 'logout' => MenuItem::make()
                     ->label('Log out')

@@ -260,11 +260,11 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Now, Upper Management inherits ALL permissions
         $upperRole = Role::firstOrCreate(['name' => 'Upper Management']);
-        $allPermissions = Permission::all();
-        $upperRole->syncPermissions($allPermissions);
+        $allPermissionWithException = Permission::whereNotIn('name', ['member-myprofile', 'member.myaccount'])->get();
+        $upperRole->syncPermissions($allPermissionWithException);
 
         $middleRole = Role::firstOrCreate(['name' => 'Middle Management']);
-        $allPermissionsExceptMember = Permission::whereNotIn('name', ['member-myprofile', 'member.myaccount'])->get();
-        $middleRole->syncPermissions($allPermissionsExceptMember);
+        $allPermissionWithException = Permission::whereNotIn('name', ['member-myprofile', 'member.myaccount'])->get();
+        $middleRole->syncPermissions($allPermissionWithException);
     }
 }

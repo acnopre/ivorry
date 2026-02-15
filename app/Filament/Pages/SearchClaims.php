@@ -347,7 +347,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->color('success')
                     ->icon('heroicon-o-printer')
                     ->requiresConfirmation()
-                    ->visible('claims.generate')
+                    ->visible(auth()->user()->can('claims.generate'))
                     ->modalHeading('Print Dentist Claims')
                     ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED and sent to printer.')
                     ->modalSubmitActionLabel('Yes, Print Claims')
@@ -600,6 +600,8 @@ class SearchClaims extends Page implements HasForms, HasTable
         $grandTotalNet,
         $status
     ) {
+        $this->dispatch('update-progress', status: 'Preparing document data...', progress: 86);
+        
         $data = $this->data;
         $clinicDetails = Clinic::find($data['clinic_id']);
         $dentist = $clinicDetails->dentists->where('is_owner', 1)->first();
@@ -612,6 +614,8 @@ class SearchClaims extends Page implements HasForms, HasTable
         // Views
         $financeView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_finance' : null;
         $dentistView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_dentist' : null;
+        
+        $this->dispatch('update-progress', status: 'Generating finance PDF...', progress: 88);
 
         // ----------------- Closure to generate merged PDF -----------------
         $generatePdf = function ($copyLabel) use (
@@ -695,9 +699,13 @@ class SearchClaims extends Page implements HasForms, HasTable
         };
 
         // ----------------- Save & Print Original -----------------
+        $this->dispatch('update-progress', status: 'Creating original copy...', progress: 90);
+        
         $originalPdf = $generatePdf('ORIGINAL');
         $originalFileName = 'ADC_ORIGINAL_' . $timestamp . '.pdf';
         $originalPath = 'adc/originals/' . $originalFileName;
+        
+        $this->dispatch('update-progress', status: 'Saving original PDF...', progress: 92);
         Storage::disk('public')->put($originalPath, $originalPdf->Output('S'));
 
         $this->dispatch('update-progress', status: 'Sending to printer...', progress: 95);
@@ -715,10 +723,10 @@ class SearchClaims extends Page implements HasForms, HasTable
             );
 
             if ($statusCode === 0) {
+                $this->dispatch('update-progress', status: 'Updating claim status...', progress: 97);
+                
                 // Printing succeeded → mark procedures as processed
                 Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
-
-                $this->dispatch('close-printing');
 
                 Notification::make()
                     ->title('ADC Sent to Printer')
@@ -754,11 +762,15 @@ class SearchClaims extends Page implements HasForms, HasTable
 
 
         // ----------------- Save Duplicate for Download -----------------
+        $this->dispatch('update-progress', status: 'Creating duplicate copy...', progress: 96);
+        
         $duplicatePdf = $generatePdf('DUPLICATE');
         $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
         $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
         Storage::disk('public')->put($duplicatePath, $duplicatePdf->Output('S'));
 
+        $this->dispatch('update-progress', status: 'Logging print activity...', progress: 98);
+        
         // ----------------- Log print & duplicate -----------------
         $soa->increment('print_count');
 
@@ -774,6 +786,9 @@ class SearchClaims extends Page implements HasForms, HasTable
             'file_path' => $originalPath,
             'duplicate_file_path' => $duplicatePath,
         ]);
+        
+        $this->dispatch('update-progress', status: 'Complete!', progress: 100);
+        $this->dispatch('close-printing');
     }
 
 

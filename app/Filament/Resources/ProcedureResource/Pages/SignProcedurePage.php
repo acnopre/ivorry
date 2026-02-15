@@ -118,19 +118,19 @@ class SignProcedurePage extends Page
             $account = $member->account;
             $serviceId = $this->record->service_id;
 
-            $pivot = $account->services()
-                ->where('service_id', $serviceId)
-                ->first()
-                ?->pivot;
+            // Check MBL type
+            if ($account->mbl_type === 'Fixed') {
+                // Deduct from MBL balance (ignore unlimited)
+                $newBalance = max(0, $account->mbl_balance - $this->record->applied_fee);
+                $account->update(['mbl_balance' => $newBalance]);
+            } else {
+                // Procedural: check unlimited and deduct quantity
+                $pivot = $account->services()
+                    ->where('service_id', $serviceId)
+                    ->first()
+                    ?->pivot;
 
-            if ($pivot && !$pivot->is_unlimited) {
-                // Check MBL type
-                if ($account->mbl_type === 'Fixed') {
-                    // Deduct from MBL balance
-                    $newBalance = max(0, $account->mbl_balance - $this->record->applied_fee);
-                    $account->update(['mbl_balance' => $newBalance]);
-                } else {
-                    // Deduct from quantity (procedural)
+                if ($pivot && !$pivot->is_unlimited) {
                     $newQuantity = max(0, $pivot->quantity - 1);
                     $account->services()->updateExistingPivot($serviceId, [
                         'quantity' => $newQuantity,

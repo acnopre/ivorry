@@ -165,8 +165,6 @@ class SearchMember extends Page
         $clinicId = Auth::user()->clinic->id ?? Clinic::where('clinic_name', $data['clinic_search'])->first()->id;
         $member = Member::where('id', $this->selectedMemberId)->first();
         $account = $member->account;
-        $isServiceUnlimited = $account->services->find($data['service_id'])->pivot->is_unlimited;
-        $serviceQuantity = $account->services->find($data['service_id'])->pivot->quantity;
 
         if (!$this->validateBusinessRules($data, $clinicId)) {
             return;
@@ -176,12 +174,25 @@ class SearchMember extends Page
             ->where('service_id', $data['service_id'])
             ->value('fee') ?? 0;
 
-        // Check MBL balance for fixed type
+        // Check MBL balance for Fixed type
         if ($account->mbl_type === 'Fixed') {
             if ($account->mbl_balance < $appliedFee) {
                 Notification::make()
                     ->title('Insufficient MBL Balance')
                     ->body("Service fee (₱" . number_format($appliedFee, 2) . ") exceeds MBL balance (₱" . number_format($account->mbl_balance, 2) . ").")
+                    ->danger()
+                    ->send();
+                return;
+            }
+        } else {
+            // Procedural type - check service quantity/unlimited
+            $isServiceUnlimited = $account->services->find($data['service_id'])->pivot->is_unlimited;
+            $serviceQuantity = $account->services->find($data['service_id'])->pivot->quantity;
+
+            if (!$isServiceUnlimited && $serviceQuantity <= 0) {
+                Notification::make()
+                    ->title('Service Unavailable')
+                    ->body('This service has no remaining quantity.')
                     ->danger()
                     ->send();
                 return;
@@ -194,7 +205,9 @@ class SearchMember extends Page
         $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
         $basicFields = ['service_id', 'quantity', 'availment_date'];
         $hasUnits = count(array_diff(array_keys($data), $basicFields)) > 0;
-        if ($isServiceUnlimited) {
+        
+        // For Fixed MBL type, always create single procedure regardless of unlimited status
+        if ($account->mbl_type === 'Fixed') {
             $procedure = Procedure::create([
                 'clinic_id'      => $clinicId,
                 'member_id'      => $this->selectedMemberId,
@@ -205,7 +218,7 @@ class SearchMember extends Page
                 'approval_code'  => $approvalCode,
                 'applied_fee'    => $appliedFee,
             ]);
-        } else {
+        } elseif ($isServiceUnlimited) {
             if ($hasUnits) {
                 foreach ($unitInputs as $input) {
                     if (! isset($data[$input])) {
@@ -400,6 +413,17 @@ class SearchMember extends Page
                         $accountId = $this->members->first()->account_id ?? null;
                         if (!$accountId) return collect();
 
+                        $account = \App\Models\Account::find($accountId);
+                        
+                        // For Fixed MBL type, show all available services from Service table
+                        if ($account && $account->mbl_type === 'Fixed') {
+                            return Service::all()
+                                ->groupBy('type')
+                                ->map(fn($group) => $group->pluck('name', 'id'))
+                                ->toArray();
+                        }
+
+                        // For Procedural type, filter by quantity/unlimited from AccountService
                         return AccountService::where('account_id', $accountId)
                             ->where(function ($query) {
                                 $query->where('quantity', '>', 0)

@@ -12,55 +12,52 @@ class AccountStatsWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        // Define the base query for the Account model
         $baseQuery = Account::query();
-
-        // Define reusable scopes for clarity and efficiency
-        $renewalQuery = fn(Builder $query) => $query->where('endorsement_type', 'RENEWAL');
-        $amendmentQuery = fn(Builder $query) => $query->where('endorsement_type', 'AMENDMENT');
-        $pendingQuery = fn(Builder $query) => $query->where('endorsement_status', 'PENDING');
-        $approvedQuery = fn(Builder $query) => $query->where('endorsement_status', 'APPROVED');
+        $pendingEndorsements = $baseQuery->clone()->where('endorsement_status', 'PENDING');
+        $todayAccounts = Account::whereDate('created_at', today());
 
         return [
-            Stat::make('New Accounts', $baseQuery->clone()->where('endorsement_type', 'NEW')->count())
-                ->icon('heroicon-o-user-plus')
-                ->color('success')
-                ->description('Newly created accounts'),
-
-            Stat::make('Renewed Accounts', $baseQuery->clone()->when($renewalQuery)->when($approvedQuery)->count())
-                ->icon('heroicon-o-arrow-path')
-                ->color('info')
-                ->description('Accounts approved for renewal'),
-
-            Stat::make('Renewal Accounts Pending', $baseQuery->clone()->when($renewalQuery)->when($pendingQuery)->count())
-                ->icon('heroicon-o-arrow-path')
-                ->color('warning') // Use warning for pending actions
-                ->description('Accounts awaiting renewal approval'),
-
-            Stat::make('Amended Accounts', $baseQuery->clone()->when($amendmentQuery)->when($approvedQuery)->count())
-                ->icon('heroicon-o-pencil-square')
-                ->color('info') // Use info for a completed action (amendment)
-                ->description('Accounts with approved amendments'),
-
-            Stat::make('Amendment Accounts Pending', $baseQuery->clone()->when($amendmentQuery)->when($pendingQuery)->count())
-                ->icon('heroicon-o-pencil-square')
+            Stat::make('Pending Endorsements', $pendingEndorsements->count())
+                ->icon('heroicon-o-clock')
                 ->color('warning')
-                ->description('Accounts awaiting amendment approval'),
+                ->description('Requires your approval')
+                ->chart([5, 8, 6, 10, 7, $pendingEndorsements->count()]),
+
+            Stat::make('New Accounts Today', $todayAccounts->count())
+                ->icon('heroicon-o-sparkles')
+                ->color('success')
+                ->description('Created today'),
 
             Stat::make('Active Accounts', $baseQuery->clone()->where('account_status', 'active')->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
-                ->description('Accounts currently active'),
+                ->description('Currently active')
+                ->chart([45, 50, 48, 55, 52, 60, $baseQuery->clone()->where('account_status', 'active')->count()]),
 
-            Stat::make('Inactive Accounts', $baseQuery->clone()->where('account_status', 'inactive')->count())
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->description('Accounts currently inactive'),
-
-            Stat::make('Total Pending Endorsements', $baseQuery->clone()->when($pendingQuery)->count())
-                ->icon('heroicon-o-clock') // Better icon for pending
+            Stat::make('Pending Renewals', $baseQuery->clone()->where('endorsement_type', 'RENEWAL')->where('endorsement_status', 'PENDING')->count())
+                ->icon('heroicon-o-arrow-path')
                 ->color('warning')
-                ->description('Total accounts awaiting any endorsement decision'),
+                ->description('Awaiting renewal approval'),
+
+            Stat::make('Pending Amendments', $baseQuery->clone()->where('endorsement_type', 'AMENDMENT')->where('endorsement_status', 'PENDING')->count())
+                ->icon('heroicon-o-pencil-square')
+                ->color('warning')
+                ->description('Awaiting amendment approval'),
+
+            Stat::make('Expiring Soon', $baseQuery->clone()->where('account_status', 'active')->whereBetween('expiration_date', [now(), now()->addDays(30)])->count())
+                ->icon('heroicon-o-exclamation-triangle')
+                ->color('danger')
+                ->description('Expiring within 30 days'),
+
+            Stat::make('Fixed MBL Accounts', $baseQuery->clone()->where('mbl_type', 'Fixed')->where('account_status', 'active')->count())
+                ->icon('heroicon-o-banknotes')
+                ->color('info')
+                ->description('Using fixed MBL'),
+
+            Stat::make('Total MBL Balance', '₱' . number_format($baseQuery->clone()->where('mbl_type', 'Fixed')->sum('mbl_balance'), 2))
+                ->icon('heroicon-o-currency-dollar')
+                ->color('primary')
+                ->description('Combined fixed MBL balance'),
         ];
     }
 

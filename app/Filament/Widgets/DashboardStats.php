@@ -14,47 +14,50 @@ class DashboardStats extends BaseWidget
             Stat::make('Total Accounts', Account::count())
                 ->description('Registered company accounts')
                 ->icon('heroicon-o-briefcase')
-                ->color('primary'),
+                ->color('primary')
+                ->chart([7, 12, 8, 15, 10, 18, 20]),
+
+            Stat::make('Active Accounts', Account::where('account_status', 'active')->count())
+                ->description('Currently active')
+                ->descriptionIcon('heroicon-o-check-circle')
+                ->icon('heroicon-o-building-office')
+                ->color('success'),
+
+            Stat::make('Fixed MBL Accounts', Account::where('mbl_type', 'Fixed')->where('account_status', 'active')->count())
+                ->description('Using fixed MBL balance')
+                ->icon('heroicon-o-banknotes')
+                ->color('info'),
+
+            Stat::make('Total MBL Balance', '₱' . number_format(Account::where('mbl_type', 'Fixed')->sum('mbl_balance'), 2))
+                ->description('Combined fixed MBL balance')
+                ->icon('heroicon-o-currency-dollar')
+                ->color('warning'),
 
             Stat::make('Members', Member::count())
                 ->description('Total enrolled members')
                 ->icon('heroicon-o-users')
-                ->color('success'),
+                ->color('success')
+                ->chart([50, 60, 55, 70, 65, 80, 85]),
 
             Stat::make('Clinics', Clinic::count())
                 ->description('Partner dental clinics')
                 ->icon('heroicon-o-building-office')
                 ->color('info'),
 
-            Stat::make('Dentists', Dentist::count())
-                ->description('Registered practitioners')
-                ->icon('heroicon-o-user')
+            Stat::make('Pending Procedures', Procedure::where('status', 'pending')->count())
+                ->description('Awaiting signature')
+                ->icon('heroicon-o-clock')
                 ->color('warning'),
 
-            Stat::make('Approved Procedures', Procedure::where('status', 'approve')->count())
-                ->description('Procedures approved by dentists')
-                ->icon('heroicon-o-hand-thumb-up')
-                ->color('success'),
-
             Stat::make('Sign Procedures', Procedure::where('status', 'sign')->count())
-                ->description('Approved and finished services')
+                ->description('Completed today: ' . Procedure::where('status', 'sign')->whereDate('updated_at', today())->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success'),
 
             Stat::make('Valid Procedures', Procedure::where('status', 'valid')->count())
-                ->description('Validated procedure claims')
+                ->description('Validated claims')
                 ->icon('heroicon-o-check')
                 ->color('success'),
-
-            Stat::make('Declined Procedures', Procedure::where('status', 'invalid')->count())
-                ->description('Procedures marked as invalid')
-                ->icon('heroicon-o-x-mark')
-                ->color('danger'),
-
-            Stat::make('Returned Procedures', Procedure::where('status', 'return')->count())
-                ->description('Procedures sent back for review')
-                ->icon('heroicon-o-arrow-uturn-left')
-                ->color('warning'),
         ];
     }
     public static function canView(): bool

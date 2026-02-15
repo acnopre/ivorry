@@ -11,36 +11,46 @@ class ClaimsStatsWidget extends BaseWidget
 {
     protected function getStats(): array
     {
-        $procedureQuery = Procedure::get();
+        $todayProcedures = Procedure::whereDate('created_at', today());
+        $thisWeekProcedures = Procedure::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+
         return [
+            Stat::make('Ready to Process', Procedure::where('status', 'sign')->count())
+                ->icon('heroicon-o-clipboard-document-check')
+                ->color('warning')
+                ->description('Awaiting validation')
+                ->chart([10, 15, 12, 18, 14, 20, Procedure::where('status', 'sign')->count()]),
 
-            // PROCEDURES
-            Stat::make('Total Procedures', $procedureQuery->count())
-                ->icon('heroicon-o-document-check')
-                ->color('primary')
-                ->description('All procedures recorded'),
+            Stat::make('Validated Today', Procedure::where('status', 'valid')->whereDate('updated_at', today())->count())
+                ->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->description('Processed today'),
 
-            Stat::make('Sign Procedures', $procedureQuery->where('status', 'sign')->count())
+            Stat::make('This Week', $thisWeekProcedures->count())
+                ->icon('heroicon-o-calendar-days')
+                ->color('info')
+                ->description('Procedures this week')
+                ->chart([50, 60, 55, 70, 65, 80, $thisWeekProcedures->count()]),
+
+            Stat::make('Total Validated', Procedure::where('status', 'valid')->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
-                ->description('Procedures marked as sign'),
+                ->description('All validated claims'),
 
-            Stat::make('Pending Procedures', $procedureQuery->where('status', 'pending')->count())
-                ->icon('heroicon-o-clock')
-                ->color('warning')
-                ->description('Procedures still pending'),
+            Stat::make('Returned', Procedure::where('status', Procedure::STATUS_RETURN)->count())
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('danger')
+                ->description('Sent back for review'),
 
-            Stat::make('Invalid Procedures', $procedureQuery->where('status', 'invalid')->count())
+            Stat::make('Invalid', Procedure::where('status', 'invalid')->count())
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->description('Procedures marked invalid'),
+                ->description('Marked as invalid'),
 
-
-            Stat::make('Returned Procedures', $procedureQuery->where('status', Procedure::STATUS_RETURN)->count())
-                ->icon('heroicon-o-arrow-uturn-left')
+            Stat::make('Pending Signature', Procedure::where('status', 'pending')->count())
+                ->icon('heroicon-o-clock')
                 ->color('warning')
-                ->description('Procedures marked returned'),
-
+                ->description('Awaiting dentist'),
         ];
     }
 }

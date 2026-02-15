@@ -343,18 +343,19 @@ class SearchClaims extends Page implements HasForms, HasTable
             ])
             ->headerActions([
                 Tables\Actions\Action::make('generate_adc')
-                    ->label('Generate ADC')
+                    ->label('Print ADC')
                     ->color('success')
-                    ->icon('heroicon-o-check-badge')
+                    ->icon('heroicon-o-printer')
                     ->requiresConfirmation()
                     ->visible('claims.generate')
-                    ->modalHeading('Approve Dentist Claims')
-                    ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED before the ADC is created.')
-
-                    ->modalSubmitActionLabel('Yes, Approve Claims')
+                    ->modalHeading('Print Dentist Claims')
+                    ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED and sent to printer.')
+                    ->modalSubmitActionLabel('Yes, Print Claims')
                     ->disabled(fn() => $this->isResultHasValid)
-                    // ->visible()
-                    ->action(fn() => $this->generateClaims(Procedure::STATUS_VALID)),
+                    ->action(function () {
+                        $this->dispatch('start-printing');
+                        $this->generateClaims(Procedure::STATUS_VALID);
+                    }),
                 Tables\Actions\Action::make('generate_return')
                     ->label('Generate Return')
                     ->color('warning')
@@ -441,6 +442,8 @@ class SearchClaims extends Page implements HasForms, HasTable
 
     public function generateClaims(string $status)
     {
+        $this->dispatch('update-progress', status: 'Fetching claims...', progress: 10);
+
         $data = $this->data;
 
         if (! $this->hasSearched) {
@@ -451,6 +454,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ->send();
             return;
         }
+
+        $this->dispatch('update-progress', status: 'Processing claims data...', progress: 30);
 
         // Fetch all matching procedures
         $claims = Procedure::query()
@@ -501,6 +506,7 @@ class SearchClaims extends Page implements HasForms, HasTable
             });
 
         if ($claims->isEmpty()) {
+            $this->dispatch('close-printing');
             \Filament\Notifications\Notification::make()
                 ->title('No Data')
                 ->body('No valid procedures were found.')
@@ -508,6 +514,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ->send();
             return;
         }
+
+        $this->dispatch('update-progress', status: 'Calculating totals...', progress: 50);
         /** -----------------------------------------
          *  ADD TOTALS (RATE, EWT, NET)
          * -----------------------------------------*/
@@ -542,6 +550,8 @@ class SearchClaims extends Page implements HasForms, HasTable
         // dd($claims, $accounts, $totalClinicFee, $totalEwt, $totalNet);
 
         /** Create the SOA */
+        $this->dispatch('update-progress', status: 'Creating SOA record...', progress: 70);
+
         $soa = GeneratedSoa::create([
             'clinic_id' => $data['clinic_id'],
             'from_date' => $data['availment_from'],
@@ -557,6 +567,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                 'amount' => $procedure->clinic_service_fee
             ]);
         }
+
+        $this->dispatch('update-progress', status: 'Generating PDF...', progress: 85);
 
         // Generate PDF
         return $this->generateSOAAfterProcessing(
@@ -688,11 +700,11 @@ class SearchClaims extends Page implements HasForms, HasTable
         $originalPath = 'adc/originals/' . $originalFileName;
         Storage::disk('public')->put($originalPath, $originalPdf->Output('S'));
 
+        $this->dispatch('update-progress', status: 'Sending to printer...', progress: 95);
+
         // Print Original if printer exists
         $clinicPrinter = $clinicDetails->printer_name ?? null;
         $printerName = \App\Services\PrinterService::getPrinter($clinicPrinter);
-        //TODO: remove for tsting only
-        // Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
 
         if ($printerName) {
             $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
@@ -705,7 +717,17 @@ class SearchClaims extends Page implements HasForms, HasTable
             if ($statusCode === 0) {
                 // Printing succeeded → mark procedures as processed
                 Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
+
+                $this->dispatch('close-printing');
+
+                Notification::make()
+                    ->title('ADC Sent to Printer')
+                    ->body('Document has been queued for printing on ' . $printerName)
+                    ->success()
+                    ->send();
             } else {
+                $this->dispatch('close-printing');
+
                 Notification::make()
                     ->title('ADC Printing Failed')
                     ->body('Please try to print again')
@@ -719,6 +741,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ]);
             }
         } else {
+            $this->dispatch('close-printing');
+
             Notification::make()
                 ->title('ADC Printing Failed')
                 ->body('No available printer for ADC ID ' . $soa->id)
@@ -750,10 +774,6 @@ class SearchClaims extends Page implements HasForms, HasTable
             'file_path' => $originalPath,
             'duplicate_file_path' => $duplicatePath,
         ]);
-
-
-        // ----------------- Return duplicate PDF for download -----------------
-        return Storage::disk('public')->download($duplicatePath, $duplicateFileName);
     }
 
 

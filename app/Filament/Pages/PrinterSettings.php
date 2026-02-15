@@ -28,14 +28,25 @@ class PrinterSettings extends Page
         if ($status === 0) {
             foreach ($lines as $line) {
                 // Example line: printer EPSON_L14150_Series is idle. enabled since ...
-                if (preg_match('/printer (\S+) (is .+)/', $line, $matches)) {
+                if (preg_match('/printer (\S+) (.+)/', $line, $matches)) {
+                    $printerName = $matches[1];
+                    $statusText = $matches[2];
+                    
+                    // Check if printer is actually reachable
+                    exec('lpstat -p ' . escapeshellarg($printerName) . ' -l 2>&1', $detailLines);
+                    $isConnected = !str_contains(implode(' ', $detailLines), 'Unable to connect');
+                    
                     $output[] = [
-                        'name' => $matches[1],
-                        'status' => $matches[2],
+                        'name' => $printerName,
+                        'status' => $statusText,
+                        'connected' => $isConnected,
                     ];
                 }
             }
         }
+
+        // Sort by connected status (online first)
+        usort($output, fn($a, $b) => $b['connected'] <=> $a['connected']);
 
         return $output;
     }

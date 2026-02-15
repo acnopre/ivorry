@@ -580,6 +580,19 @@ class ViewAccount extends ViewRecord
                                     ]),
                             ]),
 
+                        // Usage History Tab
+                        Tabs\Tab::make('Usage History')
+                            ->schema([
+                                Section::make('Service Usage History')
+                                    ->schema([
+                                        ViewEntry::make('usage_history')
+                                            ->label(false)
+                                            ->view('filament.infolists.usage-history', [
+                                                'record' => $this->record,
+                                            ]),
+                                    ]),
+                            ]),
+
                     ]),
             ]);
     }

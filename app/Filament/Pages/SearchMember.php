@@ -125,7 +125,7 @@ class SearchMember extends Page
         if (!$member->account) {
             return 'No account found';
         }
-        
+
         if ($member->account->account_status !== 'active') {
             return 'Account is not active';
         }
@@ -205,7 +205,7 @@ class SearchMember extends Page
         $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
         $basicFields = ['service_id', 'quantity', 'availment_date'];
         $hasUnits = count(array_diff(array_keys($data), $basicFields)) > 0;
-        
+
         // For Fixed MBL type, always create single procedure regardless of unlimited status
         if ($account->mbl_type === 'Fixed') {
             $procedure = Procedure::create([
@@ -219,6 +219,7 @@ class SearchMember extends Page
                 'applied_fee'    => $appliedFee,
             ]);
         } elseif ($isServiceUnlimited) {
+
             if ($hasUnits) {
                 foreach ($unitInputs as $input) {
                     if (! isset($data[$input])) {
@@ -258,6 +259,17 @@ class SearchMember extends Page
                     'applied_fee'    => $appliedFee,
                 ]);
             }
+        } else {
+            $procedure = Procedure::create([
+                'clinic_id'      => $clinicId,
+                'member_id'      => $this->selectedMemberId,
+                'service_id'     => $data['service_id'],
+                'availment_date' => $data['availment_date'] ?? null,
+                'status'         => Procedure::STATUS_PENDING,
+                'quantity'       => 1,
+                'approval_code'  => $approvalCode,
+                'applied_fee'    => $appliedFee,
+            ]);
         }
 
 
@@ -414,7 +426,7 @@ class SearchMember extends Page
                         if (!$accountId) return collect();
 
                         $account = \App\Models\Account::find($accountId);
-                        
+
                         // For Fixed MBL type, show all available services from Service table
                         if ($account && $account->mbl_type === 'Fixed') {
                             return Service::all()

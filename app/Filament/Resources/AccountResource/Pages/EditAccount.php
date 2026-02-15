@@ -129,6 +129,8 @@ class EditAccount extends EditRecord
                     'endorsement_type'  => 'AMENDMENT',
                     'endorsement_status' => 'PENDING',
                     'coverage_period_type' => $data['coverage_period_type'] ?? null,
+                    'mbl_type'          => $data['mbl_type'] ?? null,
+                    'mbl_amount'        => $data['mbl_amount'] ?? null,
                     'remarks'           => $data['remarks'] ?? null,
                     'requested_by'      => auth()->id(),
                 ]);

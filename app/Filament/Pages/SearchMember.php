@@ -164,18 +164,31 @@ class SearchMember extends Page
         $data = $this->getProcedureForm()->getState();
         $clinicId = Auth::user()->clinic->id ?? Clinic::where('clinic_name', $data['clinic_search'])->first()->id;
         $member = Member::where('id', $this->selectedMemberId)->first();
-        $isServiceUnlimited = $member->account->services->find($data['service_id'])->pivot->is_unlimited;
-        $serviceQuantity = $member->account->services->find($data['service_id'])->pivot->quantity;
-
+        $account = $member->account;
+        $isServiceUnlimited = $account->services->find($data['service_id'])->pivot->is_unlimited;
+        $serviceQuantity = $account->services->find($data['service_id'])->pivot->quantity;
 
         if (!$this->validateBusinessRules($data, $clinicId)) {
             return;
         }
 
-        $approvalCode = strtoupper(Str::random(8));
         $appliedFee = ClinicService::where('clinic_id', $clinicId)
             ->where('service_id', $data['service_id'])
             ->value('fee') ?? 0;
+
+        // Check MBL balance for fixed type
+        if ($account->mbl_type === 'Fixed') {
+            if ($account->mbl_balance < $appliedFee) {
+                Notification::make()
+                    ->title('Insufficient MBL Balance')
+                    ->body("Service fee (₱" . number_format($appliedFee, 2) . ") exceeds MBL balance (₱" . number_format($account->mbl_balance, 2) . ").")
+                    ->danger()
+                    ->send();
+                return;
+            }
+        }
+
+        $approvalCode = strtoupper(Str::random(8));
 
         // Possible unit inputs
         $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];

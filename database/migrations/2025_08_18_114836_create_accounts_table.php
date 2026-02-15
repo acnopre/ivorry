@@ -35,6 +35,10 @@ return new class extends Migration
             // account activation
             $table->enum('account_status', ['inactive', 'active', 'expired'])
                 ->default('inactive');
+            $table->enum('mbl_type', ['Procedural', 'Fixed'])
+                ->default('Fixed');
+            $table->decimal('mbl_amount', 15, 2)->nullable();
+            $table->decimal('mbl_balance', 15, 2)->nullable();
             $table->longText('remarks')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

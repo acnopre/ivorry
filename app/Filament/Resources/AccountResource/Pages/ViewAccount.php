@@ -180,7 +180,7 @@ class ViewAccount extends ViewRecord
                         ->latest()
                         ->first();
 
-                    $record->update([
+                    $updateData = [
                         'company_name' => $amendment->company_name,
                         'policy_code' => $amendment->policy_code,
                         'hip' => $amendment->hip,
@@ -189,7 +189,20 @@ class ViewAccount extends ViewRecord
                         'expiration_date' => $amendment->expiration_date,
                         'endorsement_type' => 'AMENDED',
                         'endorsement_status' => 'APPROVED',
-                    ]);
+                    ];
+
+                    // Update MBL if changed
+                    if ($amendment->mbl_type) {
+                        $updateData['mbl_type'] = $amendment->mbl_type;
+                    }
+                    if ($amendment->mbl_amount) {
+                        $updateData['mbl_amount'] = $amendment->mbl_amount;
+                        if ($amendment->mbl_type === 'Fixed') {
+                            $updateData['mbl_balance'] = $amendment->mbl_amount;
+                        }
+                    }
+
+                    $record->update($updateData);
 
                     $accountService = AccountService::where('account_id', $record->id);
                     if ($accountService) {
@@ -485,6 +498,26 @@ class ViewAccount extends ViewRecord
                                                         'info' => fn($state): bool => $state === 'INDIVIDUAL',
                                                         'warning' => fn($state): bool => $state === 'SHARED',
                                                     ]),
+
+                                                TextEntry::make('mbl_type')
+                                                    ->label('MBL Type')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => ucfirst($state))
+                                                    ->colors([
+                                                        'info' => fn($state): bool => strtolower($state) === 'procedural',
+                                                        'success' => fn($state): bool => strtolower($state) === 'fixed',
+                                                    ]),
+
+                                                TextEntry::make('mbl_amount')
+                                                    ->label('MBL Amount')
+                                                    ->money('PHP')
+                                                    ->visible(fn($record) => $record->mbl_type === 'Fixed'),
+
+                                                TextEntry::make('mbl_balance')
+                                                    ->label('MBL Balance')
+                                                    ->money('PHP')
+                                                    ->visible(fn($record) => $record->mbl_type === 'Fixed')
+                                                    ->color(fn($state, $record) => $state < ($record->mbl_amount * 0.2) ? 'danger' : 'success'),
                                             ]),
                                         Grid::make(3)
                                             ->schema([

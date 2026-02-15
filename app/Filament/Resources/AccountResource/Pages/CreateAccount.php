@@ -27,6 +27,11 @@ class CreateAccount extends CreateRecord
         // Store members temporarily
         $this->membersData = $data['members'] ?? [];
 
+        // Set mbl_balance = mbl_amount for fixed type
+        if (isset($data['mbl_type']) && $data['mbl_type'] === 'Fixed' && isset($data['mbl_amount'])) {
+            $data['mbl_balance'] = $data['mbl_amount'];
+        }
+
         // Remove non-account columns
         unset($data['services'], $data['members']);
 

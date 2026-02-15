@@ -10,6 +10,7 @@ use App\Models\AccountService;
 use App\Models\EndorsementType;
 use App\Models\Hip;
 use App\Models\ImportLog;
+use App\Models\MblType;
 use App\Models\Role;
 use App\Models\Service;
 use Carbon\Carbon;
@@ -119,7 +120,24 @@ class AccountResource extends Resource
                                 })
                                 ->required()
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
+
+                            Select::make('mbl_type')
+                                ->label('MBL Type')
+                                ->default('Procedural')
+                                ->options(MblType::pluck('name', 'name'))
+                                ->reactive()
+                                ->required()
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
+
+                            TextInput::make('mbl_amount')
+                                ->label('MBL Amount (₱)')
+                                ->numeric()
+                                ->prefix('₱')
+                                ->visible(fn(Forms\Get $get) => $get('mbl_type') === 'Fixed')
+                                ->required(fn(Forms\Get $get) => $get('mbl_type') === 'Fixed')
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
                         ])->columns(2),
+
 
 
                     Section::make('Members')

@@ -111,7 +111,7 @@ class SignProcedurePage extends Page
         // --- 4. Finalize Procedure ---
         $this->record->update(['status' => 'sign']);
 
-        // 🧮 Deduct service quantity from account_service pivot
+        // 🧮 Deduct from account based on MBL type
         $member = Member::find($this->record->member_id);
 
         if ($member && $member->account) {
@@ -124,11 +124,18 @@ class SignProcedurePage extends Page
                 ?->pivot;
 
             if ($pivot && !$pivot->is_unlimited) {
-                $newQuantity = max(0, $pivot->quantity - 1);
-
-                $account->services()->updateExistingPivot($serviceId, [
-                    'quantity' => $newQuantity,
-                ]);
+                // Check MBL type
+                if ($account->mbl_type === 'Fixed') {
+                    // Deduct from MBL balance
+                    $newBalance = max(0, $account->mbl_balance - $this->record->applied_fee);
+                    $account->update(['mbl_balance' => $newBalance]);
+                } else {
+                    // Deduct from quantity (procedural)
+                    $newQuantity = max(0, $pivot->quantity - 1);
+                    $account->services()->updateExistingPivot($serviceId, [
+                        'quantity' => $newQuantity,
+                    ]);
+                }
             }
         }
 

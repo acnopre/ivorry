@@ -23,6 +23,9 @@ class Account extends Model
         'endorsement_status',
         'plan_type',
         'coverage_period_type',
+        'mbl_type',
+        'mbl_amount',
+        'mbl_balance',
         'remarks',
         'created_by'
     ];

@@ -36,7 +36,7 @@ return new class extends Migration
             $table->enum('account_status', ['inactive', 'active', 'expired'])
                 ->default('inactive');
             $table->enum('mbl_type', ['Procedural', 'Fixed'])
-                ->default('Fixed');
+                ->default('Procedural');
             $table->decimal('mbl_amount', 15, 2)->nullable();
             $table->decimal('mbl_balance', 15, 2)->nullable();
             $table->longText('remarks')->nullable();

@@ -39,15 +39,6 @@ class AccreditationStatsWidget extends BaseWidget
                 ->color('warning')
                 ->description('Under silent status'),
 
-            Stat::make('Missing PTR', $clinicQuery->clone()->whereNull('ptr_no')->count())
-                ->icon('heroicon-o-document-minus')
-                ->color('danger')
-                ->description('Requires PTR information'),
-
-            Stat::make('Missing TIN', $clinicQuery->clone()->whereNull('tax_identification_no')->count())
-                ->icon('heroicon-o-identification')
-                ->color('danger')
-                ->description('Requires TIN'),
 
             Stat::make('Total Dentists', Dentist::count())
                 ->icon('heroicon-o-user-group')
@@ -56,7 +47,8 @@ class AccreditationStatsWidget extends BaseWidget
         ];
 
         if ($pendingClinics->count() > 0) {
-            array_unshift($stats, 
+            array_unshift(
+                $stats,
                 Stat::make('Pending Approval', $pendingClinics->count())
                     ->icon('heroicon-o-clock')
                     ->color('warning')

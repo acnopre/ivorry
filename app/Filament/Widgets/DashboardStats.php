@@ -28,10 +28,6 @@ class DashboardStats extends BaseWidget
                 ->icon('heroicon-o-banknotes')
                 ->color('info'),
 
-            Stat::make('Total MBL Balance', '₱' . number_format(Account::where('mbl_type', 'Fixed')->sum('mbl_balance'), 2))
-                ->description('Combined fixed MBL balance')
-                ->icon('heroicon-o-currency-dollar')
-                ->color('warning'),
 
             Stat::make('Members', Member::count())
                 ->description('Total enrolled members')

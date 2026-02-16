@@ -115,10 +115,17 @@ class RolesAndPermissionsSeeder extends Seeder
                     'import-logs.view',
                     'import-logs.details.view',
                 ],
-                'user' => [
-                    'name' => 'Account Manager',
-                    'email' => 'account@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'Account Manager',
+                        'email' => 'account@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory Account Manager',
+                        'email' => 'ivory.account@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
 
@@ -136,10 +143,17 @@ class RolesAndPermissionsSeeder extends Seeder
                     'import-logs.view',
                     'import-logs.details.view',
                 ],
-                'user' => [
-                    'name' => 'Accreditation Officer',
-                    'email' => 'accreditation@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'Accreditation Officer',
+                        'email' => 'accreditation@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory Accreditation',
+                        'email' => 'ivory.accreditation@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
 
@@ -157,10 +171,17 @@ class RolesAndPermissionsSeeder extends Seeder
                     'generated_adc.request',
                     'generated_adc.print_original'
                 ],
-                'user' => [
-                    'name' => 'Claims Processor',
-                    'email' => 'claims@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'Claims Processor',
+                        'email' => 'claims@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory Claims',
+                        'email' => 'ivory.claims@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
 
@@ -179,10 +200,17 @@ class RolesAndPermissionsSeeder extends Seeder
                     'account.view',
                     'member.search'
                 ],
-                'user' => [
-                    'name' => 'Customer Service Rep',
-                    'email' => 'csr@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'Customer Service Rep',
+                        'email' => 'csr@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory CSR',
+                        'email' => 'ivory.csr@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
 
@@ -197,10 +225,17 @@ class RolesAndPermissionsSeeder extends Seeder
                     'clinic.profile',
 
                 ],
-                'user' => [
-                    'name' => 'John Doe Dentist',
-                    'email' => 'dentist@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'John Doe Dentist',
+                        'email' => 'dentist@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory Dentist',
+                        'email' => 'ivory.dentist@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
 
@@ -211,28 +246,49 @@ class RolesAndPermissionsSeeder extends Seeder
                     'member.myaccount',
 
                 ],
-                'user' => [
-                    'name' => 'Juliana Saw',
-                    'email' => 'member@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'Juliana Saw',
+                        'email' => 'member@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory Member',
+                        'email' => 'ivory.member@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
 
             'Middle Management' => [
                 'permissions' => [], // will inherit all permissions
-                'user' => [
-                    'name' => 'Middle Manager',
-                    'email' => 'middle@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'Middle Manager',
+                        'email' => 'middle@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory Middle Manager',
+                        'email' => 'ivory.middle@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
 
             'Upper Management' => [
                 'permissions' => [], // will inherit all permissions
-                'user' => [
-                    'name' => 'Upper Manager',
-                    'email' => 'upper@example.com',
-                    'password' => 'password',
+                'users' => [
+                    [
+                        'name' => 'Upper Manager',
+                        'email' => 'upper@example.com',
+                        'password' => 'password',
+                    ],
+                    [
+                        'name' => 'Ivory Upper Manager',
+                        'email' => 'ivory.upper@example.com',
+                        'password' => 'password',
+                    ],
                 ],
             ],
         ];
@@ -245,17 +301,19 @@ class RolesAndPermissionsSeeder extends Seeder
                 $role->syncPermissions(Permission::whereIn('name', $roleData['permissions'])->get());
             }
 
-            $user = User::firstOrCreate(
-                ['email' => $roleData['user']['email']],
-                [
-                    'name' => $roleData['user']['name'],
-                    'password' => Hash::make($roleData['user']['password']),
-                ]
-            );
+            foreach ($roleData['users'] as $userData) {
+                $user = User::firstOrCreate(
+                    ['email' => $userData['email']],
+                    [
+                        'name' => $userData['name'],
+                        'password' => Hash::make($userData['password']),
+                    ]
+                );
 
-            $user->assignRole($role);
+                $user->assignRole($role);
 
-            $this->command->info("✅ {$roleName} seeded ({$roleData['user']['email']} / {$roleData['user']['password']})");
+                $this->command->info("✅ {$roleName} seeded ({$userData['email']} / {$userData['password']})");
+            }
         }
 
         // Now, Upper Management inherits ALL permissions

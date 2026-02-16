@@ -54,10 +54,6 @@ class AccountStatsWidget extends BaseWidget
                 ->color('info')
                 ->description('Using fixed MBL'),
 
-            Stat::make('Total MBL Balance', '₱' . number_format($baseQuery->clone()->where('mbl_type', 'Fixed')->sum('mbl_balance'), 2))
-                ->icon('heroicon-o-currency-dollar')
-                ->color('primary')
-                ->description('Combined fixed MBL balance'),
         ];
     }
 

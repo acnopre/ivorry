@@ -26,10 +26,9 @@ class CreateClinics extends CreateRecord
 
         // Remove pivot data before saving
         unset($data['services']);
-
-        // ✅ Find the owner dentist (where is_owner = true)
+        // Find the owner dentist (where is_owner = true)
         $ownerDentist = collect($data['dentists'] ?? [])->firstWhere('is_owner', true);
-        // ✅ Check if clinic email is provided and not duplicated
+        //  Check if clinic email is provided and not duplicated
         if (!empty($data['clinic_email'])) {
             if (User::where('email', $data['clinic_email'])->exists()) {
                 Notification::make()
@@ -41,7 +40,7 @@ class CreateClinics extends CreateRecord
             }
         }
 
-        // ✅ If owner dentist exists, create a linked user first
+        //  If owner dentist exists, create a linked user first
         if ($ownerDentist) {
             $plainPassword = Str::random(12);
 
@@ -60,7 +59,7 @@ class CreateClinics extends CreateRecord
                 $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
             }
 
-            // ✅ Assign user_id before creating the clinic
+            //  Assign user_id before creating the clinic
             $data['user_id'] = $user->id;
         }
 

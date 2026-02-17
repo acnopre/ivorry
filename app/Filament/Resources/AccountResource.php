@@ -299,7 +299,6 @@ class AccountResource extends Resource
                         ])->columns(3),
 
                     Section::make('Basic Dental Services')
-                        ->visible(fn(Forms\Get $get) => $get('mbl_type') !== 'Fixed')
                         ->schema(function () use ($record, $isAmendment) {
                             $services = Service::where('type', 'basic')->get();
 
@@ -397,7 +396,6 @@ class AccountResource extends Resource
                         }),
 
                     Section::make('Plan Enhancements')
-                        ->visible(fn(Forms\Get $get) => $get('mbl_type') !== 'Fixed')
                         ->schema(function () use ($record, $isAmendment) {
                             $enhancements = Service::where('type', 'enhancement')->get();
 
@@ -483,7 +481,6 @@ class AccountResource extends Resource
                         }),
 
                     Section::make('Special Procedure')
-                        ->visible(fn(Forms\Get $get) => $get('mbl_type') !== 'Fixed')
                         ->schema(function () use ($record, $isAmendment) {
                             $specials = Service::where('type', 'special')->get();
 

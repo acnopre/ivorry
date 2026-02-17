@@ -120,9 +120,22 @@ class SignProcedurePage extends Page
 
             // Check MBL type
             if ($account->mbl_type === 'Fixed') {
-                // Deduct from MBL balance (ignore unlimited)
+                // Deduct from MBL balance and quantity
                 $newBalance = max(0, $account->mbl_balance - $this->record->applied_fee);
                 $account->update(['mbl_balance' => $newBalance]);
+                
+                // Also deduct quantity for Fixed type
+                $pivot = $account->services()
+                    ->where('service_id', $serviceId)
+                    ->first()
+                    ?->pivot;
+
+                if ($pivot && !$pivot->is_unlimited) {
+                    $newQuantity = max(0, $pivot->quantity - 1);
+                    $account->services()->updateExistingPivot($serviceId, [
+                        'quantity' => $newQuantity,
+                    ]);
+                }
             } else {
                 // Procedural: check unlimited and deduct quantity
                 $pivot = $account->services()

@@ -214,6 +214,7 @@ class ViewAccount extends ViewRecord
                             'account_id' => $record->id,
                             'service_id' => $srv['service_id'],
                             'quantity' => $srv['quantity'],
+                            'default_quantity' => $srv['default_quantity'],
                             'is_unlimited' => $srv['is_unlimited'],
                             'remarks' => $srv['remarks'],
                         ]);

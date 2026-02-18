@@ -425,16 +425,6 @@ class SearchMember extends Page
                         $accountId = $this->members->first()->account_id ?? null;
                         if (!$accountId) return collect();
 
-                        $account = \App\Models\Account::find($accountId);
-
-                        // For Fixed MBL type, show all available services from Service table
-                        if ($account && $account->mbl_type === 'Fixed') {
-                            return Service::all()
-                                ->groupBy('type')
-                                ->map(fn($group) => $group->pluck('name', 'id'))
-                                ->toArray();
-                        }
-
                         // For Procedural type, filter by quantity/unlimited from AccountService
                         return AccountService::where('account_id', $accountId)
                             ->where(function ($query) {

@@ -26,7 +26,7 @@ class SendGeneratedPassword extends Notification
         $token = Password::createToken($notifiable);
 
         return (new MailMessage)
-            ->subject('Your New Member Account')
+            ->subject('Your New Account')
             ->markdown('emails.member.generated-password', [
                 'name'     => $notifiable->name,
                 'password' => $this->password,

@@ -26,19 +26,14 @@
                         </div>
 
                         <div class="flex flex-col items-end gap-2">
-                            <x-filament::button 
-                                color="primary" 
-                                wire:click="openProcedureModal({{ $member->id }})" 
-                                icon="heroicon-o-document-plus" 
-                                :disabled="!$this->canAddProcedure($member)"
-                            >
+                            <x-filament::button color="primary" wire:click="openProcedureModal({{ $member->id }})" icon="heroicon-o-document-plus" :disabled="!$this->canAddProcedure($member)">
                                 Add Procedure
                             </x-filament::button>
                             @if(!$this->canAddProcedure($member))
-                                <div class="flex items-center gap-1 text-xs text-danger-600 dark:text-danger-400">
-                                    <x-heroicon-o-exclamation-circle class="w-4 h-4" />
-                                    <span>{{ $this->getCanAddProcedureReason($member) }}</span>
-                                </div>
+                            <div class="flex items-center gap-1 text-xs text-danger-600 dark:text-danger-400">
+                                <x-heroicon-o-exclamation-circle class="w-4 h-4" />
+                                <span>{{ $this->getCanAddProcedureReason($member) }}</span>
+                            </div>
                             @endif
                         </div>
                     </div>
@@ -152,36 +147,29 @@
                                 <span>Covered Services</span>
                             </h4>
 
-                            @if($member->account->mbl_type === 'Fixed')
-                            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-                                <div class="flex items-start gap-3">
-                                    <x-heroicon-o-information-circle class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                                    <div class="text-sm text-blue-800 dark:text-blue-200">
-                                        <p class="font-semibold mb-1">Fixed MBL Account</p>
-                                        <p>This account uses a Fixed MBL (Medical Benefit Limit) of <span class="font-bold">₱{{ number_format($member->account->mbl_amount, 2) }}</span>. Current balance: <span class="font-bold">₱{{ number_format($member->account->mbl_balance, 2) }}</span>. All services are available based on remaining balance.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            @elseif($member->account->services->isNotEmpty())
+                            @php
+                            $filteredServices = $member->account->services->filter(function($service) {
+                            return $service->pivot->is_unlimited || ($service->pivot->quantity > 0);
+                            });
+                            @endphp
+                            @if($filteredServices->isNotEmpty())
                             <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 fi-ta-has-shadow">
                                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm fi-ta-table">
                                     <thead class="bg-gray-50 dark:bg-gray-700 fi-ta-header">
                                         <tr>
                                             <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Service Name</th>
                                             <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Type</th>
-                                            @if($member->account->mbl_type !== 'Fixed')
                                             <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Quantity</th>
                                             <th class="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300">Unlimited</th>
-                                            @endif
                                             <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Remarks</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-600">
-                                        @foreach($member->account->services as $service)
+
+                                        @foreach($filteredServices as $service)
                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 fi-ta-row">
                                             <td class="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">{{ $service->name }}</td>
                                             <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ ucfirst($service->type) }}</td>
-                                            @if($member->account->mbl_type !== 'Fixed')
                                             <td class="px-4 py-3 font-mono"> {{ $service->pivot->quantity ?? '—' }}</td>
                                             <td class="px-4 py-3 text-center">
                                                 @if($service->pivot->is_unlimited)
@@ -190,7 +178,6 @@
                                                 No
                                                 @endif
                                             </td>
-                                            @endif
                                             <td class="px-4 py-3 text-gray-500 dark:text-gray-400 italic">{{ $service->pivot->remarks ?? '-' }}</td>
                                         </tr>
                                         @endforeach
@@ -200,11 +187,7 @@
                             @else
                             <p class="text-gray-500 italic p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
                                 <x-heroicon-o-information-circle class="w-4 h-4 inline mr-1 text-gray-400" />
-                                @if($member->account->mbl_type === 'Fixed')
-                                All services are available. Service availability depends on MBL balance.
-                                @else
                                 No services assigned to this account.
-                                @endif
                             </p>
                             @endif
                         </div>
@@ -280,7 +263,12 @@
                         </div>
                     </div>
                     @else
-                    <p class="text-gray-500 text-sm mt-4 italic">No procedures logged for this member yet.</p>
+                    <div class="pt-4 mt-6 border-t dark:border-gray-700">
+                        <p class="text-gray-500 italic p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                            <x-heroicon-o-information-circle class="w-4 h-4 inline mr-1 text-gray-400" />
+                            No procedures logged for this member yet.
+                        </p>
+                    </div>
                     @endif
                 </div>
                 @endforeach

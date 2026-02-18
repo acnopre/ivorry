@@ -15,84 +15,72 @@ class CreateClinics extends CreateRecord
 {
     protected static string $resource = ClinicsResource::class;
     protected array $servicesData = [];
+    protected ?array $ownerDentistData = null;
 
     /**
      * Prepare data before creating the clinic record.
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Store services (basic + enhancement) temporarily
+        // Store services temporarily
         $this->servicesData = $data['services'] ?? [];
-
-        // Remove pivot data before saving
         unset($data['services']);
-        // Find the owner dentist (where is_owner = true)
-        $ownerDentist = collect($data['dentists'] ?? [])->firstWhere('is_owner', true);
-        //  Check if clinic email is provided and not duplicated
+
+        // Check if clinic email is already registered
         if (!empty($data['clinic_email'])) {
             if (User::where('email', $data['clinic_email'])->exists()) {
                 Notification::make()
                     ->title('This email is already registered.')
                     ->danger()
                     ->send();
-
                 throw new Halt();
             }
-        }
-
-        //  If owner dentist exists, create a linked user first
-        if ($ownerDentist) {
-            $plainPassword = Str::random(12);
-
-            $user = User::create([
-                'name' => $ownerDentist['first_name'] . ' ' . $ownerDentist['last_name'],
-                'email' => $data['clinic_email'] ?? null,
-                'password' => Hash::make($plainPassword),
-                'must_change_password' => true,
-            ]);
-
-            $user->assignRole('Dentist');
-
-            // Send notification only if email exists
-            if (!empty($data['clinic_email'])) {
-                $token = Password::broker()->createToken($user);
-                $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
-            }
-
-            //  Assign user_id before creating the clinic
-            $data['user_id'] = $user->id;
         }
 
         return $data;
     }
 
     /**
-     * Handle services pivot table after clinic creation.
+     * Handle services and owner dentist user creation after clinic creation.
      */
     protected function afterCreate(): void
     {
-        // Merge basic + enhancement arrays safely
-        $mergedServices = ($this->servicesData['basic'] ?? []) + ($this->servicesData['enhancement'] ?? []);
+        // Handle owner dentist user creation
+        $ownerDentist = $this->record->dentists()->where('is_owner', true)->first();
+        
+        if ($ownerDentist && !$this->record->user_id) {
+            $plainPassword = Str::random(12);
 
-        if (empty($mergedServices)) {
-            return;
+            $user = User::create([
+                'name' => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
+                'email' => $this->record->clinic_email ?? null,
+                'password' => Hash::make($plainPassword),
+                'must_change_password' => true,
+            ]);
+
+            $user->assignRole('Dentist');
+
+            if (!empty($this->record->clinic_email)) {
+                $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+            }
+
+            $this->record->update(['user_id' => $user->id]);
         }
 
-        $filtered = collect($mergedServices)
-            ->filter(fn($fee, $serviceId) => $serviceId)
-            ->mapWithKeys(fn($fee, $serviceId) => [
-                $serviceId => ['fee' => $fee],
-            ])
-            ->toArray();
+        // Handle services
+        $mergedServices = ($this->servicesData['basic'] ?? []) + ($this->servicesData['enhancement'] ?? []);
 
-        if (!empty($filtered)) {
-            $this->record->services()->sync($filtered);
-        } else {
-            Notification::make()
-                ->title('No valid services found')
-                ->body('The selected services were not found in the services table.')
-                ->danger()
-                ->send();
+        if (!empty($mergedServices)) {
+            $filtered = collect($mergedServices)
+                ->filter(fn($fee, $serviceId) => $serviceId)
+                ->mapWithKeys(fn($fee, $serviceId) => [
+                    $serviceId => ['fee' => $fee],
+                ])
+                ->toArray();
+
+            if (!empty($filtered)) {
+                $this->record->services()->sync($filtered);
+            }
         }
     }
 

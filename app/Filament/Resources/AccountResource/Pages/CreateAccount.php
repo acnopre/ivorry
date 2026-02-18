@@ -57,7 +57,6 @@ class CreateAccount extends CreateRecord
         $special = $this->servicesData['special'] ?? [];
 
         $mergedServices = $basic + $enhancement + $special;
-
         if (empty($mergedServices)) {
             return;
         }

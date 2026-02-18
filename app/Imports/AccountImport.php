@@ -60,6 +60,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                         'expiration_date' => $this->transformDate($row['expiration_date']),
                         'plan_type' => $row['plan_type'],
                         'coverage_period_type' => $row['coverage_type'],
+                        'account_status' => config('app.debug') ? 'active' : ($row['account_status'] ?? null),
                         'created_by' => $this->userId,
                     ]
                 );

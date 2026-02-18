@@ -117,6 +117,16 @@ class EditAccount extends EditRecord
 
             DB::transaction(function () use ($record, $data) {
 
+                // Soft delete any existing pending amendments and their services
+                $existingAmendments = AccountAmendment::where('account_id', $record->id)
+                    ->where('endorsement_status', 'PENDING')
+                    ->get();
+
+                foreach ($existingAmendments as $amendment) {
+                    $amendment->services()->delete();
+                    $amendment->delete();
+                }
+
                 // Create Amendment Header (Snapshot)
                 $amendment = AccountAmendment::create([
                     'account_id'        => $record->id,
@@ -143,16 +153,21 @@ class EditAccount extends EditRecord
 
                 // Save Amendment Services
                 $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
-                foreach (['basic', 'enhancement'] as $type) {
+                foreach (['basic', 'enhancement', 'special'] as $type) {
                     if (empty($servicesByType[$type])) continue;
 
                     foreach ($servicesByType[$type] as $serviceId => $serviceData) {
+                        $defaultQty = $serviceData['default_quantity'] ?? null;
+                        if (empty($defaultQty)) {
+                            $defaultQty = $serviceData['quantity'] ?? null;
+                        }
+
                         $amendment->services()->create([
                             'service_id'       => $serviceId,
                             'quantity'         => $serviceData['quantity'] ?? null,
                             'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
                             'remarks'          => $serviceData['remarks'] ?? null,
-                            'default_quantity' => $serviceData['default_quantity'] ?? $serviceData['quantity'] ?? null,
+                            'default_quantity' => $defaultQty,
                         ]);
                     }
                 }

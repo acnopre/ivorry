@@ -13,8 +13,8 @@ class AccountService extends Pivot
     protected $fillable = [
         'account_id',
         'service_id',
-        'default_quantity',
         'quantity',
+        'default_quantity',
         'is_unlimited',
         'remarks',
     ];

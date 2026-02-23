@@ -231,11 +231,11 @@ class RolesAndPermissionsSeeder extends Seeder
                         'email' => 'dentist@example.com',
                         'password' => 'password',
                     ],
-                    [
-                        'name' => 'Ivory Dentist',
-                        'email' => 'ivory.dentist@example.com',
-                        'password' => 'password',
-                    ],
+                    // [
+                    //     'name' => 'Ivory Dentist',
+                    //     'email' => 'ivory.dentist@example.com',
+                    //     'password' => 'password',
+                    // ],
                 ],
             ],
 

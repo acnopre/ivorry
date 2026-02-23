@@ -34,7 +34,7 @@ class DentistSeeder extends Seeder
 
             $ownerUser = User::create([
                 'name'     => $fullName,
-                'email'    => 'dentist' . $c . '@example.com',
+                'email'    => 'ivory.dentist' . $c . '@example.com',
                 'password' => Hash::make('password'),
             ]);
 

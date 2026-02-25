@@ -46,16 +46,8 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
             $this->log->increment('total_rows');
 
-            // Validate: if coverage_type == MEMBER, effective_date and expiration_date shall be empty
-            if (strtoupper($row['coverage_type']) === 'MEMBER' && (!empty($row['effective_date']) || !empty($row['expiration_date']))) {
-                ImportLogItem::create([
-                    'import_log_id' => $this->log->id,
-                    'row_number' => $index + 2,
-                    'raw_data' => json_encode($row),
-                    'status' => 'error',
-                    'message' => 'Coverage type MEMBER cannot have effective_date or expiration_date',
-                ]);
-                $this->log->increment('error_rows');
+            if ($error = $this->validateAccountRow($row)) {
+                $this->logValidationError($index, $row, $error);
                 continue;
             }
 
@@ -124,6 +116,43 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         $this->log->update([
             'status' => $this->log->error_rows > 0 ? 'partial' : 'completed',
         ]);
+    }
+
+    private function validateAccountRow(array $row): ?string
+    {
+        if (empty($row['company_name']) || empty($row['policy_code']) || empty($row['hip']) || empty($row['plan_type']) || empty($row['coverage_type'])) {
+            return 'Required fields: company_name, policy_code, hip, plan_type, coverage_type';
+        }
+
+        if (!in_array(strtoupper($row['plan_type']), ['INDIVIDUAL', 'SHARED'])) {
+            return 'Invalid plan_type. Must be INDIVIDUAL or SHARED';
+        }
+
+        if (!in_array(strtoupper($row['coverage_type']), ['ACCOUNT', 'MEMBER'])) {
+            return 'Invalid coverage_type. Must be ACCOUNT or MEMBER';
+        }
+
+        if (strtoupper($row['coverage_type']) === 'MEMBER' && (!empty($row['effective_date']) || !empty($row['expiration_date']))) {
+            return 'Coverage type MEMBER cannot have effective_date or expiration_date';
+        }
+
+        if (strtoupper($row['coverage_type']) === 'ACCOUNT' && (empty($row['effective_date']) || empty($row['expiration_date']))) {
+            return 'Coverage type ACCOUNT requires effective_date and expiration_date';
+        }
+
+        return null;
+    }
+
+    private function logValidationError(int $index, array $row, string $message): void
+    {
+        ImportLogItem::create([
+            'import_log_id' => $this->log->id,
+            'row_number' => $index + 2,
+            'raw_data' => json_encode($row),
+            'status' => 'error',
+            'message' => $message,
+        ]);
+        $this->log->increment('error_rows');
     }
 
     private function sanitizeErrorMessage(\Throwable $e): string

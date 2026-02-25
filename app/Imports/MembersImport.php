@@ -45,30 +45,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return null;
         }
 
-        // Validate: status must have value
-        if (empty($row['status'])) {
-            $this->logError($row, 'Status is required');
+        if ($error = $this->validateRow($row, $account)) {
+            $this->logError($row, $error);
             return null;
-        }
-
-        // Validate: if account coverage_type == MEMBER, effective_date and expiration_date need value
-        if (strtoupper($account->coverage_period_type) === 'MEMBER') {
-            if (empty($row['effective_date']) || empty($row['expiration_date'])) {
-                $this->logError($row, 'Effective date and expiration date are required when account coverage type is MEMBER');
-                return null;
-            }
-        }
-
-        // Validate: if account plan_type == SHARED, only 1 PRINCIPAL allowed
-        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
-            $existingPrincipal = Member::where('account_id', $account->id)
-                ->where('member_type', 'PRINCIPAL')
-                ->exists();
-            
-            if ($existingPrincipal) {
-                $this->logError($row, 'Account with SHARED plan type can only have 1 PRINCIPAL member');
-                return null;
-            }
         }
 
         DB::beginTransaction();
@@ -133,6 +112,52 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             $this->logError($row, $this->sanitizeErrorMessage($e));
             return null;
         }
+    }
+
+    private function validateRow(array $row, Account $account): ?string
+    {
+        if (empty($row['first_name']) || empty($row['last_name']) || empty($row['member_type']) || empty($row['card_number']) || empty($row['birthdate']) || empty($row['gender'])) {
+            return 'Required fields: first_name, last_name, member_type, card_number, birthdate, gender';
+        }
+
+        if (!in_array(strtoupper($row['member_type']), ['PRINCIPAL', 'DEPENDENT'])) {
+            return 'Invalid member_type. Must be PRINCIPAL or DEPENDENT';
+        }
+
+        if (empty($row['status']) || !in_array(strtoupper($row['status']), ['ACTIVE', 'INACTIVE'])) {
+            return 'Invalid status. Must be ACTIVE or INACTIVE';
+        }
+
+        if (!empty($row['email']) && !filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
+            return 'Invalid email format';
+        }
+
+        $birthdate = is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate']) : new \DateTime($row['birthdate']);
+        if ($birthdate > new \DateTime()) {
+            return 'Birthdate cannot be in the future';
+        }
+
+        if ($birthdate->diff(new \DateTime())->y > 120) {
+            return 'Invalid age. Member age exceeds 120 years';
+        }
+
+        if (Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->where('first_name', '!=', $row['first_name'])->where('last_name', '!=', $row['last_name'])->exists()) {
+            return 'Card number already exists for another member in this account';
+        }
+
+        if (strtoupper($account->coverage_period_type) === 'MEMBER' && (empty($row['effective_date']) || empty($row['expiration_date']))) {
+            return 'Effective date and expiration date are required when account coverage type is MEMBER';
+        }
+
+        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL' && Member::where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
+            return 'Account with SHARED plan type can only have 1 PRINCIPAL member';
+        }
+
+        if (strtoupper($row['member_type']) === 'DEPENDENT' && !Member::where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
+            return 'Cannot add DEPENDENT member without a PRINCIPAL member in the account';
+        }
+
+        return null;
     }
 
     private function sanitizeErrorMessage(\Exception $e): string

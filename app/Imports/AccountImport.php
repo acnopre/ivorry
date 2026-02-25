@@ -46,6 +46,19 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
             $this->log->increment('total_rows');
 
+            // Validate: if coverage_type == MEMBER, effective_date and expiration_date shall be empty
+            if (strtoupper($row['coverage_type']) === 'MEMBER' && (!empty($row['effective_date']) || !empty($row['expiration_date']))) {
+                ImportLogItem::create([
+                    'import_log_id' => $this->log->id,
+                    'row_number' => $index + 2,
+                    'raw_data' => json_encode($row),
+                    'status' => 'error',
+                    'message' => 'Coverage type MEMBER cannot have effective_date or expiration_date',
+                ]);
+                $this->log->increment('error_rows');
+                continue;
+            }
+
             DB::beginTransaction();
             try {
                 $account = Account::updateOrCreate(

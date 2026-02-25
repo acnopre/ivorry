@@ -11,10 +11,6 @@ class CSRStatsWidget extends BaseWidget
     protected function getStats(): array
     {
         $todayProcedures = Procedure::whereDate('created_at', today());
-        $lowBalanceAccounts = Account::where('mbl_type', 'Fixed')
-            ->whereRaw('mbl_balance < (mbl_amount * 0.2)')
-            ->where('account_status', 'active')
-            ->count();
 
         $stats = [
             Stat::make('Active Accounts', Account::where('account_status', 'active')->count())
@@ -50,14 +46,6 @@ class CSRStatsWidget extends BaseWidget
                 ->description('Awaiting validation'),
         ];
 
-        if ($lowBalanceAccounts > 0) {
-            array_splice($stats, 1, 0, [
-                Stat::make('Low MBL Balance', $lowBalanceAccounts)
-                    ->icon('heroicon-o-exclamation-triangle')
-                    ->color('warning')
-                    ->description('Accounts below 20% balance')
-            ]);
-        }
 
         return $stats;
     }

@@ -45,6 +45,32 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return null;
         }
 
+        // Validate: status must have value
+        if (empty($row['status'])) {
+            $this->logError($row, 'Status is required');
+            return null;
+        }
+
+        // Validate: if account coverage_type == MEMBER, effective_date and expiration_date need value
+        if (strtoupper($account->coverage_period_type) === 'MEMBER') {
+            if (empty($row['effective_date']) || empty($row['expiration_date'])) {
+                $this->logError($row, 'Effective date and expiration date are required when account coverage type is MEMBER');
+                return null;
+            }
+        }
+
+        // Validate: if account plan_type == SHARED, only 1 PRINCIPAL allowed
+        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
+            $existingPrincipal = Member::where('account_id', $account->id)
+                ->where('member_type', 'PRINCIPAL')
+                ->exists();
+            
+            if ($existingPrincipal) {
+                $this->logError($row, 'Account with SHARED plan type can only have 1 PRINCIPAL member');
+                return null;
+            }
+        }
+
         DB::beginTransaction();
         try {
             $member = Member::where('account_id', $account->id)
@@ -53,7 +79,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 ->first();
 
             if ($member) {
-                $updateData = ['status' => $row['status'] ?? 'active'];
+                $updateData = ['status' => $row['status']];
 
                 if (!empty($row['inactive_date'])) {
                     $updateData['inactive_date'] = is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;

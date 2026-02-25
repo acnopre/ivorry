@@ -115,6 +115,10 @@ class SearchMember extends Page
     {
         $today = now()->startOfDay();
 
+        if ($member->status !== 'ACTIVE' || $member->inactive_date !== null) {
+            return 'Member is not active';
+        }
+
         if ($member->effective_date && $today->lt(\Carbon\Carbon::parse($member->effective_date)->startOfDay())) {
             return 'Member coverage has not started yet';
         }
@@ -425,7 +429,6 @@ class SearchMember extends Page
                         $accountId = $this->members->first()->account_id ?? null;
                         if (!$accountId) return collect();
 
-                        // For Procedural type, filter by quantity/unlimited from AccountService
                         return AccountService::where('account_id', $accountId)
                             ->where(function ($query) {
                                 $query->where('quantity', '>', 0)
@@ -682,15 +685,13 @@ class SearchMember extends Page
             | AVAILMENT DATE
             |--------------------------------------------------------------------------
             */
-                TextInput::make('availment_date_display')
+                Forms\Components\DatePicker::make('availment_date')
                     ->label('Availment Date')
-                    ->default(fn() => now()->format('F j, Y')) // display today's date
-                    ->disabled()
-                    ->dehydrated(false), // don't submit
-
-                // Actual value submitted
-                Hidden::make('availment_date')
-                    ->default(fn() => now()->format('Y-m-d')),   // today's date will be submitted
+                    ->default(fn() => now())
+                    ->minDate(fn() => Auth::user()->hasRole('CSR') ? now()->subDays(3) : now())
+                    ->maxDate(fn() => Auth::user()->hasRole('CSR') ? now()->addDays(5) : now())
+                    ->disabled(fn() => !Auth::user()->hasRole('CSR'))
+                    ->required(),
             ])
             ->statePath('procedureFormData');
     }

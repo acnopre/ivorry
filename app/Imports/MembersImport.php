@@ -47,32 +47,55 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
         DB::beginTransaction();
         try {
-            $member = new Member([
-                'account_id'    => $account->id,
-                'first_name'    => $row['first_name'],
-                'last_name'     => $row['last_name'],
-                'middle_name'   => $row['middle_name'],
-                'suffix'        => $row['suffix'],
-                'member_type'   => $row['member_type'],
-                'card_number'   => $row['card_number'],
-                'birthdate'     => is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : null,
-                'gender'        => $row['gender'],
-                'email'         => $row['email'],
-                'phone'         => $row['phone'],
-                'address'       => $row['address'] ?? null,
-                'status'        => $row['status'] ?? 'active',
-                'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
-            ]);
-            $member->save();
+            $member = Member::where('account_id', $account->id)
+                ->where('first_name', $row['first_name'])
+                ->where('last_name', $row['last_name'])
+                ->first();
 
-            $user = User::create([
-                'name'     => $row['first_name'] . ' ' . $row['last_name'],
-                'email'    => $row['email'] ?? null,
-                'password' => bcrypt('password'),
-            ]);
+            if ($member) {
+                $updateData = ['status' => $row['status'] ?? 'active'];
 
-            $user->assignRole('Member');
-            $member->update(['user_id' => $user->id]);
+                if (!empty($row['inactive_date'])) {
+                    $updateData['inactive_date'] = is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;
+                }
+                if (!empty($row['effective_date'])) {
+                    $updateData['effective_date'] = is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null;
+                }
+                if (!empty($row['expiration_date'])) {
+                    $updateData['expiration_date'] = is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null;
+                }
+
+                $member->update($updateData);
+            } else {
+                $member = new Member([
+                    'account_id'    => $account->id,
+                    'first_name'    => $row['first_name'],
+                    'last_name'     => $row['last_name'],
+                    'middle_name'   => $row['middle_name'],
+                    'suffix'        => $row['suffix'],
+                    'member_type'   => $row['member_type'],
+                    'card_number'   => $row['card_number'],
+                    'birthdate'     => is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : null,
+                    'gender'        => $row['gender'],
+                    'email'         => $row['email'],
+                    'phone'         => $row['phone'],
+                    'address'       => $row['address'] ?? null,
+                    'status'        => $row['status'] ?? 'active',
+                    'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
+                    'effective_date' => is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null,
+                    'expiration_date' => is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null,
+                ]);
+                $member->save();
+
+                $user = User::create([
+                    'name'     => $row['first_name'] . ' ' . $row['last_name'],
+                    'email'    => $row['email'] ?? null,
+                    'password' => bcrypt('password'),
+                ]);
+
+                $user->assignRole('Member');
+                $member->update(['user_id' => $user->id]);
+            }
 
             DB::commit();
             $this->logSuccess($row);

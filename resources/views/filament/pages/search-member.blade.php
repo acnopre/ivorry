@@ -45,6 +45,26 @@
                             <div class="text-sm text-gray-900 dark:text-white font-medium">{{ $member->member_type }}</div>
                         </div>
                         <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</div>
+                            @php
+                            $memberStatus = strtolower($member->status ?? '');
+                            $memberStatusColor = match ($memberStatus) {
+                                'active' => 'success',
+                                'inactive' => 'danger',
+                                default => 'gray',
+                            };
+                            @endphp
+                            <x-filament::badge :color="$memberStatusColor" class="inline-flex">
+                                {{ ucfirst($member->status ?? 'Unknown') }}
+                            </x-filament::badge>
+                        </div>
+                        @if($member->inactive_date)
+                        <div class="space-y-1">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Inactive Date</div>
+                            <div class="text-sm text-gray-900 dark:text-white font-medium">{{ \Carbon\Carbon::parse($member->inactive_date)->format('M d, Y') }}</div>
+                        </div>
+                        @endif
+                        <div class="space-y-1">
                             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Birthdate</div>
                             <div class="text-sm text-gray-900 dark:text-white font-medium">{{ $member->birthdate }}</div>
                         </div>

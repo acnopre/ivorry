@@ -26,7 +26,12 @@
                         </div>
 
                         <div class="flex flex-col items-end gap-2">
-                            <x-filament::button color="primary" wire:click="openProcedureModal({{ $member->id }})" icon="heroicon-o-document-plus" :disabled="!$this->canAddProcedure($member)">
+                            <x-filament::button 
+                                color="primary" 
+                                wire:click="$set('selectedMemberId', {{ $member->id }})" 
+                                x-on:click="$wire.mountAction('addProcedure')"
+                                icon="heroicon-o-document-plus" 
+                                :disabled="!$this->canAddProcedure($member)">
                                 Add Procedure
                             </x-filament::button>
                             @if(!$this->canAddProcedure($member))
@@ -304,24 +309,7 @@
             @endif
         </div>
 
-        {{-- Add Procedure Modal --}}
-        <x-filament::modal id="add-procedure" width="lg">
-            <x-slot name="heading">
-                Add Procedure
-            </x-slot>
-
-            {{ $this->getProcedureForm() }}
-
-            <x-slot name="footerActions">
-                <x-filament::button color="secondary" wire:click="$dispatch('close-modal', { id: 'add-procedure' })">
-                    Cancel
-                </x-filament::button>
-                <x-filament::button color="primary" wire:click="saveProcedure" icon="heroicon-o-check" class="ml-auto">
-                    Save Procedure
-                </x-filament::button>
-            </x-slot>
-
-        </x-filament::modal>
+        <x-filament-actions::modals />
 
         {{-- Approval Code Modal --}}
         <x-filament::modal id="approval-code" width="md">

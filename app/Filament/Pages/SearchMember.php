@@ -16,6 +16,9 @@ use App\Models\Unit;
 use App\Models\UnitType;
 use Filament\Forms;
 use Filament\Pages\Page;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Filament\Forms\Components\Hidden;
@@ -23,8 +26,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 
-class SearchMember extends Page
+class SearchMember extends Page implements HasActions
 {
+    use InteractsWithActions;
     protected static ?string $title = 'Search Member';
     protected static string $view = 'filament.pages.search-member';
     protected static ?string $navigationIcon = 'heroicon-o-users';
@@ -149,24 +153,33 @@ class SearchMember extends Page
     {
         $this->selectedMemberId = $memberId;
         $this->procedureFormData = [
-            'clinic_id' => null,
+            'clinic_id' => Auth::user()->clinic->id ?? null,
             'availment_date_display' => now()->format('F j, Y'),
             'availment_date' => now()->format('Y-m-d'),
-            // 'quantity' => '1',
             'surface' => [],
             'quadrant' => [],
             'tooth' => [],
             'canal' => [],
             'arch' => [],
             'unit_id' => [],
-
         ];
         $this->dispatch('open-modal', id: 'add-procedure');
     }
     public function saveProcedure(): void
     {
         $data = $this->getProcedureForm()->getState();
-        $clinicId = Auth::user()->clinic->id ?? Clinic::where('clinic_name', $data['clinic_search'])->first()->id;
+
+        $clinicId = $data['clinic_id'] ?? Auth::user()->clinic->id ?? null;
+
+        if (empty($clinicId)) {
+            Notification::make()
+                ->title('Clinic Required')
+                ->body('Please select a clinic.')
+                ->danger()
+                ->send();
+            return;
+        }
+
         $member = Member::where('id', $this->selectedMemberId)->first();
         $account = $member->account;
 
@@ -402,298 +415,328 @@ class SearchMember extends Page
     }
 
 
+    public function addProcedureAction(): Action
+    {
+        return Action::make('addProcedure')
+            ->label('Add Procedure')
+            ->icon('heroicon-o-document-plus')
+            ->disabled(fn() => !$this->canAddProcedure($this->members->first()))
+            ->modalHeading('Add Procedure')
+            ->modalWidth('lg')
+            ->fillForm(fn() => [
+                'clinic_id' => Auth::user()->clinic->id ?? null,
+                'availment_date' => now()->format('Y-m-d'),
+            ])
+            ->form([
+                $this->getClinicField(),
+                $this->getServiceField(),
+                $this->getUnitTypeDisplay(),
+                $this->getQuantityField(),
+                ...$this->getUnitFields(),
+                $this->getAvailmentDateField(),
+            ])
+            ->action(function (array $data) {
+                $clinicId = $data['clinic_id'] ?? Auth::user()->clinic->id ?? null;
+                if (empty($clinicId)) {
+                    Notification::make()->title('Clinic Required')->body('Please select a clinic.')->danger()->send();
+                    return;
+                }
+                $this->saveProcedureWithData($data, $clinicId);
+            });
+    }
+
     public function getProcedureForm(): Forms\Form
     {
         return $this->makeForm()
             ->schema([
-
-                Forms\Components\TextInput::make('clinic_search')
-                    ->label('Clinic')
-                    ->datalist(Clinic::pluck('clinic_name', 'id'))
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        $clinic = Clinic::where('clinic_name', $state)->first();
-                        $set('clinic_id', $clinic?->id);
-                    })
-                    ->required()
-                    ->visible(fn() => Auth::user()->hasRole('CSR')),
-
-                /*
-            |--------------------------------------------------------------------------
-            | SERVICE DROPDOWN
-            |--------------------------------------------------------------------------
-            */
-                Forms\Components\Select::make('service_id')
-                    ->label('Service')
-                    ->options(function () {
-                        $accountId = $this->members->first()->account_id ?? null;
-                        if (!$accountId) return collect();
-
-                        return AccountService::where('account_id', $accountId)
-                            ->where(function ($query) {
-                                $query->where('quantity', '>', 0)
-                                    ->orWhere('is_unlimited', true);
-                            })
-                            ->with('service')
-                            ->get()
-                            ->groupBy('service.type')
-                            ->map(fn($group) => $group->pluck('service.name', 'service_id'))
-                            ->toArray();
-                    })
-                    ->live()
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        $set('surface', []);
-                        $set('qudrant', []);
-
-                        if (!$state) {
-                            $set('unit_type_name', null);
-                            $set('unit_type_id', null);
-                            $set('quantity', null);
-                            $set('unit_id', null);
-                            return;
-                        }
-
-                        $service = Service::with('unitType')->find($state);
-
-                        if ($service && $service->unitType) {
-                            $set('unit_type_name', $service->unitType->name);
-                            $set('unit_type_id', $service->unitType->id);
-                        } else {
-                            $set('unit_type_name', '—');
-                            $set('unit_type_id', null);
-                        }
-                    }),
-
-
-
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | UNIT TYPE DISPLAY
-            |--------------------------------------------------------------------------
-            */
-                Forms\Components\Placeholder::make('unit_type_display')
-                    ->label('Unit Type')
-                    ->visible(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))
-                            ?->unitType?->units?->isNotEmpty()
-                    )
-                    ->content(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))?->unitType?->name ?? '—'
-                    ),
-
-                /*
-            |--------------------------------------------------------------------------
-            | QUANTITY
-            |--------------------------------------------------------------------------
-            */
-                Forms\Components\TextInput::make('quantity')
-                    ->label('Quantity')
-                    ->numeric()
-                    ->required()
-                    ->visible(function (callable $get) {
-                        $accountId = $this->members->first()->account_id ?? null;
-                        $serviceId = $get('service_id');
-                        if (!$accountId || !$serviceId) return false;
-
-                        $accountService = AccountService::where('account_id', $accountId)
-                            ->where('service_id', $serviceId)
-                            ->first();
-
-                        return $accountService && !$accountService->is_unlimited || Service::find($serviceId)?->unitType?->units?->isNotEmpty();
-                    })
-                    ->reactive()
-                    ->afterStateUpdated(fn(callable $set) => $set('surface', []))
-                    ->maxValue(function (callable $get) {
-                        // Dynamic Max Value Logic
-                        $accountId = $this->members->first()->account_id ?? null;
-                        $serviceId = $get('service_id');
-
-                        if (!$accountId || !$serviceId) return 3;
-
-                        $accountService = AccountService::where('account_id', $accountId)
-                            ->where('service_id', $serviceId)
-                            ->first();
-
-                        if ($accountService && !$accountService->is_unlimited) {
-                            // Max is the lesser of Balance or 3
-                            return min($accountService->quantity, 3);
-                        }
-
-                        return 3;
-                    })
-                    ->helperText(function (callable $get) {
-                        // Helper text to show remaining balance
-                        $accountId = $this->members->first()->account_id ?? null;
-                        $serviceId = $get('service_id');
-
-                        if (!$accountId || !$serviceId) return 'Enter a number between 1 and 3';
-
-                        $accountService = AccountService::where('account_id', $accountId)
-                            ->where('service_id', $serviceId)
-                            ->first();
-
-                        if ($accountService && !$accountService->is_unlimited) {
-                            return "Max allowed: " . min($accountService->quantity, 3) . " (Balance: {$accountService->quantity})";
-                        }
-
-                        return 'Enter a number between 1 and 3';
-                    })
-
-                    ->rules(['integer']),
-
-                /*
-            |--------------------------------------------------------------------------
-            | UNIT SELECT:  QUADRANT, TOOTH, ARCH, CANAL
-            |--------------------------------------------------------------------------
-            */
-
-                Forms\Components\Select::make('quadrant')
-                    ->label('Quadrant')
-                    ->options(Unit::where('unit_type_id', 2)->pluck('name', 'id'))
-                    ->multiple()
-                    ->live()
-
-                    ->visible(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))?->unitType?->name === 'Quadrant'
-                            && filled($get('quantity'))
-                    )
-                    ->helperText(
-                        fn(callable $get) =>
-                        'You can select up to ' . ($get('quantity') ?? 0) . ' quadrant(s)'
-                    )
-                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
-
-
-
-                Forms\Components\Select::make('tooth')
-                    ->label('Tooth')
-                    ->options(Unit::where('unit_type_id', 3)->pluck('name', 'id') ?? collect())
-                    ->multiple()
-                    ->live()
-                    ->required(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))?->unitType?->name === 'Tooth'
-                            && filled($get('quantity'))
-                    )
-
-                    ->visible(function (callable $get) {
-                        return Service::find($get('service_id'))
-                            ?->unitType
-                            ?->name === 'Tooth'
-                            && filled($get('quantity'));
-                    })
-                    ->helperText(
-                        fn(callable $get) =>
-                        'You can select up to ' . ($get('quantity') ?? 0) . ' tooth(s)'
-                    )
-                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
-
-                Forms\Components\Select::make('arch')
-                    ->label('Arch')
-                    ->options(Unit::where('unit_type_id', 4)->pluck('name', 'id') ?? collect())
-                    ->multiple()
-                    ->live()
-                    ->required(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))?->unitType?->name === 'Arch'
-                            && filled($get('quantity'))
-                    )
-
-                    ->visible(function (callable $get) {
-                        return Service::find($get('service_id'))
-                            ?->unitType
-                            ?->name === 'Arch'
-                            && filled($get('quantity'));
-                    })
-                    ->helperText(
-                        fn(callable $get) =>
-                        'You can select up to ' . ($get('quantity') ?? 0) . ' arch(s)'
-                    )
-                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
-
-                Forms\Components\Select::make('canal')
-                    ->label('Canal')
-                    ->options(Unit::where('unit_type_id', 6)->pluck('name', 'id') ?? collect())
-                    ->multiple()
-                    ->live()
-                    ->required(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))?->unitType?->name === 'Canal'
-                            && filled($get('quantity'))
-                    )
-                    ->visible(function (callable $get) {
-                        return Service::find($get('service_id'))
-                            ?->unitType
-                            ?->name === 'Canal'
-                            && filled($get('quantity'));
-                    })
-                    ->helperText(
-                        fn(callable $get) =>
-                        'You can select up to ' . ($get('quantity') ?? 0) . ' canal(s)'
-                    )
-                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
-                /*
-            |--------------------------------------------------------------------------
-            | SURFACE SELECTION
-            |--------------------------------------------------------------------------
-            */
-
-                Forms\Components\Select::make('tooth_surface')
-                    ->label('Tooth')
-                    ->options(Unit::where('unit_type_id', 3)->pluck('name', 'id') ?? collect())
-                    ->live()
-                    ->required(
-                        fn(callable $get) =>
-                        Service::find($get('service_id'))?->unitType?->name === 'Tooth'
-                            && filled($get('quantity'))
-                    )
-
-                    ->visible(function (callable $get) {
-                        return Service::find($get('service_id'))
-                            ?->unitType
-                            ?->name === 'Surface'
-                            && filled($get('quantity'));
-                    }),
-
-
-                Forms\Components\Select::make('surface')
-                    ->label('Surface')
-                    ->options(Unit::where('unit_type_id', 5)->pluck('name', 'id') ?? collect())
-                    ->multiple()
-                    ->live()
-                    ->required()
-                    ->visible(function (callable $get) {
-                        return Service::find($get('service_id'))
-                            ?->unitType
-                            ?->name === 'Surface'
-                            && filled($get('quantity'));
-                    })
-                    ->helperText(
-                        fn(callable $get) =>
-                        'You can select up to ' . ($get('quantity') ?? 0) . ' surface(s)'
-                    )
-                    ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | AVAILMENT DATE
-            |--------------------------------------------------------------------------
-            */
-                Forms\Components\DatePicker::make('availment_date')
-                    ->label('Availment Date')
-                    ->default(fn() => now())
-                    ->minDate(fn() => Auth::user()->hasRole('CSR') ? now()->subDays(3) : now())
-                    ->maxDate(fn() => Auth::user()->hasRole('CSR') ? now()->addDays(5) : now())
-                    ->disabled(fn() => !Auth::user()->hasRole('CSR'))
-                    ->required(),
+                $this->getClinicField(),
+                $this->getServiceField(),
+                $this->getUnitTypeDisplay(),
+                $this->getQuantityField(),
+                ...$this->getUnitFields(),
+                $this->getAvailmentDateField(),
             ])
             ->statePath('procedureFormData');
+    }
+
+    private function saveProcedureWithData(array $data, int $clinicId): void
+    {
+        $member = Member::where('id', $this->selectedMemberId)->first();
+        $account = $member->account;
+
+        if (!$this->validateBusinessRules($data, $clinicId)) {
+            return;
+        }
+
+        $appliedFee = ClinicService::where('clinic_id', $clinicId)
+            ->where('service_id', $data['service_id'])
+            ->value('fee') ?? 0;
+
+        if ($account->mbl_type === 'Fixed') {
+            if ($account->mbl_balance < $appliedFee) {
+                Notification::make()->title('Insufficient MBL Balance')->danger()->send();
+                return;
+            }
+        } else {
+            $isServiceUnlimited = $account->services->find($data['service_id'])->pivot->is_unlimited;
+            $serviceQuantity = $account->services->find($data['service_id'])->pivot->quantity;
+
+            if (!$isServiceUnlimited && $serviceQuantity <= 0) {
+                Notification::make()->title('Service Unavailable')->danger()->send();
+                return;
+            }
+        }
+
+        $approvalCode = strtoupper(Str::random(8));
+        $status = Auth::user()->hasRole('CSR') ? Procedure::STATUS_SIGN : Procedure::STATUS_PENDING;
+        $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
+
+        $hasUnits = false;
+        foreach ($unitInputs as $input) {
+            if (isset($data[$input]) && !empty($data[$input])) {
+                $hasUnits = true;
+                break;
+            }
+        }
+
+        if ($hasUnits) {
+            foreach ($unitInputs as $input) {
+                if (!isset($data[$input]) || empty($data[$input])) continue;
+                
+                foreach ($data[$input] as $value) {
+                    $procedure = Procedure::create([
+                        'clinic_id' => $clinicId,
+                        'member_id' => $this->selectedMemberId,
+                        'service_id' => $data['service_id'],
+                        'availment_date' => $data['availment_date'] ?? null,
+                        'status' => $status,
+                        'quantity' => $data['quantity'] ?? 1,
+                        'approval_code' => $approvalCode,
+                        'applied_fee' => $appliedFee,
+                    ]);
+
+                    ProcedureUnit::create([
+                        'procedure_id' => $procedure->id,
+                        'unit_id' => $input === 'surface' ? $data['tooth_surface'] : $value,
+                        'quantity' => 1,
+                        'input_quantity' => $data['quantity'] ?? 1,
+                        'surface_id' => $input === 'surface' ? $value : null,
+                    ]);
+                }
+            }
+        } else {
+            Procedure::create([
+                'clinic_id' => $clinicId,
+                'member_id' => $this->selectedMemberId,
+                'service_id' => $data['service_id'],
+                'availment_date' => $data['availment_date'] ?? null,
+                'status' => $status,
+                'quantity' => 1,
+                'approval_code' => $approvalCode,
+                'applied_fee' => $appliedFee,
+            ]);
+        }
+
+        $this->approvalCode = $approvalCode;
+        
+        // Deduct quantity if CSR and not unlimited
+        if (Auth::user()->hasRole('CSR') && $account->mbl_type !== 'Fixed') {
+            $accountService = $account->services()->where('service_id', $data['service_id'])->first();
+            if ($accountService && !$accountService->pivot->is_unlimited) {
+                $accountService->pivot->decrement('quantity', 1);
+            }
+        }
+        
+        $this->dispatch('open-modal', id: 'approval-code');
+        $this->search();
+    }
+
+    protected function getClinicField(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('clinic_id')
+            ->label('Clinic')
+            ->options(Clinic::pluck('clinic_name', 'id'))
+            ->native(false)
+            ->searchable()
+            ->dehydrated()
+            ->visible(fn() => Auth::user()->hasRole('CSR') && Auth::user()->clinic === null);
+    }
+
+    protected function getServiceField(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('service_id')
+            ->label('Service')
+            ->options(function () {
+                $accountId = $this->members->first()->account_id ?? null;
+                if (!$accountId) return collect();
+
+                return AccountService::where('account_id', $accountId)
+                    ->where(fn($q) => $q->where('quantity', '>', 0)->orWhere('is_unlimited', true))
+                    ->with('service')
+                    ->get()
+                    ->groupBy('service.type')
+                    ->map(fn($group) => $group->pluck('service.name', 'service_id'))
+                    ->toArray();
+            })
+            ->live()
+            ->afterStateUpdated(function ($state, callable $set) {
+                $this->resetUnitFields($set);
+                if (!$state) return;
+
+                $service = Service::with('unitType')->find($state);
+                $set('unit_type_name', $service?->unitType?->name ?? '—');
+                $set('unit_type_id', $service?->unitType?->id);
+            });
+    }
+
+    protected function getUnitTypeDisplay(): Forms\Components\Placeholder
+    {
+        return Forms\Components\Placeholder::make('unit_type_display')
+            ->label('Unit Type')
+            ->visible(fn(callable $get) => Service::find($get('service_id'))?->unitType?->units?->isNotEmpty())
+            ->content(fn(callable $get) => Service::find($get('service_id'))?->unitType?->name ?? '—');
+    }
+
+    protected function getQuantityField(): Forms\Components\TextInput
+    {
+        return Forms\Components\TextInput::make('quantity')
+            ->label('Quantity')
+            ->numeric()
+            ->integer()
+            ->minValue(1)
+            ->required()
+            ->live()
+            ->afterStateUpdated(fn(callable $set) => $set('surface', []))
+            ->visible(fn(callable $get) => $this->shouldShowQuantityField($get))
+            ->maxValue(fn(callable $get) => $this->getMaxQuantity($get))
+            ->helperText(fn(callable $get) => $this->getQuantityHelperText($get));
+    }
+
+    protected function getUnitFields(): array
+    {
+        $unitTypes = [
+            ['field' => 'quadrant', 'label' => 'Quadrant', 'type_id' => 2, 'type_name' => 'Quadrant'],
+            ['field' => 'tooth', 'label' => 'Tooth', 'type_id' => 3, 'type_name' => 'Tooth'],
+            ['field' => 'arch', 'label' => 'Arch', 'type_id' => 4, 'type_name' => 'Arch'],
+            ['field' => 'canal', 'label' => 'Canal', 'type_id' => 6, 'type_name' => 'Canal'],
+        ];
+
+        $fields = [];
+        foreach ($unitTypes as $unit) {
+            $fields[] = $this->createUnitSelectField($unit['field'], $unit['label'], $unit['type_id'], $unit['type_name']);
+        }
+
+        $fields[] = $this->getSurfaceFields();
+        return array_merge(...$fields);
+    }
+
+    protected function createUnitSelectField(string $field, string $label, int $typeId, string $typeName): array
+    {
+        return [
+            Forms\Components\Select::make($field)
+                ->label($label)
+                ->options(Unit::where('unit_type_id', $typeId)->pluck('name', 'id'))
+                ->multiple()
+                ->live()
+                ->required(fn(callable $get) => $this->isUnitType($get, $typeName) && filled($get('quantity')))
+                ->visible(fn(callable $get) => $this->isUnitType($get, $typeName) && filled($get('quantity')))
+                ->helperText(fn(callable $get) => "Select up to {$get('quantity')} {$label}(s)")
+                ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0))
+        ];
+    }
+
+    protected function getSurfaceFields(): array
+    {
+        return [
+            Forms\Components\Select::make('tooth_surface')
+                ->label('Tooth')
+                ->options(Unit::where('unit_type_id', 3)->pluck('name', 'id'))
+                ->live()
+                ->required(fn(callable $get) => $this->isUnitType($get, 'Surface') && filled($get('quantity')))
+                ->visible(fn(callable $get) => $this->isUnitType($get, 'Surface') && filled($get('quantity'))),
+
+            Forms\Components\Select::make('surface')
+                ->label('Surface')
+                ->options(Unit::where('unit_type_id', 5)->pluck('name', 'id'))
+                ->multiple()
+                ->live()
+                ->required()
+                ->visible(fn(callable $get) => $this->isUnitType($get, 'Surface') && filled($get('quantity')))
+                ->helperText(fn(callable $get) => "Select up to {$get('quantity')} surface(s)")
+                ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
+        ];
+    }
+
+    protected function getAvailmentDateField(): Forms\Components\DatePicker
+    {
+        $isCSR = Auth::user()->hasRole('CSR');
+        return Forms\Components\DatePicker::make('availment_date')
+            ->label('Availment Date')
+            ->default(now())
+            ->minDate($isCSR ? now()->subDays(3) : now())
+            ->maxDate($isCSR ? now()->addDays(5) : now())
+            ->disabled(!$isCSR)
+            ->required();
+    }
+
+    protected function resetUnitFields(callable $set): void
+    {
+        $fields = ['surface', 'quadrant', 'quantity', 'unit_id', 'unit_type_name', 'unit_type_id'];
+        foreach ($fields as $field) {
+            $set($field, $field === 'surface' || $field === 'quadrant' ? [] : null);
+        }
+    }
+
+    protected function isUnitType(callable $get, string $typeName): bool
+    {
+        return Service::find($get('service_id'))?->unitType?->name === $typeName;
+    }
+
+    protected function shouldShowQuantityField(callable $get): bool
+    {
+        $accountId = $this->members->first()->account_id ?? null;
+        $serviceId = $get('service_id');
+        if (!$accountId || !$serviceId) return false;
+
+        $accountService = AccountService::where('account_id', $accountId)
+            ->where('service_id', $serviceId)
+            ->first();
+
+        return ($accountService && !$accountService->is_unlimited) ||
+            Service::find($serviceId)?->unitType?->units?->isNotEmpty();
+    }
+
+    protected function getMaxQuantity(callable $get): int
+    {
+        $accountId = $this->members->first()->account_id ?? null;
+        $serviceId = $get('service_id');
+        if (!$accountId || !$serviceId) return 3;
+
+        $accountService = AccountService::where('account_id', $accountId)
+            ->where('service_id', $serviceId)
+            ->first();
+
+        return $accountService && !$accountService->is_unlimited
+            ? min($accountService->quantity, 3)
+            : 3;
+    }
+
+    protected function getQuantityHelperText(callable $get): string
+    {
+        $accountId = $this->members->first()->account_id ?? null;
+        $serviceId = $get('service_id');
+        if (!$accountId || !$serviceId) return 'Enter quantity (max: 3)';
+
+        $accountService = AccountService::where('account_id', $accountId)
+            ->where('service_id', $serviceId)
+            ->first();
+
+        if ($accountService && !$accountService->is_unlimited) {
+            $max = min($accountService->quantity, 3);
+            return "Max: {$max} | Balance: {$accountService->quantity}";
+        }
+
+        return 'Enter quantity (max: 3)';
     }
 
 

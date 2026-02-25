@@ -84,6 +84,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
                     'effective_date' => is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null,
                     'expiration_date' => is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null,
+                    'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
                 ]);
                 $member->save();
 

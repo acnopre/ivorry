@@ -193,10 +193,10 @@ class SearchMember extends Page implements HasActions
 
         // Check MBL balance for Fixed type
         if ($account->mbl_type === 'Fixed') {
-            if ($account->mbl_balance < $appliedFee) {
+            if ($member->mbl_balance < $appliedFee) {
                 Notification::make()
                     ->title('Insufficient MBL Balance')
-                    ->body("Service fee (₱" . number_format($appliedFee, 2) . ") exceeds MBL balance (₱" . number_format($account->mbl_balance, 2) . ").")
+                    ->body("Service fee (₱" . number_format($appliedFee, 2) . ") exceeds MBL balance (₱" . number_format($member->mbl_balance, 2) . ").")
                     ->danger()
                     ->send();
                 return;
@@ -303,7 +303,7 @@ class SearchMember extends Page implements HasActions
     {
         $service = \App\Models\Service::find($data['service_id']);
         $serviceName = $service->name;
-        $availmentDate = $data['availment_date'];
+        $availmentDate = $data['availment_date'] ?? null;
         $memberId = $this->selectedMemberId;
 
         if (!$clinicId) {
@@ -320,6 +320,10 @@ class SearchMember extends Page implements HasActions
             ->exists()
         ) {
             return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
+        }
+
+        if (!$availmentDate) {
+            return true;
         }
 
         // Exclusive services (cannot be done with any other service on same date)
@@ -430,6 +434,7 @@ class SearchMember extends Page implements HasActions
             ->form([
                 $this->getClinicField(),
                 $this->getServiceField(),
+                $this->getFeeField(),
                 $this->getUnitTypeDisplay(),
                 $this->getQuantityField(),
                 ...$this->getUnitFields(),
@@ -451,6 +456,7 @@ class SearchMember extends Page implements HasActions
             ->schema([
                 $this->getClinicField(),
                 $this->getServiceField(),
+                $this->getFeeField(),
                 $this->getUnitTypeDisplay(),
                 $this->getQuantityField(),
                 ...$this->getUnitFields(),
@@ -468,13 +474,22 @@ class SearchMember extends Page implements HasActions
             return;
         }
 
-        $appliedFee = ClinicService::where('clinic_id', $clinicId)
-            ->where('service_id', $data['service_id'])
-            ->value('fee') ?? 0;
+        $appliedFee = $data['applied_fee'] ?? 0;
 
         if ($account->mbl_type === 'Fixed') {
-            if ($account->mbl_balance < $appliedFee) {
-                Notification::make()->title('Insufficient MBL Balance')->danger()->send();
+            // Count total units for multiple unit procedures
+            $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
+            $totalUnits = 0;
+            foreach ($unitInputs as $input) {
+                if (isset($data[$input]) && !empty($data[$input])) {
+                    $totalUnits += count($data[$input]);
+                }
+            }
+            $totalUnits = max($totalUnits, 1);
+            $totalFee = $appliedFee * $totalUnits;
+
+            if ($member->mbl_balance < $totalFee) {
+                Notification::make()->title('Insufficient MBL Balance')->body("Total fee (₱" . number_format($totalFee, 2) . ") exceeds MBL balance (₱" . number_format($member->mbl_balance, 2) . ").")->danger()->send();
                 return;
             }
         } else {
@@ -539,11 +554,18 @@ class SearchMember extends Page implements HasActions
 
         $this->approvalCode = $approvalCode;
         
-        // Deduct quantity if CSR and not unlimited
-        if (Auth::user()->hasRole('CSR') && $account->mbl_type !== 'Fixed') {
-            $accountService = $account->services()->where('service_id', $data['service_id'])->first();
-            if ($accountService && !$accountService->pivot->is_unlimited) {
-                $accountService->pivot->decrement('quantity', 1);
+        // Deduct balance/quantity if CSR
+        if (Auth::user()->hasRole('CSR')) {
+            if ($account->mbl_type === 'Fixed') {
+                // Deduct MBL balance for Fixed type
+                $member->mbl_balance -= $appliedFee;
+                $member->save();
+            } else {
+                // Deduct service quantity for Procedural type
+                $accountService = $account->services()->where('service_id', $data['service_id'])->first();
+                if ($accountService && !$accountService->pivot->is_unlimited) {
+                    $accountService->pivot->decrement('quantity', 1);
+                }
             }
         }
         
@@ -586,7 +608,28 @@ class SearchMember extends Page implements HasActions
                 $service = Service::with('unitType')->find($state);
                 $set('unit_type_name', $service?->unitType?->name ?? '—');
                 $set('unit_type_id', $service?->unitType?->id);
+
+                $clinicId = Auth::user()->clinic->id ?? null;
+                if ($clinicId) {
+                    $fee = ClinicService::where('clinic_id', $clinicId)
+                        ->where('service_id', $state)
+                        ->value('fee') ?? 0;
+                    $set('applied_fee', $fee);
+                }
             });
+    }
+
+    protected function getFeeField(): Forms\Components\TextInput
+    {
+        $isCSR = Auth::user()->hasRole('CSR');
+        return Forms\Components\TextInput::make('applied_fee')
+            ->label('Fee')
+            ->numeric()
+            ->prefix('₱')
+            ->required()
+            ->disabled(!$isCSR)
+            ->dehydrated()
+            ->visible(fn(callable $get) => filled($get('service_id')));
     }
 
     protected function getUnitTypeDisplay(): Forms\Components\Placeholder
@@ -673,7 +716,7 @@ class SearchMember extends Page implements HasActions
         return Forms\Components\DatePicker::make('availment_date')
             ->label('Availment Date')
             ->default(now())
-            ->minDate($isCSR ? now()->subDays(3) : now())
+            ->minDate($isCSR ? now()->subDays(3) : '2026-02-26')
             ->maxDate($isCSR ? now()->addDays(5) : now())
             ->disabled(!$isCSR)
             ->required();

@@ -25,7 +25,6 @@ class Account extends Model
         'coverage_period_type',
         'mbl_type',
         'mbl_amount',
-        'mbl_balance',
         'remarks',
         'created_by'
     ];

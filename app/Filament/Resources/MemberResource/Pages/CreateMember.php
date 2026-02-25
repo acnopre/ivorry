@@ -49,6 +49,14 @@ class CreateMember extends CreateRecord
         $data['user_id'] = $user->id;
         $user->assignRole($memberRole);
 
+        // Set MBL balance from account's MBL amount
+        if (isset($data['account_id'])) {
+            $account = \App\Models\Account::find($data['account_id']);
+            if ($account && $account->mbl_type === 'Fixed') {
+                $data['mbl_balance'] = $account->mbl_amount;
+            }
+        }
+
         return $data;
     }
 

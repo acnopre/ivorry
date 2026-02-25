@@ -23,7 +23,8 @@ class Member extends Model
         'effective_date',
         'expiration_date',
         'status',
-        'inactive_date'
+        'inactive_date',
+        'mbl_balance'
     ];
 
 

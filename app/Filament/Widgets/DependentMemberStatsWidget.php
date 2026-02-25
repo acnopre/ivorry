@@ -48,8 +48,8 @@ class DependentMemberStatsWidget extends BaseWidget
 
         // Add MBL balance for Fixed type
         if ($account && $account->mbl_type === 'Fixed') {
-            $balancePercent = ($account->mbl_balance / $account->mbl_amount) * 100;
-            $stats[] = Stat::make('MBL Balance', '₱' . number_format($account->mbl_balance, 2))
+            $balancePercent = ($member->mbl_balance / $account->mbl_amount) * 100;
+            $stats[] = Stat::make('MBL Balance', '₱' . number_format($member->mbl_balance, 2))
                 ->icon('heroicon-o-banknotes')
                 ->color($balancePercent < 20 ? 'danger' : ($balancePercent < 50 ? 'warning' : 'success'))
                 ->description('of ₱' . number_format($account->mbl_amount, 2));

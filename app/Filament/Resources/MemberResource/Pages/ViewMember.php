@@ -65,6 +65,23 @@ class ViewMember extends ViewRecord
                                         default => 'warning',
                                     }),
                             ]),
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('account.plan_type')->label('Plan Type')->badge(),
+                                TextEntry::make('account.mbl_type')->label('MBL Type')->badge(),
+                                TextEntry::make('account.mbl_amount')
+                                    ->label('MBL Amount')
+                                    ->money('PHP')
+                                    ->visible(fn($record) => $record->account?->mbl_type === 'Fixed'),
+                            ]),
+                        Grid::make(1)
+                            ->schema([
+                                TextEntry::make('mbl_balance')
+                                    ->label('MBL Balance')
+                                    ->money('PHP')
+                                    ->visible(fn($record) => $record->account?->mbl_type === 'Fixed')
+                                    ->color(fn($state, $record) => $state < ($record->account?->mbl_amount * 0.2) ? 'danger' : 'success'),
+                            ]),
                     ]),
 
                 Section::make('Contact Details')

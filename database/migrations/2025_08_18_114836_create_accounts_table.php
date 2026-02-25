@@ -38,7 +38,6 @@ return new class extends Migration
             $table->enum('mbl_type', ['Procedural', 'Fixed'])
                 ->default('Procedural');
             $table->decimal('mbl_amount', 15, 2)->nullable();
-            $table->decimal('mbl_balance', 15, 2)->nullable();
             $table->longText('remarks')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

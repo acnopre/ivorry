@@ -121,8 +121,8 @@ class SignProcedurePage extends Page
             // Check MBL type
             if ($account->mbl_type === 'Fixed') {
                 // Deduct from MBL balance and quantity
-                $newBalance = max(0, $account->mbl_balance - $this->record->applied_fee);
-                $account->update(['mbl_balance' => $newBalance]);
+                $newBalance = max(0, $member->mbl_balance - $this->record->applied_fee);
+                $member->update(['mbl_balance' => $newBalance]);
 
                 // Also deduct quantity for Fixed type
                 $pivot = $account->services()

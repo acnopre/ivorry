@@ -116,8 +116,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
     private function validateRow(array $row, Account $account): ?string
     {
-        if (empty($row['first_name']) || empty($row['last_name']) || empty($row['member_type']) || empty($row['card_number']) || empty($row['birthdate']) || empty($row['gender'])) {
-            return 'Required fields: first_name, last_name, member_type, card_number, birthdate, gender';
+        if (empty($row['first_name']) || empty($row['last_name']) || empty($row['member_type']) || empty($row['card_number']) || empty($row['gender'])) {
+            return 'Required fields: first_name, last_name, member_type, card_number, gender';
         }
 
         if (!in_array(strtoupper($row['member_type']), ['PRINCIPAL', 'DEPENDENT'])) {
@@ -132,13 +132,15 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Invalid email format';
         }
 
-        $birthdate = is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate']) : new \DateTime($row['birthdate']);
-        if ($birthdate > new \DateTime()) {
-            return 'Birthdate cannot be in the future';
-        }
+        if (!empty($row['birthdate'])) {
+            $birthdate = is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate']) : new \DateTime($row['birthdate']);
+            if ($birthdate > new \DateTime()) {
+                return 'Birthdate cannot be in the future';
+            }
 
-        if ($birthdate->diff(new \DateTime())->y > 120) {
-            return 'Invalid age. Member age exceeds 120 years';
+            if ($birthdate->diff(new \DateTime())->y > 120) {
+                return 'Invalid age. Member age exceeds 120 years';
+            }
         }
 
         if (Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->where('first_name', '!=', $row['first_name'])->where('last_name', '!=', $row['last_name'])->exists()) {

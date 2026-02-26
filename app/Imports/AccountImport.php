@@ -132,6 +132,14 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
             return 'Invalid coverage_type. Must be ACCOUNT or MEMBER';
         }
 
+        if (!empty($row['mbl_type']) && !in_array($row['mbl_type'], ['Procedural', 'Fixed'])) {
+            return 'Invalid mbl_type. Must be Procedural or Fixed';
+        }
+
+        if (!empty($row['mbl_type']) && $row['mbl_type'] === 'Fixed' && empty($row['mbl_amount'])) {
+            return 'MBL amount is required when mbl_type is Fixed';
+        }
+
         if (strtoupper($row['coverage_type']) === 'MEMBER' && (!empty($row['effective_date']) || !empty($row['expiration_date']))) {
             return 'Coverage type MEMBER cannot have effective_date or expiration_date';
         }

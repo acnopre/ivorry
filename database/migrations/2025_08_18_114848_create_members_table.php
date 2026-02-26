@@ -31,6 +31,7 @@ return new class extends Migration
             $table->date('expiration_date')->nullable();
             $table->enum('status', ['INACTIVE', 'ACTIVE'])->default('ACTIVE');
             $table->date('inactive_date')->nullable();
+            $table->decimal('mbl_balance', 15, 2)->nullable();
             $table->timestamps();
         });
     }

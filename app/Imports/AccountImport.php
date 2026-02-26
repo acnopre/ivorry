@@ -303,6 +303,10 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
             return null;
         }
 
+        if ($endorsementType === 'AMENDMENT') {
+            return null;
+        }
+
         if (empty($row['company_name']) || empty($row['policy_code']) || empty($row['hip']) || empty($row['plan_type']) || empty($row['coverage_type'])) {
             return 'Required fields: company_name, policy_code, hip, plan_type, coverage_type';
         }

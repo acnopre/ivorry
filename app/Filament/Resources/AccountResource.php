@@ -681,6 +681,7 @@ class AccountResource extends Resource
                             'disk' => 'public',
                             'status' => 'processing',
                             'user_id' => auth()->id(),
+                            'import_type' => 'account',
                         ]);
 
                         Excel::import(new AccountImport($log, auth()->id(), $migrationMode), $absolutePath);

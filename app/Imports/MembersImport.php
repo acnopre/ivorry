@@ -31,6 +31,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             'filename' => $filename,
             'disk' => 'public',
             'user_id' => auth()->id(),
+            'import_type' => 'member',
         ]);
     }
 

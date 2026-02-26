@@ -12,6 +12,7 @@ class ImportLog extends Model
         'user_id',
         'disk',
         'status',
+        'import_type',
         'total_rows',
         'success_rows',
         'error_rows',

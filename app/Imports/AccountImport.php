@@ -50,7 +50,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
         foreach ($rows as $index => $row) {
             $row = array_map(fn($value) => is_string($value) ? trim($value) : $value, $row->toArray());
-            
+
             if (empty($row['company_name'])) {
                 $this->log->increment('total_rows');
                 $this->logValidationError($index, $row, 'Company name is required');
@@ -59,12 +59,142 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
             $this->log->increment('total_rows');
 
-            if ($error = $this->validateAccountRow($row)) {
+            $endorsementType = strtoupper($row['endorsement_type'] ?? 'NEW');
+
+            Log::info("Row {$index}: endorsement_type = {$endorsementType}, company = {$row['company_name']}");
+
+            if ($error = $this->validateAccountRow($row, $endorsementType)) {
                 $this->logValidationError($index, $row, $error);
                 continue;
             }
 
-            // Check if account already exists
+            // Handle RENEWAL: find existing account and create renewal
+            if ($endorsementType === 'RENEWAL') {
+                $existingAccount = Account::where('company_name', $row['company_name'])
+                    ->where('policy_code', $row['policy_code'])
+                    ->first();
+
+                if (!$existingAccount) {
+                    $this->logValidationError($index, $row, 'Account not found for renewal');
+                    continue;
+                }
+
+                DB::beginTransaction();
+                try {
+                    $renewal = \App\Models\AccountRenewal::create([
+                        'account_id' => $existingAccount->id,
+                        'effective_date' => $this->transformDate($row['effective_date']),
+                        'expiration_date' => $this->transformDate($row['expiration_date']),
+                        'requested_by' => $this->userId,
+                        'status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                    ]);
+
+                    $existingAccount->update([
+                        'endorsement_type' => 'RENEWAL',
+                        'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                    ]);
+
+                    foreach ($services as $service) {
+                        $serviceName = $service->slug;
+                        if (isset($row[$serviceName])) {
+                            $value = $row[$serviceName];
+                            $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
+                            $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
+
+                            $renewal->services()->create([
+                                'service_id' => $service->id,
+                                'quantity' => $quantity,
+                                'is_unlimited' => $isUnlimited,
+                            ]);
+                        }
+                    }
+
+                    DB::commit();
+
+                    ImportLogItem::create([
+                        'import_log_id' => $this->log->id,
+                        'row_number' => $index + 2,
+                        'raw_data' => json_encode($row),
+                        'status' => 'success',
+                    ]);
+
+                    $this->log->increment('success_rows');
+                } catch (\Throwable $e) {
+                    DB::rollBack();
+                    $this->logValidationError($index, $row, $this->sanitizeErrorMessage($e));
+                }
+                continue;
+            }
+
+            // Handle AMENDMENT: find existing account and create amendment
+            if ($endorsementType === 'AMENDMENT') {
+                $existingAccount = Account::where('company_name', $row['company_name'])
+                    ->where('policy_code', $row['policy_code'])
+                    ->first();
+
+                if (!$existingAccount) {
+                    $this->logValidationError($index, $row, 'Account not found for amendment');
+                    continue;
+                }
+
+                DB::beginTransaction();
+                try {
+                    $amendment = \App\Models\AccountAmendment::create([
+                        'account_id' => $existingAccount->id,
+                        'company_name' => $row['company_name'],
+                        'policy_code' => $row['policy_code'],
+                        'hip' => $row['hip'] ?? $existingAccount->hip,
+                        'card_used' => $row['card_used'] ?? $existingAccount->card_used,
+                        'effective_date' => $this->transformDate($row['effective_date']) ?? $existingAccount->effective_date,
+                        'expiration_date' => $this->transformDate($row['expiration_date']) ?? $existingAccount->expiration_date,
+                        'endorsement_type' => 'AMENDMENT',
+                        'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                        'coverage_period_type' => $row['coverage_type'] ?? $existingAccount->coverage_period_type,
+                        'mbl_type' => $row['mbl_type'] ?? $existingAccount->mbl_type,
+                        'mbl_amount' => $row['mbl_amount'] ?? $existingAccount->mbl_amount,
+                        'remarks' => $row['remarks'] ?? null,
+                        'requested_by' => $this->userId,
+                    ]);
+
+                    $existingAccount->update([
+                        'endorsement_type' => 'AMENDMENT',
+                        'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                    ]);
+
+                    foreach ($services as $service) {
+                        $serviceName = $service->slug;
+                        if (isset($row[$serviceName])) {
+                            $value = $row[$serviceName];
+                            $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
+                            $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
+
+                            $amendment->services()->create([
+                                'service_id' => $service->id,
+                                'quantity' => $quantity,
+                                'default_quantity' => $quantity,
+                                'is_unlimited' => $isUnlimited,
+                            ]);
+                        }
+                    }
+
+                    DB::commit();
+
+                    ImportLogItem::create([
+                        'import_log_id' => $this->log->id,
+                        'row_number' => $index + 2,
+                        'raw_data' => json_encode($row),
+                        'status' => 'success',
+                    ]);
+
+                    $this->log->increment('success_rows');
+                } catch (\Throwable $e) {
+                    DB::rollBack();
+                    $this->logValidationError($index, $row, $this->sanitizeErrorMessage($e));
+                }
+                continue;
+            }
+
+            // Handle NEW: check if account already exists
             if (Account::where('company_name', $row['company_name'])->where('policy_code', $row['policy_code'])->exists()) {
                 ImportLogItem::create([
                     'import_log_id' => $this->log->id,
@@ -100,7 +230,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                         $value = $row[$serviceName];
                         $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
                         $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
-                        
+
                         $pivotData[$service->id] = [
                             'quantity' => $quantity,
                             'default_quantity' => $quantity,
@@ -137,15 +267,42 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                 $this->log->increment('error_rows');
             }
         }
-        
+
         Log::info("Chunk completed for import log ID: {$this->log->id}. Total processed: {$this->log->total_rows}");
-        
+
         // Dispatch completion job with delay to ensure all chunks finish
         CompleteImportJob::dispatch($this->log)->delay(now()->addSeconds(10));
     }
 
-    private function validateAccountRow(array $row): ?string
+    private function validateAccountRow(array $row, string $endorsementType = 'NEW'): ?string
     {
+        if (!in_array($endorsementType, ['NEW', 'RENEWAL', 'AMENDMENT'])) {
+            return 'Invalid endorsement_type. Must be NEW, RENEWAL, or AMENDMENT';
+        }
+
+        if ($endorsementType === 'RENEWAL') {
+            if (empty($row['effective_date']) || empty($row['expiration_date'])) {
+                return 'Renewal requires effective_date and expiration_date';
+            }
+
+            $effectiveDate = $this->transformDate($row['effective_date']);
+            $expirationDate = $this->transformDate($row['expiration_date']);
+
+            if (!$effectiveDate || !$expirationDate) {
+                return 'Invalid date format for renewal dates';
+            }
+
+            if ($effectiveDate >= $expirationDate) {
+                return 'Renewal effective_date must be before expiration_date';
+            }
+            //TODO:: check this if valid for validation
+            if ($expirationDate < now()->format('Y-m-d')) {
+                return 'Renewal effective_date cannot be in the past';
+            }
+
+            return null;
+        }
+
         if (empty($row['company_name']) || empty($row['policy_code']) || empty($row['hip']) || empty($row['plan_type']) || empty($row['coverage_type'])) {
             return 'Required fields: company_name, policy_code, hip, plan_type, coverage_type';
         }

@@ -150,6 +150,9 @@ class ViewAccount extends ViewRecord
 
                     $record->endorsement_type = 'RENEWED';
                     $record->endorsement_status = 'APPROVED';
+                    $record->account_status = 'active';
+                    $record->effective_date = $renewal->effective_date;
+                    $record->expiration_date = $renewal->expiration_date;
                     $record->save();
 
                     Notification::make()

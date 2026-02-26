@@ -51,6 +51,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'account.reject',
             'account.renew',
             'account.amend',
+            'account.import.migration-mode',
 
             // Clinics
             'clinic.view',
@@ -107,6 +108,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'account.update',
                     'account.delete',
                     'account.import',
+                    'account.import.migration-mode',
                     'member.view',
                     'member.create',
                     'member.update',

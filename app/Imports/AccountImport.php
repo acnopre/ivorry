@@ -16,16 +16,22 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Bus\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use App\Jobs\CompleteImportJob;
 
 class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, WithHeadingRow, SkipsOnError
 {
-    use SkipsErrors;
+    use SkipsErrors, Queueable, InteractsWithQueue;
 
     protected $userId;
+    protected $migrationMode;
 
-    public function __construct(protected ImportLog $log, ?int $userId = null)
+    public function __construct(protected ImportLog $log, ?int $userId = null, bool $migrationMode = false)
     {
         $this->userId = $userId;
+        $this->migrationMode = $migrationMode;
         set_time_limit(0);
     }
 
@@ -38,13 +44,18 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
     {
         if ($rows->isEmpty()) return;
 
-        $header = $rows->first()->toArray();
-        $serviceColumns = array_slice(array_keys($header), 8);
-        $services = Service::all()->keyBy('name');
+        Log::info("Processing chunk with {$rows->count()} rows for import log ID: {$this->log->id}");
+
+        $services = Service::all()->keyBy('slug');
 
         foreach ($rows as $index => $row) {
             $row = array_map(fn($value) => is_string($value) ? trim($value) : $value, $row->toArray());
-            if (empty($row['company_name'])) continue;
+            
+            if (empty($row['company_name'])) {
+                $this->log->increment('total_rows');
+                $this->logValidationError($index, $row, 'Company name is required');
+                continue;
+            }
 
             $this->log->increment('total_rows');
 
@@ -77,19 +88,23 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                     'expiration_date' => $this->transformDate($row['expiration_date']),
                     'plan_type' => $row['plan_type'],
                     'coverage_period_type' => $row['coverage_type'],
+                    'account_status' => $this->migrationMode ? 'active' : 'inactive',
+                    'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
                     'created_by' => $this->userId,
                 ]);
 
                 $pivotData = [];
-                foreach ($serviceColumns as $serviceName) {
-                    $quantity = $row[$serviceName] ?? 0;
-                    $service = $services->firstWhere('slug', $serviceName);
-
-                    if ($service) {
+                foreach ($services as $service) {
+                    $serviceName = $service->slug;
+                    if (isset($row[$serviceName])) {
+                        $value = $row[$serviceName];
+                        $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
+                        $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
+                        
                         $pivotData[$service->id] = [
-                            'quantity' => $service->type === 'basic' ? null : $quantity,
-                            'default_quantity' => $service->type === 'basic' ? null : $quantity,
-                            'is_unlimited' => $service->type === 'basic',
+                            'quantity' => $quantity,
+                            'default_quantity' => $quantity,
+                            'is_unlimited' => $isUnlimited,
                         ];
                     }
                 }
@@ -122,28 +137,11 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                 $this->log->increment('error_rows');
             }
         }
-
-        $this->log->update([
-            'status' => $this->log->error_rows > 0 ? 'partial' : 'completed',
-        ]);
-
-        $this->sendCompletionNotification();
-    }
-
-    private function sendCompletionNotification(): void
-    {
-        $message = "Accounts import completed! {$this->log->success_rows} accounts imported.";
-        if ($this->log->skipped_rows > 0) {
-            $message .= " {$this->log->skipped_rows} rows skipped.";
-        }
-        if ($this->log->error_rows > 0) {
-            $message .= " {$this->log->error_rows} rows failed.";
-        }
-
-        Notification::make()
-            ->title($message)
-            ->success()
-            ->sendToDatabase(\App\Models\User::find($this->log->user_id));
+        
+        Log::info("Chunk completed for import log ID: {$this->log->id}. Total processed: {$this->log->total_rows}");
+        
+        // Dispatch completion job with delay to ensure all chunks finish
+        CompleteImportJob::dispatch($this->log)->delay(now()->addSeconds(10));
     }
 
     private function validateAccountRow(array $row): ?string
@@ -205,6 +203,23 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    public function failed(\Throwable $exception)
+    {
+        Log::error('Account import chunk failed', [
+            'import_log_id' => $this->log->id,
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
+
+        $this->log->update(['status' => 'failed']);
+
+        Notification::make()
+            ->title('Accounts import failed')
+            ->body($exception->getMessage())
+            ->danger()
+            ->sendToDatabase(\App\Models\User::find($this->log->user_id));
     }
 
     public function onError(\Throwable $e)

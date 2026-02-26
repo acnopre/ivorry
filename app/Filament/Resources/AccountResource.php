@@ -658,6 +658,11 @@ class AccountResource extends Resource
                             ])
                             ->storeFileNamesIn('original_filename')
                             ->required(),
+                        Toggle::make('migration_mode')
+                            ->label('Migration Mode (Auto-approve accounts)')
+                            ->helperText('Enable this only for initial data migration. Accounts will be set to ACTIVE and APPROVED.')
+                            ->default(false)
+                            ->visible(fn() => auth()->user()->can('account.import.migration-mode')),
                     ])
                     ->action(function (array $data): void {
                         $relativePath = $data['file'];
@@ -669,6 +674,8 @@ class AccountResource extends Resource
                         }
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
+                        $migrationMode = $data['migration_mode'] ?? false;
+
                         $log = ImportLog::create([
                             'filename' => $originalFileName,
                             'disk' => 'public',
@@ -676,7 +683,7 @@ class AccountResource extends Resource
                             'user_id' => auth()->id(),
                         ]);
 
-                        Excel::import(new AccountImport($log, auth()->id()), $absolutePath);
+                        Excel::import(new AccountImport($log, auth()->id(), $migrationMode), $absolutePath);
 
                         Notification::make()
                             ->title('Accounts import started')

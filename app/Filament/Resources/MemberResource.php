@@ -180,6 +180,7 @@ class MemberResource extends Resource
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             ])
+                            ->storeFileNamesIn('original_filename')
                             ->required(),
                     ])
                     ->action(function (array $data): void {
@@ -191,18 +192,11 @@ class MemberResource extends Resource
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
 
-                        $import = new MembersImport($relativePath);
+                        $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
+                        $import = new MembersImport($originalFileName);
                         Excel::import($import, $absolutePath);
 
-                        // Update import log
-                        $import->importLog->update([
-                            'status' => count($import->failed) > 0 ? 'partial' : 'completed',
-                            'total_rows' => $import->imported + count($import->failed),
-                            'success_rows' => $import->imported,
-                            'error_rows' => count($import->failed),
-                        ]);
-
-                        $message = "Import completed! {$import->imported} members imported.";
+                        $message = "Members import completed! {$import->imported} members imported.";
                         if (count($import->failed) > 0) {
                             $message .= " " . count($import->failed) . " rows failed.";
                         }

@@ -37,6 +37,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
     public function model(array $row)
     {
         $this->rowNumber++;
+        $row = array_map(fn($value) => is_string($value) ? trim($value) : $value, $row);
 
         $account = Account::where('company_name', $row['account_name'])->first();
 
@@ -179,6 +180,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             'raw_data' => json_encode($row),
             'status' => 'success',
         ]);
+        $this->importLog->increment('total_rows');
+        $this->importLog->increment('success_rows');
     }
 
     private function logError($row, $message)
@@ -191,6 +194,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             'message' => $message,
         ]);
         $this->failed[] = "Row {$this->rowNumber}: {$message}";
+        $this->importLog->increment('total_rows');
+        $this->importLog->increment('error_rows');
     }
 
     public function chunkSize(): int
@@ -204,6 +209,13 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         \Log::error('Import error', [
             'row' => $this->rowNumber,
             'message' => $this->sanitizeErrorMessage($e instanceof \Exception ? $e : new \Exception($e->getMessage())),
+        ]);
+    }
+
+    public function __destruct()
+    {
+        $this->importLog->update([
+            'status' => $this->importLog->error_rows > 0 ? 'partial' : 'completed',
         ]);
     }
 }

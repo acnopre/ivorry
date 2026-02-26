@@ -12,6 +12,28 @@ class ImportLogStats extends StatsOverviewWidget
 
     protected function getCards(): array
     {
+        $record = $this->record ?? null;
+        
+        if ($record) {
+            return [
+                Stat::make('Total Rows', $record->total_rows)
+                    ->description('Total rows processed')
+                    ->color('primary'),
+
+                Stat::make('Success', $record->success_rows)
+                    ->description('Successfully imported')
+                    ->color('success'),
+
+                Stat::make('Skipped', $record->skipped_rows)
+                    ->description('Rows skipped (duplicates)')
+                    ->color('warning'),
+
+                Stat::make('Errors', $record->error_rows)
+                    ->description('Failed rows')
+                    ->color('danger'),
+            ];
+        }
+
         return [
             Stat::make('Total Imports', ImportLog::count())
                 ->description('All import attempts')

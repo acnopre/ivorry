@@ -656,6 +656,7 @@ class AccountResource extends Resource
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             ])
+                            ->storeFileNamesIn('original_filename')
                             ->required(),
                     ])
                     ->action(function (array $data): void {
@@ -667,9 +668,9 @@ class AccountResource extends Resource
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
 
-                        $filename = basename($relativePath);
+                        $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
                         $log = ImportLog::create([
-                            'filename' => $filename,
+                            'filename' => $originalFileName,
                             'disk' => 'public',
                             'status' => 'processing',
                             'user_id' => auth()->id(),
@@ -677,13 +678,9 @@ class AccountResource extends Resource
 
                         Excel::import(new AccountImport($log, auth()->id()), $absolutePath);
 
-                        $message = "Import completed! {$log->success_rows} accounts imported.";
-                        if ($log->error_rows > 0) {
-                            $message .= " {$log->error_rows} rows failed.";
-                        }
-
                         Notification::make()
-                            ->title($message)
+                            ->title('Accounts import started')
+                            ->body('The import is being processed. Check the import logs for details.')
                             ->success()
                             ->send();
                     }),

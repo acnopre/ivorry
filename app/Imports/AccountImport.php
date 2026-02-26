@@ -15,6 +15,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Filament\Notifications\Notification;
 
 class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, WithHeadingRow, SkipsOnError
 {
@@ -42,6 +43,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         $services = Service::all()->keyBy('name');
 
         foreach ($rows as $index => $row) {
+            $row = array_map(fn($value) => is_string($value) ? trim($value) : $value, $row->toArray());
             if (empty($row['company_name'])) continue;
 
             $this->log->increment('total_rows');
@@ -51,24 +53,32 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                 continue;
             }
 
+            // Check if account already exists
+            if (Account::where('company_name', $row['company_name'])->where('policy_code', $row['policy_code'])->exists()) {
+                ImportLogItem::create([
+                    'import_log_id' => $this->log->id,
+                    'row_number' => $index + 2,
+                    'raw_data' => json_encode($row),
+                    'status' => 'skipped',
+                    'message' => 'Account already exists',
+                ]);
+                $this->log->increment('skipped_rows');
+                continue;
+            }
+
             DB::beginTransaction();
             try {
-                $account = Account::updateOrCreate(
-                    [
-                        'company_name' => $row['company_name'],
-                        'policy_code' => $row['policy_code'],
-                    ],
-                    [
-                        'hip' => $row['hip'],
-                        'card_used' => $row['card_used'],
-                        'effective_date' => $this->transformDate($row['effective_date']),
-                        'expiration_date' => $this->transformDate($row['expiration_date']),
-                        'plan_type' => $row['plan_type'],
-                        'coverage_period_type' => $row['coverage_type'],
-                        // 'account_status' => config('app.debug') ? 'active' : ($row['account_status'] ?? null),
-                        'created_by' => $this->userId,
-                    ]
-                );
+                $account = Account::create([
+                    'company_name' => $row['company_name'],
+                    'policy_code' => $row['policy_code'],
+                    'hip' => $row['hip'],
+                    'card_used' => $row['card_used'],
+                    'effective_date' => $this->transformDate($row['effective_date']),
+                    'expiration_date' => $this->transformDate($row['expiration_date']),
+                    'plan_type' => $row['plan_type'],
+                    'coverage_period_type' => $row['coverage_type'],
+                    'created_by' => $this->userId,
+                ]);
 
                 $pivotData = [];
                 foreach ($serviceColumns as $serviceName) {
@@ -116,6 +126,24 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         $this->log->update([
             'status' => $this->log->error_rows > 0 ? 'partial' : 'completed',
         ]);
+
+        $this->sendCompletionNotification();
+    }
+
+    private function sendCompletionNotification(): void
+    {
+        $message = "Accounts import completed! {$this->log->success_rows} accounts imported.";
+        if ($this->log->skipped_rows > 0) {
+            $message .= " {$this->log->skipped_rows} rows skipped.";
+        }
+        if ($this->log->error_rows > 0) {
+            $message .= " {$this->log->error_rows} rows failed.";
+        }
+
+        Notification::make()
+            ->title($message)
+            ->success()
+            ->sendToDatabase(\App\Models\User::find($this->log->user_id));
     }
 
     private function validateAccountRow(array $row): ?string
@@ -184,5 +212,13 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         \Log::error('Account import error', [
             'message' => $this->sanitizeErrorMessage($e),
         ]);
+
+        $this->log->update(['status' => 'failed']);
+
+        Notification::make()
+            ->title('Accounts import failed')
+            ->body($this->sanitizeErrorMessage($e))
+            ->danger()
+            ->sendToDatabase(\App\Models\User::find($this->log->user_id));
     }
 }

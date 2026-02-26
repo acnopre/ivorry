@@ -127,8 +127,14 @@ class ViewAccount extends ViewRecord
                         'remarks' => $data['remarks'],
                     ]);
 
+                    // Revert account to previous approved state
+                    $lastApprovedEndorsement = $record->endorsement_type === 'RENEWAL' 
+                        ? ($record->renewals()->where('status', 'APPROVED')->exists() ? 'RENEWED' : 'NEW')
+                        : $record->endorsement_type;
+
                     $record->update([
-                        'endorsement_status' => 'REJECTED',
+                        'endorsement_type' => $lastApprovedEndorsement,
+                        'endorsement_status' => 'APPROVED',
                         'remarks' => $data['remarks'],
                     ]);
 
@@ -246,8 +252,20 @@ class ViewAccount extends ViewRecord
                         'remarks' => $data['remarks'],
                     ]);
 
+                    // Revert account to previous approved state
+                    $lastApprovedEndorsement = 'NEW';
+                    if ($record->renewals()->where('status', 'APPROVED')->exists()) {
+                        $lastApprovedEndorsement = 'RENEWED';
+                    }
+                    if (AccountAmendment::where('account_id', $record->id)
+                        ->where('endorsement_status', 'APPROVED')
+                        ->exists()) {
+                        $lastApprovedEndorsement = 'AMENDED';
+                    }
+
                     $record->update([
-                        'endorsement_status' => 'REJECTED',
+                        'endorsement_type' => $lastApprovedEndorsement,
+                        'endorsement_status' => 'APPROVED',
                         'remarks' => $data['remarks'],
                     ]);
 

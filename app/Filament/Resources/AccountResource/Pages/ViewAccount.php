@@ -98,6 +98,54 @@ class ViewAccount extends ViewRecord
                     }
                 }),
 
+            Actions\Action::make('rejectRenewal')
+                ->label('Reject Renewal')
+                ->color('danger')
+                ->icon('heroicon-o-x-circle')
+                ->visible(
+                    fn(Account $record) =>
+                    $record->endorsement_type === 'RENEWAL'
+                        && $record->endorsement_status === 'PENDING'
+                        && auth()->user()->can('account.renew')
+                        && $record->renewals->first() != null
+                )
+                ->form([
+                    Textarea::make('remarks')
+                        ->label('Remarks')
+                        ->required()
+                        ->maxLength(1000)
+                        ->placeholder('Enter reason for rejection...'),
+                ])
+                ->requiresConfirmation()
+                ->action(function (Account $record, array $data) {
+                    $renewal = AccountRenewal::where('account_id', $record->id)
+                        ->where('status', 'PENDING')
+                        ->firstOrFail();
+
+                    $renewal->update([
+                        'status' => 'REJECTED',
+                        'remarks' => $data['remarks'],
+                    ]);
+
+                    $record->update([
+                        'endorsement_status' => 'REJECTED',
+                        'remarks' => $data['remarks'],
+                    ]);
+
+                    Notification::make()
+                        ->title('Account renewal rejected.')
+                        ->danger()
+                        ->send();
+
+                    $createdByEmail = $record->createdBy?->email;
+                    if ($createdByEmail) {
+                        Mail::raw("The renewal for account {$record->company_name} has been rejected. Reason: {$data['remarks']}", function ($message) use ($createdByEmail) {
+                            $message->to($createdByEmail)
+                                ->subject('Account Renewal Rejected');
+                        });
+                    }
+                }),
+
             Actions\Action::make('renewAccount')
                 ->label('Renew Account')
                 ->color('info')
@@ -169,12 +217,61 @@ class ViewAccount extends ViewRecord
                     }
                 }),
 
+            Actions\Action::make('rejectAmendment')
+                ->label('Reject Amendment')
+                ->color('danger')
+                ->icon('heroicon-o-x-circle')
+                ->visible(
+                    fn(Model $record) =>
+                    $record->endorsement_type === 'AMENDMENT'
+                        && $record->endorsement_status === 'PENDING'
+                        && auth()->user()->can('account.amend')
+                )
+                ->form([
+                    Textarea::make('remarks')
+                        ->label('Remarks')
+                        ->required()
+                        ->maxLength(1000)
+                        ->placeholder('Enter reason for rejection...'),
+                ])
+                ->requiresConfirmation()
+                ->action(function (Account $record, array $data) {
+                    $amendment = AccountAmendment::where('account_id', $record->id)
+                        ->where('endorsement_status', 'PENDING')
+                        ->latest()
+                        ->first();
+
+                    $amendment->update([
+                        'endorsement_status' => 'REJECTED',
+                        'remarks' => $data['remarks'],
+                    ]);
+
+                    $record->update([
+                        'endorsement_status' => 'REJECTED',
+                        'remarks' => $data['remarks'],
+                    ]);
+
+                    Notification::make()
+                        ->title('Account amendment rejected.')
+                        ->danger()
+                        ->send();
+
+                    $createdByEmail = $record->createdBy?->email;
+                    if ($createdByEmail) {
+                        Mail::raw("The amendment for account {$record->company_name} has been rejected. Reason: {$data['remarks']}", function ($message) use ($createdByEmail) {
+                            $message->to($createdByEmail)
+                                ->subject('Account Amendment Rejected');
+                        });
+                    }
+                }),
+
             Actions\Action::make('approveAmendment')
                 ->label('Approve Amendment')
                 ->requiresConfirmation()
                 ->visible(
                     fn(Model $record) =>
                     $record->endorsement_type === 'AMENDMENT'
+                        && $record->endorsement_status === 'PENDING'
                         && auth()->user()->can('account.amend')
                 )
                 ->action(function (Account $record) {
@@ -192,6 +289,7 @@ class ViewAccount extends ViewRecord
                         'expiration_date' => $amendment->expiration_date,
                         'endorsement_type' => 'AMENDED',
                         'endorsement_status' => 'APPROVED',
+                        'account_status' => 'active'
                     ];
 
                     // Update MBL if changed
@@ -223,7 +321,9 @@ class ViewAccount extends ViewRecord
                         ]);
                     }
 
-                    $amendment->update(['endorsement_status' => 'APPROVED']);
+                    $amendment->update([
+                        'endorsement_status' => 'APPROVED',
+                    ]);
 
                     $createdByEmail = $record->createdBy?->email;
                     if ($createdByEmail) {
@@ -250,7 +350,7 @@ class ViewAccount extends ViewRecord
                     ->columnSpanFull()
                     ->tabs([
                         // Account Renewal Tab 
-                        Tabs\Tab::make('Account Renewal')
+                        Tabs\Tab::make('Account Information')
                             ->badge(function ($record) {
                                 if ($record->endorsement_status === 'PENDING') {
                                     return 'Pending Update';
@@ -281,6 +381,24 @@ class ViewAccount extends ViewRecord
                                                     ->copyable()
                                                     ->copyMessage('Policy code copied!'),
 
+                                                TextEntry::make('hip')
+                                                    ->label('HIP'),
+
+                                                TextEntry::make('card_used')
+                                                    ->label('Card Used'),
+
+                                                TextEntry::make('plan_type')
+                                                    ->label('Plan Type')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'info' => fn($state): bool => $state === 'INDIVIDUAL',
+                                                        'warning' => fn($state): bool => $state === 'SHARED',
+                                                    ]),
+
+                                                TextEntry::make('coverage_period_type')
+                                                    ->label('Coverage Type')
+                                                    ->badge(),
+
                                                 TextEntry::make('endorsement_type')
                                                     ->label('Endorsement Type')
                                                     ->badge()
@@ -289,6 +407,21 @@ class ViewAccount extends ViewRecord
                                                         'warning' => fn($state): bool => $state === 'RENEWAL',
                                                         'info'    => fn($state): bool => $state === 'AMENDMENT',
                                                     ]),
+
+                                                TextEntry::make('mbl_type')
+                                                    ->label('MBL Type')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => ucfirst($state))
+                                                    ->colors([
+                                                        'info' => fn($state): bool => strtolower($state) === 'procedural',
+                                                        'success' => fn($state): bool => strtolower($state) === 'fixed',
+                                                    ])
+                                                    ->visible(fn($record) => $record->mbl_type),
+
+                                                TextEntry::make('mbl_amount')
+                                                    ->label('MBL Amount')
+                                                    ->money('PHP')
+                                                    ->visible(fn($record) => $record->mbl_type === 'Fixed'),
                                             ]),
                                         Grid::make(3)
                                             ->schema([
@@ -368,7 +501,7 @@ class ViewAccount extends ViewRecord
                                     && $amendmentAccount != null
                             )
                             ->schema([
-                                Section::make('Account Renewal')
+                                Section::make('Account Information')
                                     ->headerActions(
                                         []
                                     )
@@ -387,6 +520,28 @@ class ViewAccount extends ViewRecord
                                                     ->copyMessage('Policy code copied!')
                                                     ->default($amendmentAccount?->policy_code),
 
+                                                TextEntry::make('hip_amendment')
+                                                    ->label('HIP')
+                                                    ->default($amendmentAccount?->hip),
+
+                                                TextEntry::make('card_used_amendment')
+                                                    ->label('Card Used')
+                                                    ->default($amendmentAccount?->card_used),
+
+                                                TextEntry::make('plan_type_amendment')
+                                                    ->label('Plan Type')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'info' => fn($state): bool => $state === 'INDIVIDUAL',
+                                                        'warning' => fn($state): bool => $state === 'SHARED',
+                                                    ])
+                                                    ->default($this->record->plan_type),
+
+                                                TextEntry::make('coverage_period_type_amendment')
+                                                    ->label('Coverage Type')
+                                                    ->badge()
+                                                    ->default($amendmentAccount?->coverage_period_type),
+
                                                 TextEntry::make('endorsement_type_amendment')
                                                     ->label('Endorsement Type')
                                                     ->badge()
@@ -397,6 +552,22 @@ class ViewAccount extends ViewRecord
                                                     ])
                                                     ->default($amendmentAccount?->endorsement_type),
 
+                                                TextEntry::make('mbl_type_amendment')
+                                                    ->label('MBL Type')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn($state) => ucfirst($state))
+                                                    ->colors([
+                                                        'info' => fn($state): bool => strtolower($state) === 'procedural',
+                                                        'success' => fn($state): bool => strtolower($state) === 'fixed',
+                                                    ])
+                                                    ->default($amendmentAccount?->mbl_type)
+                                                    ->visible(fn() => $amendmentAccount?->mbl_type),
+
+                                                TextEntry::make('mbl_amount_amendment')
+                                                    ->label('MBL Amount')
+                                                    ->money('PHP')
+                                                    ->default($amendmentAccount?->mbl_amount)
+                                                    ->visible(fn() => $amendmentAccount?->mbl_type === 'Fixed'),
                                             ]),
                                         Grid::make(3)
                                             ->schema([
@@ -516,12 +687,6 @@ class ViewAccount extends ViewRecord
                                                     ->label('MBL Amount')
                                                     ->money('PHP')
                                                     ->visible(fn($record) => $record->mbl_type === 'Fixed'),
-
-                                                TextEntry::make('mbl_balance')
-                                                    ->label('MBL Balance')
-                                                    ->money('PHP')
-                                                    ->visible(fn($record) => $record->mbl_type === 'Fixed')
-                                                    ->color(fn($state, $record) => $state < ($record->mbl_amount * 0.2) ? 'danger' : 'success'),
                                             ]),
                                         Grid::make(3)
                                             ->schema([

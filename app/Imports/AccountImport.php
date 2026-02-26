@@ -139,6 +139,11 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
                 DB::beginTransaction();
                 try {
+                    // Soft delete existing pending amendments
+                    \App\Models\AccountAmendment::where('account_id', $existingAccount->id)
+                        ->where('endorsement_status', 'PENDING')
+                        ->delete();
+
                     $amendment = \App\Models\AccountAmendment::create([
                         'account_id' => $existingAccount->id,
                         'company_name' => $row['company_name'],

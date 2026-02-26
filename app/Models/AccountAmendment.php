@@ -19,6 +19,9 @@ class AccountAmendment extends Model
         'expiration_date',
         'endorsement_type',
         'endorsement_status',
+        'coverage_period_type',
+        'mbl_type',
+        'mbl_amount',
         'remarks',
         'requested_by',
     ];

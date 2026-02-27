@@ -15,7 +15,7 @@ $history_records = collect($renewal_groups)
 ->flatMap(fn($group) => collect($group['records'])->map(fn($record) => array_merge(['period' => $group['label']], $record)))
 ->values()
 ->toArray();
-$historyCount = count($history_records);
+$historyCount = count($renewal_groups);
 @endphp
 
 <div x-data="{ activeTab: 'services' }" class="w-full">

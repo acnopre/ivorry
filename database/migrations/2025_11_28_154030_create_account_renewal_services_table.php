@@ -15,10 +15,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('renewal_id')->constrained('account_renewals')->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
+            $table->integer('default_quantity')->nullable();
             $table->integer('quantity')->nullable();
             $table->boolean('is_unlimited')->default(false);
             $table->longText('remarks')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

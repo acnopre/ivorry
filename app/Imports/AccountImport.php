@@ -82,6 +82,16 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
                 DB::beginTransaction();
                 try {
+                    // Soft delete existing pending renewals and their services
+                    $pendingRenewals = \App\Models\AccountRenewal::where('account_id', $existingAccount->id)
+                        ->where('status', 'PENDING')
+                        ->get();
+                    
+                    foreach ($pendingRenewals as $pendingRenewal) {
+                        $pendingRenewal->services()->delete();
+                        $pendingRenewal->delete();
+                    }
+
                     $renewal = \App\Models\AccountRenewal::create([
                         'account_id' => $existingAccount->id,
                         'effective_date' => $this->transformDate($row['effective_date']),
@@ -95,19 +105,15 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                         'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
                     ]);
 
-                    foreach ($services as $service) {
-                        $serviceName = $service->slug;
-                        if (isset($row[$serviceName])) {
-                            $value = $row[$serviceName];
-                            $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
-                            $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
-
-                            $renewal->services()->create([
-                                'service_id' => $service->id,
-                                'quantity' => $quantity,
-                                'is_unlimited' => $isUnlimited,
-                            ]);
-                        }
+                    // Use existing account services for renewal
+                    $accountServices = \App\Models\AccountService::where('account_id', $existingAccount->id)->get();
+                    foreach ($accountServices as $accountService) {
+                        $renewal->services()->create([
+                            'service_id' => $accountService->service_id,
+                            'quantity' => $accountService->default_quantity,
+                            'default_quantity' => $accountService->default_quantity,
+                            'is_unlimited' => $accountService->is_unlimited,
+                        ]);
                     }
 
                     DB::commit();

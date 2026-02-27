@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->foreignId('requested_by')->constrained('users');
             $table->foreignId('approved_by')->nullable()->constrained('users');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

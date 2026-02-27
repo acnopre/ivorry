@@ -128,7 +128,7 @@ class ViewAccount extends ViewRecord
                     ]);
 
                     // Revert account to previous approved state
-                    $lastApprovedEndorsement = $record->endorsement_type === 'RENEWAL' 
+                    $lastApprovedEndorsement = $record->endorsement_type === 'RENEWAL'
                         ? ($record->renewals()->where('status', 'APPROVED')->exists() ? 'RENEWED' : 'NEW')
                         : $record->endorsement_type;
 
@@ -192,6 +192,7 @@ class ViewAccount extends ViewRecord
                             'renewal_id' => $service['renewal_id'],
                             'service_id' => $service['service_id'],
                             'quantity' => $service['quantity'],
+                            'default_quantity' => $service['default_quantity'] ?? $service['quantity'],
                             'is_unlimited' => $service['is_unlimited'],
                             'remarks' => $service['remarks'],
                         ]);
@@ -259,7 +260,8 @@ class ViewAccount extends ViewRecord
                     }
                     if (AccountAmendment::where('account_id', $record->id)
                         ->where('endorsement_status', 'APPROVED')
-                        ->exists()) {
+                        ->exists()
+                    ) {
                         $lastApprovedEndorsement = 'AMENDED';
                     }
 

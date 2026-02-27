@@ -18,7 +18,6 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             $table->foreignId('service_id')->constrained('services');
-
             $table->integer('quantity')->nullable();
             $table->integer('default_quantity')->nullable();
             $table->boolean('is_unlimited')->default(false);

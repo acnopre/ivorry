@@ -118,8 +118,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
     private function validateRow(array $row, Account $account): ?string
     {
-        if (empty($row['first_name']) || empty($row['last_name']) || empty($row['member_type']) || empty($row['card_number']) || empty($row['gender'])) {
-            return 'Required fields: first_name, last_name, member_type, card_number, gender';
+        if (empty($row['first_name']) || empty($row['last_name']) || empty($row['member_type']) || empty($row['card_number'])) {
+            return 'Required fields: first_name, last_name, member_type, card_number';
         }
 
         if (!in_array(strtoupper($row['member_type']), ['PRINCIPAL', 'DEPENDENT'])) {
@@ -145,9 +145,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
         }
 
-        if (Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->where('first_name', '!=', $row['first_name'])->where('last_name', '!=', $row['last_name'])->exists()) {
-            return 'Card number already exists for another member in this account';
-        }
+        // if (Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->where('first_name', '!=', $row['first_name'])->where('last_name', '!=', $row['last_name'])->exists()) {
+        //     return 'Card number already exists for another member in this account';
+        // }
 
         if (strtoupper($account->coverage_period_type) === 'MEMBER' && (empty($row['effective_date']) || empty($row['expiration_date']))) {
             return 'Effective date and expiration date are required when account coverage type is MEMBER';

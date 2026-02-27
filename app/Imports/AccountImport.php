@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\ImportLogItem;
 use App\Models\ImportLog;
 use App\Models\Service;
+use App\Models\Hip;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Collection;
@@ -214,6 +215,11 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
             DB::beginTransaction();
             try {
+                // Insert HIP to hips table if not exists
+                if (!empty($row['hip'])) {
+                    Hip::firstOrCreate(['name' => $row['hip']]);
+                }
+
                 $account = Account::create([
                     'company_name' => $row['company_name'],
                     'policy_code' => $row['policy_code'],

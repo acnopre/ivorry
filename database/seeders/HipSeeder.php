@@ -4,22 +4,30 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class HipSeeder extends Seeder
 {
     public function run(): void
     {
-        $hips = [];
+        $hips = [
+            'ETIQA LIFE AND GENERAL ASSURANCE PHILIPPINES, INC.',
+            'MARSH PHILIPPINES, INC.',
+            'Magsaysay Houlder Insurance Brokers Inc.',
+            'OMNI International Consultants, Inc.',
+            'Generali Life Assurance Phils, Inc.',
+            'KWIK CARE',
+            'MM ROYAL CARE',
+        ];
 
-        for ($i = 1; $i <= 10; $i++) {
-            $hips[] = [
-                'name' => 'HIP-' . strtoupper(Str::random(4)),
+        $data = [];
+        foreach ($hips as $hip) {
+            $data[] = [
+                'name' => $hip,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
         }
 
-        DB::table('hips')->insert($hips);
+        DB::table('hips')->insert($data);
     }
 }

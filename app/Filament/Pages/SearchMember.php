@@ -314,12 +314,40 @@ class SearchMember extends Page implements HasActions
             return $this->showError('Special Service Restriction', 'Please call HPDAI for approval to avail this special service.');
         }
 
-        if (Procedure::where('service_id', $data['service_id'])
-            ->where('member_id', $memberId)
-            ->where('status', '!=', Procedure::STATUS_VALID)
-            ->exists()
-        ) {
-            return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
+        // Check if procedure exists - include units if present
+        $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
+        $hasUnits = false;
+        $unitIds = [];
+
+        foreach ($unitInputs as $input) {
+            if (isset($data[$input]) && !empty($data[$input])) {
+                $hasUnits = true;
+                $unitIds = array_merge($unitIds, is_array($data[$input]) ? $data[$input] : [$data[$input]]);
+            }
+        }
+
+        if ($hasUnits) {
+            // Check if procedure with same service and units exists
+            foreach ($unitIds as $unitId) {
+                $exists = Procedure::where('service_id', $data['service_id'])
+                    ->where('member_id', $memberId)
+                    ->where('status', '!=', Procedure::STATUS_VALID)
+                    ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
+                    ->exists();
+
+                if ($exists) {
+                    return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
+                }
+            }
+        } else {
+            // Check if procedure without units exists
+            if (Procedure::where('service_id', $data['service_id'])
+                ->where('member_id', $memberId)
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists()
+            ) {
+                return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
+            }
         }
 
         if (!$availmentDate) {
@@ -329,13 +357,34 @@ class SearchMember extends Page implements HasActions
         // Exclusive services (cannot be done with any other service on same date)
         $exclusiveServices = ['Consultation', 'Simple tooth extraction'];
         if (in_array($serviceName, $exclusiveServices)) {
-            if ($this->hasOtherProcedures($memberId, $clinicId, $availmentDate)) {
-                return $this->showError("{$serviceName} Restriction", "{$serviceName} cannot be done with other procedures on the same date.");
+            // If current service has units, only check for other procedures on same units
+            if ($hasUnits) {
+                foreach ($unitIds as $unitId) {
+                    if ($this->hasOtherProceduresOnUnit($memberId, $clinicId, $availmentDate, $unitId)) {
+                        return $this->showError("{$serviceName} Restriction", "{$serviceName} cannot be done with other procedures on the same unit on the same date.");
+                    }
+                }
+            } else {
+                // No units, check for any other procedures
+                if ($this->hasOtherProcedures($memberId, $clinicId, $availmentDate)) {
+                    return $this->showError("{$serviceName} Restriction", "{$serviceName} cannot be done with other procedures on the same date.");
+                }
             }
         } else {
             foreach ($exclusiveServices as $exclusive) {
-                if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $exclusive)) {
-                    return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same date as {$exclusive}.");
+                // Check if exclusive service exists
+                if ($hasUnits) {
+                    // If current service has units, only check for exclusive service on same units
+                    foreach ($unitIds as $unitId) {
+                        if ($this->hasProcedureOnUnit($memberId, $clinicId, $availmentDate, $exclusive, $unitId)) {
+                            return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same unit on the same date as {$exclusive}.");
+                        }
+                    }
+                } else {
+                    // No units, check for exclusive service without unit restriction
+                    if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $exclusive)) {
+                        return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same date as {$exclusive}.");
+                    }
                 }
             }
         }
@@ -395,12 +444,33 @@ class SearchMember extends Page implements HasActions
             ->exists();
     }
 
+    private function hasOtherProceduresOnUnit(int $memberId, int $clinicId, string $date, int $unitId): bool
+    {
+        return Procedure::where('member_id', $memberId)
+            ->where('clinic_id', $clinicId)
+            ->where('availment_date', $date)
+            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
+            ->exists();
+    }
+
     private function hasProcedure(int $memberId, int $clinicId, string $date, string $serviceName): bool
     {
         return Procedure::where('member_id', $memberId)
             ->where('clinic_id', $clinicId)
             ->where('availment_date', $date)
             ->whereHas('service', fn($q) => $q->where('name', $serviceName))
+            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->exists();
+    }
+
+    private function hasProcedureOnUnit(int $memberId, int $clinicId, string $date, string $serviceName, int $unitId): bool
+    {
+        return Procedure::where('member_id', $memberId)
+            ->where('clinic_id', $clinicId)
+            ->where('availment_date', $date)
+            ->whereHas('service', fn($q) => $q->where('name', $serviceName))
+            ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
             ->where('status', '!=', Procedure::STATUS_VALID)
             ->exists();
     }

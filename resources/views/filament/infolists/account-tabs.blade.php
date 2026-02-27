@@ -2,7 +2,8 @@
 // Define your tabs
 $tabs = [
 'services' => 'Current Services',
-'history' => 'Renewal History',
+'renewal_history' => 'Renewal History',
+'amendment_history' => 'Amendment History',
 ];
 
 // Filter visible services for the badge
@@ -16,6 +17,11 @@ $history_records = collect($renewal_groups)
 ->values()
 ->toArray();
 $historyCount = count($renewal_groups);
+
+// Get amendment history count
+$amendmentCount = \App\Models\AccountAmendment::where('account_id', $record->id)
+    ->where('endorsement_status', 'APPROVED')
+    ->count();
 @endphp
 
 <div x-data="{ activeTab: 'services' }" class="w-full">
@@ -34,9 +40,13 @@ $historyCount = count($renewal_groups);
                 <span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">
                     {{ $visibleServicesCount }}
                 </span>
-                @elseif ($key === 'history')
+                @elseif ($key === 'renewal_history')
                 <span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">
                     {{ $historyCount }}
+                </span>
+                @elseif ($key === 'amendment_history')
+                <span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                    {{ $amendmentCount }}
                 </span>
                 @endif
             </a>
@@ -51,10 +61,17 @@ $historyCount = count($renewal_groups);
             @include('filament.infolists.components.services-table', ['record' => $record])
         </div>
 
-        {{-- History Tab --}}
-        <div x-show="activeTab === 'history'" x-cloak>
+        {{-- Renewal History Tab --}}
+        <div x-show="activeTab === 'renewal_history'" x-cloak>
             @include('filament.infolists.account-renewal-history', [
             'records' => $history_records,
+            ])
+        </div>
+
+        {{-- Amendment History Tab --}}
+        <div x-show="activeTab === 'amendment_history'" x-cloak>
+            @include('filament.infolists.account-amendment-history', [
+            'record' => $record,
             ])
         </div>
     </div>

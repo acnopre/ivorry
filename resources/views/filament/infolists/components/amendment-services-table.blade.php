@@ -19,7 +19,7 @@
         @foreach($serviceTypes as $type => $config)
             @php
                 $filteredServices = $services->services->filter(function($service) use ($type) {
-                    return $service->service->type === $type && ($type === 'basic' || $service->quantity != 0);
+                    return $service->service->type === $type && ($type === 'basic' || $service->is_unlimited || $service->quantity != 0);
                 });
             @endphp
 

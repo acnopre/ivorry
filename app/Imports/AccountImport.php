@@ -106,12 +106,15 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                     ]);
 
                     // Use existing account services for renewal
+                    // For renewal: reset quantity to default_quantity (renew = restore to original)
                     $accountServices = \App\Models\AccountService::where('account_id', $existingAccount->id)->get();
                     foreach ($accountServices as $accountService) {
+                        $defaultQty = ($accountService->default_quantity ?? 0) ?: ($accountService->quantity ?? null);
+
                         $renewal->services()->create([
                             'service_id' => $accountService->service_id,
-                            'quantity' => $accountService->default_quantity,
-                            'default_quantity' => $accountService->default_quantity,
+                            'quantity' => $defaultQty, // Reset to default for renewal
+                            'default_quantity' => $defaultQty,
                             'is_unlimited' => $accountService->is_unlimited,
                         ]);
                     }
@@ -180,6 +183,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                             $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
                             $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
 
+                            // For amendment: new quantity becomes the new default
                             $amendment->services()->create([
                                 'service_id' => $service->id,
                                 'quantity' => $quantity,

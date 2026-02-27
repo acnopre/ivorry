@@ -7,7 +7,6 @@ $visibleServicesCount = $renewal_services->services
 ->filter(fn($service) => ($service->quantity != 0 || $service->is_unlimited))
 ->count();
 @endphp
-@endphp
 <div x-data="{ activeTab: 'renewal_services' }" class="w-full">
     {{-- Full-Width Tab Headers (Uses standard Filament styles for look and feel) --}}
     <div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">

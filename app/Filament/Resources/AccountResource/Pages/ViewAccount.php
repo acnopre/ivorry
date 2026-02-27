@@ -343,6 +343,7 @@ class ViewAccount extends ViewRecord
 
                     $amendment->update([
                         'endorsement_status' => 'APPROVED',
+                        'approved_by' => auth()->id(),
                     ]);
 
                     $createdByEmail = $record->createdBy?->email;

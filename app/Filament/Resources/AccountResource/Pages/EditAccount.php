@@ -59,16 +59,46 @@ class EditAccount extends EditRecord
         $record = $this->record;
         $data   = $this->form->getState();
 
+        // Validate RENEWAL dates
+        if ($data['endorsement_type'] === 'RENEWAL') {
+            $errors = [];
+            
+            if (isset($data['effective_date']) && $data['effective_date'] == $record->effective_date->format('Y-m-d')) {
+                $errors[] = 'For renewal, the effective date must be different from the current effective date.';
+            }
+            if (isset($data['expiration_date']) && $data['expiration_date'] == $record->expiration_date->format('Y-m-d')) {
+                $errors[] = 'For renewal, the expiration date must be different from the current expiration date.';
+            }
+
+            if (!empty($errors)) {
+                Notification::make()
+                    ->danger()
+                    ->title('Validation Error')
+                    ->body(implode(' ', $errors))
+                    ->persistent()
+                    ->send();
+                $this->halt();
+                return;
+            }
+        }
+
         // -------------------------------------------------------------------
         // 1. HANDLE RENEWAL WORKFLOW
         // -------------------------------------------------------------------
         if ($data['endorsement_type'] === 'RENEWAL') {
 
             DB::transaction(function () use ($record, $data) {
-                // Optional debug:
-                // Log::info('Creating AccountRenewal for account_id: ' . $record->id, ['data' => $data]);
+                // Soft delete existing pending renewals and their services
+                $pendingRenewals = AccountRenewal::where('account_id', $record->id)
+                    ->where('status', 'PENDING')
+                    ->get();
 
-                // Create renewal header (do NOT touch $record)
+                foreach ($pendingRenewals as $pendingRenewal) {
+                    $pendingRenewal->services()->delete();
+                    $pendingRenewal->delete();
+                }
+
+                // Create renewal header
                 $renewal = AccountRenewal::create([
                     'account_id'      => $record->id,
                     'effective_date'  => $data['effective_date'] ?? null,
@@ -81,20 +111,23 @@ class EditAccount extends EditRecord
                 $record->endorsement_status = 'PENDING';
                 $record->save();
 
-
-                // Save Renewal Services (basic + enhancement)
+                // Save Renewal Services (basic + enhancement + special)
+                // For renewal: reset quantity to default_quantity (renew = restore to original)
                 $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
-                foreach (['basic', 'enhancement'] as $type) {
+                foreach (['basic', 'enhancement', 'special'] as $type) {
                     if (empty($servicesByType[$type])) {
                         continue;
                     }
 
                     foreach ($servicesByType[$type] as $serviceId => $serviceData) {
+                        $defaultQty = ($serviceData['default_quantity'] ?? 0) ?: ($serviceData['quantity'] ?? null);
+
                         $renewal->services()->create([
-                            'service_id'   => $serviceId,
-                            'quantity'     => $serviceData['quantity'] ?? null,
-                            'is_unlimited' => $serviceData['is_unlimited'] ?? false,
-                            'remarks'      => $serviceData['remarks'] ?? null,
+                            'service_id'       => $serviceId,
+                            'quantity'         => $defaultQty, // Reset to default for renewal
+                            'default_quantity' => $defaultQty,
+                            'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
+                            'remarks'          => $serviceData['remarks'] ?? null,
                         ]);
                     }
                 }
@@ -103,7 +136,7 @@ class EditAccount extends EditRecord
             Notification::make()
                 ->success()
                 ->title('Renewal Submitted')
-                ->body('The renewal has been submitted and is awaiting approval.')
+                ->body('The renewal has been submitted for approval. All services will be reset to their default quantities upon approval.')
                 ->send();
 
             return;
@@ -157,17 +190,14 @@ class EditAccount extends EditRecord
                     if (empty($servicesByType[$type])) continue;
 
                     foreach ($servicesByType[$type] as $serviceId => $serviceData) {
-                        $defaultQty = $serviceData['default_quantity'] ?? null;
-                        if (empty($defaultQty)) {
-                            $defaultQty = $serviceData['quantity'] ?? null;
-                        }
+                        $newQty = $serviceData['quantity'] ?? null;
 
                         $amendment->services()->create([
                             'service_id'       => $serviceId,
-                            'quantity'         => $serviceData['quantity'] ?? null,
+                            'quantity'         => $newQty,
                             'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
                             'remarks'          => $serviceData['remarks'] ?? null,
-                            'default_quantity' => $defaultQty,
+                            'default_quantity' => $newQty, // For amendment, new quantity becomes the new default
                         ]);
                     }
                 }
@@ -176,7 +206,7 @@ class EditAccount extends EditRecord
             Notification::make()
                 ->success()
                 ->title('Amendment Submitted')
-                ->body('The amendment has been submitted and is awaiting approval.')
+                ->body('The amendment has been submitted for approval. Changes will take effect once approved by management.')
                 ->send();
 
             return;

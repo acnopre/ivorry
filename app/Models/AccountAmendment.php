@@ -24,6 +24,7 @@ class AccountAmendment extends Model
         'mbl_amount',
         'remarks',
         'requested_by',
+        'approved_by',
     ];
 
     public function services()
@@ -34,5 +35,15 @@ class AccountAmendment extends Model
     public function account()
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function requestedBy()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

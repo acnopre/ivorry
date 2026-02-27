@@ -474,7 +474,9 @@ class SearchMember extends Page implements HasActions
             return;
         }
 
-        $appliedFee = $data['applied_fee'] ?? 0;
+        $appliedFee = $data['applied_fee'] ?? ClinicService::where('clinic_id', $clinicId)
+            ->where('service_id', $data['service_id'])
+            ->value('fee') ?? 0;
 
         if ($account->mbl_type === 'Fixed') {
             // Count total units for multiple unit procedures
@@ -723,6 +725,7 @@ class SearchMember extends Page implements HasActions
             ->minDate($isCSR ? now()->subDays(3) : '2026-02-26')
             ->maxDate($isCSR ? now()->addDays(5) : now())
             ->disabled(!$isCSR)
+            ->dehydrated()
             ->required();
     }
 

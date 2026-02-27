@@ -73,6 +73,13 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 }
 
                 $member->update($updateData);
+
+                // If SHARED plan and PRINCIPAL set to INACTIVE, set all dependents to INACTIVE
+                if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL' && strtoupper($row['status']) === 'INACTIVE') {
+                    Member::where('account_id', $account->id)
+                        ->where('member_type', 'DEPENDENT')
+                        ->update(['status' => 'inactive', 'inactive_date' => $updateData['inactive_date'] ?? now()->format('Y-m-d')]);
+                }
             } else {
                 $member = new Member([
                     'account_id'    => $account->id,

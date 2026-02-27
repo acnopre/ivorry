@@ -65,6 +65,19 @@ class MemberResource extends Resource
                             ])
                             ->required(),
 
+                        Select::make('status')
+                            ->options([
+                                'active' => 'Active',
+                                'inactive' => 'Inactive',
+                            ])
+                            ->default('active')
+                            ->required()
+                            ->reactive(),
+
+                        DatePicker::make('inactive_date')
+                            ->label('Inactive Date')
+                            ->visible(fn(callable $get) => $get('status') === 'inactive'),
+
                         DatePicker::make('birthdate'),
 
                         Select::make('gender')
@@ -251,6 +264,13 @@ class MemberResource extends Resource
             && auth()->user()->can('member.view');
     }
 
+
+    public static function getRelations(): array
+    {
+        return [
+            MemberResource\RelationManagers\ProceduresRelationManager::class,
+        ];
+    }
 
     public static function getPages(): array
     {

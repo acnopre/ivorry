@@ -678,8 +678,14 @@ class SearchMember extends Page implements HasActions
                 if (!$state) return;
 
                 $service = Service::with('unitType')->find($state);
-                $set('unit_type_name', $service?->unitType?->name ?? '—');
+                $unitTypeName = $service?->unitType?->name ?? '—';
+                $set('unit_type_name', $unitTypeName);
                 $set('unit_type_id', $service?->unitType?->id);
+                
+                // Set quantity to 1 and disable if unit type is Session
+                if ($unitTypeName === 'Session') {
+                    $set('quantity', 1);
+                }
 
                 $clinicId = $get('clinic_id') ?? Auth::user()->clinic->id ?? null;
                 if ($clinicId) {
@@ -723,10 +729,13 @@ class SearchMember extends Page implements HasActions
             ->numeric()
             ->integer()
             ->minValue(1)
+            ->default(1)
             ->required()
             ->live()
             ->afterStateUpdated(fn(callable $set) => $set('surface', []))
             ->visible(fn(callable $get) => $this->shouldShowQuantityField($get))
+            ->disabled(fn(callable $get) => $this->isUnitType($get, 'Session'))
+            ->dehydrated()
             ->maxValue(fn(callable $get) => $this->getMaxQuantity($get))
             ->helperText(fn(callable $get) => $this->getQuantityHelperText($get));
     }

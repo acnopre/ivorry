@@ -37,7 +37,7 @@ class ImportLogResource extends Resource
                 BadgeColumn::make('status')
                     ->colors([
                         'primary' => 'processing',
-                        'success' => 'sign',
+                        'success' => 'signed',
                         'warning' => 'partial',
                         'danger'  => 'failed',
                     ]),

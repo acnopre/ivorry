@@ -34,12 +34,12 @@ class DentistStatsWidget extends BaseWidget
                 ->description('Awaiting your signature')
                 ->url(route('filament.admin.resources.procedures.index', ['tableFilters[status][value]' => 'pending'])),
 
-            Stat::make('Signed Today', Procedure::where('status', 'sign')->where('clinic_id', $clinicId)->whereDate('updated_at', today())->count())
+            Stat::make('Signed Today', Procedure::where('status', 'signed')->where('clinic_id', $clinicId)->whereDate('updated_at', today())->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->description('Completed today'),
 
-            Stat::make('Total Signed', Procedure::where('status', 'sign')->where('clinic_id', $clinicId)->count())
+            Stat::make('Total Signed', Procedure::where('status', 'signed')->where('clinic_id', $clinicId)->count())
                 ->icon('heroicon-o-document-check')
                 ->color('success')
                 ->description('All signed procedures'),

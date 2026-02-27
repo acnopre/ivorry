@@ -35,12 +35,12 @@ class CSRStatsWidget extends BaseWidget
                 ->color('warning')
                 ->description('Awaiting dentist signature'),
 
-            Stat::make('Signed Today', Procedure::where('status', 'sign')->whereDate('updated_at', today())->count())
+            Stat::make('Signed Today', Procedure::where('status', 'signed')->whereDate('updated_at', today())->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->description('Completed today'),
 
-            Stat::make('Ready for Processing', Procedure::where('status', 'sign')->count())
+            Stat::make('Ready for Processing', Procedure::where('status', 'signed')->count())
                 ->icon('heroicon-o-document-check')
                 ->color('info')
                 ->description('Awaiting validation'),

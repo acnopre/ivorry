@@ -2,7 +2,7 @@
     @php
     $usageHistory = \App\Models\Procedure::with(['service', 'member'])
         ->whereHas('member', fn($q) => $q->where('account_id', $record->id))
-        ->where('status', 'sign')
+        ->where('status', 'signed')
         ->orderByDesc('created_at')
         ->get();
     @endphp

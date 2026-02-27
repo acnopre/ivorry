@@ -30,7 +30,7 @@ class Procedure extends Model
     ];
 
     public const STATUS_PENDING = 'pending';
-    public const STATUS_SIGN = 'sign';
+    public const STATUS_SIGN = 'signed';
     public const STATUS_VALID = 'valid';
     public const STATUS_REJECT = 'invalid';
     public const STATUS_RETURN = 'returned';

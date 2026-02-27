@@ -15,11 +15,11 @@ class ClaimsStatsWidget extends BaseWidget
         $thisWeekProcedures = Procedure::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
 
         return [
-            Stat::make('Ready to Process', Procedure::where('status', 'sign')->count())
+            Stat::make('Ready to Process', Procedure::where('status', 'signed')->count())
                 ->icon('heroicon-o-clipboard-document-check')
                 ->color('warning')
                 ->description('Awaiting validation')
-                ->chart([10, 15, 12, 18, 14, 20, Procedure::where('status', 'sign')->count()]),
+                ->chart([10, 15, 12, 18, 14, 20, Procedure::where('status', 'signed')->count()]),
 
             Stat::make('Validated Today', Procedure::where('status', 'valid')->whereDate('updated_at', today())->count())
                 ->icon('heroicon-o-check-badge')

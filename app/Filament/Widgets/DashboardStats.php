@@ -45,8 +45,8 @@ class DashboardStats extends BaseWidget
                 ->icon('heroicon-o-clock')
                 ->color('warning'),
 
-            Stat::make('Sign Procedures', Procedure::where('status', 'sign')->count())
-                ->description('Completed today: ' . Procedure::where('status', 'sign')->whereDate('updated_at', today())->count())
+            Stat::make('Sign Procedures', Procedure::where('status', 'signed')->count())
+                ->description('Completed today: ' . Procedure::where('status', 'signed')->whereDate('updated_at', today())->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success'),
 

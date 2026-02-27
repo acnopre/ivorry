@@ -25,7 +25,7 @@ class DependentMemberStatsWidget extends BaseWidget
                 ->description('Total procedures')
                 ->chart([2, 4, 3, 5, 4, 6, $myProcedures->count()]),
 
-            Stat::make('Completed', $myProcedures->clone()->where('status', 'sign')->count())
+            Stat::make('Completed', $myProcedures->clone()->where('status', 'signed')->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->description('Signed procedures'),

@@ -53,12 +53,12 @@ class RecentClaimsTable extends BaseWidget
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
-                        'success' => fn($state) => in_array($state, ['approved', 'sign']),
+                        'success' => fn($state) => in_array($state, ['approved', 'signed']),
                         'warning' => fn($state) => in_array($state, ['pending', 'for approval']),
                         'danger'  => fn($state) => in_array($state, ['denied', 'cancelled']),
                     ])
                     ->icons([
-                        'heroicon-o-check-circle' => fn($state) => in_array($state, ['approved', 'sign']),
+                        'heroicon-o-check-circle' => fn($state) => in_array($state, ['approved', 'signed']),
                         'heroicon-o-clock' => fn($state) => in_array($state, ['pending', 'for approval']),
                         'heroicon-o-x-circle' => fn($state) => in_array($state, ['denied', 'cancelled']),
                     ])

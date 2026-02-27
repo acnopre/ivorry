@@ -86,7 +86,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                     $pendingRenewals = \App\Models\AccountRenewal::where('account_id', $existingAccount->id)
                         ->where('status', 'PENDING')
                         ->get();
-                    
+
                     foreach ($pendingRenewals as $pendingRenewal) {
                         $pendingRenewal->services()->delete();
                         $pendingRenewal->delete();
@@ -239,6 +239,8 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                     'expiration_date' => $this->transformDate($row['expiration_date']),
                     'plan_type' => $row['plan_type'],
                     'coverage_period_type' => $row['coverage_type'],
+                    'mbl_type' => $row['mbl_type'] ?? 'Procedural',
+                    'mbl_amount' => $row['mbl_amount'] ?? null,
                     'account_status' => $this->migrationMode ? 'active' : 'inactive',
                     'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
                     'created_by' => $this->userId,

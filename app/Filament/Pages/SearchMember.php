@@ -517,7 +517,7 @@ class SearchMember extends Page implements HasActions
         if ($hasUnits) {
             foreach ($unitInputs as $input) {
                 if (!isset($data[$input]) || empty($data[$input])) continue;
-                
+
                 foreach ($data[$input] as $value) {
                     $procedure = Procedure::create([
                         'clinic_id' => $clinicId,
@@ -553,7 +553,7 @@ class SearchMember extends Page implements HasActions
         }
 
         $this->approvalCode = $approvalCode;
-        
+
         // Deduct balance/quantity if CSR
         if (Auth::user()->hasRole('CSR')) {
             if ($account->mbl_type === 'Fixed') {
@@ -568,7 +568,7 @@ class SearchMember extends Page implements HasActions
                 }
             }
         }
-        
+
         $this->dispatch('open-modal', id: 'approval-code');
         $this->search();
     }
@@ -601,7 +601,7 @@ class SearchMember extends Page implements HasActions
                     ->toArray();
             })
             ->live()
-            ->afterStateUpdated(function ($state, callable $set) {
+            ->afterStateUpdated(function ($state, callable $set, callable $get) {
                 $this->resetUnitFields($set);
                 if (!$state) return;
 
@@ -609,7 +609,7 @@ class SearchMember extends Page implements HasActions
                 $set('unit_type_name', $service?->unitType?->name ?? '—');
                 $set('unit_type_id', $service?->unitType?->id);
 
-                $clinicId = Auth::user()->clinic->id ?? null;
+                $clinicId = $get('clinic_id') ?? Auth::user()->clinic->id ?? null;
                 if ($clinicId) {
                     $fee = ClinicService::where('clinic_id', $clinicId)
                         ->where('service_id', $state)
@@ -629,7 +629,11 @@ class SearchMember extends Page implements HasActions
             ->required()
             ->disabled(!$isCSR)
             ->dehydrated()
-            ->visible(fn(callable $get) => filled($get('service_id')));
+            ->visible(function (callable $get) {
+                if (!filled($get('service_id'))) return false;
+                $member = $this->members->first();
+                return $member?->account?->mbl_type === 'Fixed';
+            });
     }
 
     protected function getUnitTypeDisplay(): Forms\Components\Placeholder

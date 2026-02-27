@@ -91,35 +91,92 @@
                             Account Information
                         </h3>
 
-                        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                            <div class="space-y-1">
-                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Company</div>
-                                <div class="text-sm text-gray-900 dark:text-white font-medium">{{ $member->account->company_name ?? 'N/A' }}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-shrink-0">
+                                        <x-heroicon-o-building-office class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">Company</div>
+                                        <div class="text-sm text-gray-900 dark:text-white font-semibold truncate">{{ $member->account->company_name ?? 'N/A' }}</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="space-y-1">
-                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Policy Code</div>
-                                <div class="text-sm text-gray-900 dark:text-white font-mono font-medium">{{ $member->account->policy_code ?? 'N/A' }}</div>
+                            <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-shrink-0">
+                                        <x-heroicon-o-document-text class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">Policy Code</div>
+                                        <div class="text-sm text-gray-900 dark:text-white font-mono font-semibold truncate">{{ $member->account->policy_code ?? 'N/A' }}</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="space-y-1">
-                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</div>
-                                @php
-                                $status = $member->account->account_status;
-                                $color = match ($status) {
-                                'active' => 'success',
-                                'inactive' => 'warning',
-                                'expired' => 'danger',
-                                default => 'gray',
-                                };
-                                @endphp
-                                <x-filament::badge :color="$color" class="inline-flex">
-                                    {{ ucfirst($status) }}
-                                </x-filament::badge>
+                            <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-shrink-0">
+                                        <x-heroicon-o-shield-check class="w-6 h-6 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide mb-1">Status</div>
+                                        @php
+                                        $status = $member->account->account_status;
+                                        $color = match ($status) {
+                                        'active' => 'success',
+                                        'inactive' => 'warning',
+                                        'expired' => 'danger',
+                                        default => 'gray',
+                                        };
+                                        @endphp
+                                        <x-filament::badge :color="$color" size="md" class="inline-flex">
+                                            {{ ucfirst($status) }}
+                                        </x-filament::badge>
+                                    </div>
+                                </div>
                             </div>
+                            <div class="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-shrink-0">
+                                        <x-heroicon-o-heart class="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">HIP</div>
+                                        <div class="text-sm text-gray-900 dark:text-white font-semibold truncate">{{ $member->account->hip ?? 'N/A' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Card Used</div>
+                                <div class="text-sm text-gray-900 dark:text-white font-semibold">{{ $member->account->card_used ?? 'N/A' }}</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Plan Type</div>
+                                <div class="text-sm text-gray-900 dark:text-white font-semibold">{{ ucfirst($member->account->plan_type ?? 'N/A') }}</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Coverage Period</div>
+                                <div class="text-sm text-gray-900 dark:text-white font-semibold">{{ ucfirst($member->account->coverage_period_type ?? 'N/A') }}</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">MBL Type</div>
+                                <div class="text-sm text-gray-900 dark:text-white font-semibold">{{ $member->account->mbl_type ?? 'N/A' }}</div>
+                            </div>
+                            @if($member->account->mbl_type === 'Fixed' && auth()->user()->hasRole('CSR'))
+                            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">MBL Balance</div>
+                                <div class="text-sm text-gray-900 dark:text-white font-semibold">₱{{ number_format($member->mbl_balance ?? 0, 2) }}</div>
+                            </div>
+                            @endif
                         </div>
 
                         {{-- Contract Dates --}}
                         @if(isset($member->effective_date) || isset($member->expiration_date) || isset($member->account->effective_date) || isset($member->account->expiration_date))
-                        <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mt-4">
+                        <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mt-6">
                             <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <x-heroicon-o-calendar class="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                 Contract Dates

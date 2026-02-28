@@ -323,6 +323,33 @@ class ViewAccount extends ViewRecord
                         }
                     }
 
+                    // If MBL type changed from Procedural to Fixed, update members and deduct procedures
+                    if (
+                        $record->mbl_type === 'Procedural' &&
+                        $amendment->mbl_type === 'Fixed' &&
+                        $amendment->mbl_amount
+                    ) {
+
+                        $effectiveDate = $amendment->effective_date ?? $record->effective_date;
+                        $mblAmount = $amendment->mbl_amount;
+
+                        $members = \App\Models\Member::where('account_id', $record->id)->get();
+                        foreach ($members as $member) {
+                            $balance = $mblAmount;
+
+                            $procedures = \App\Models\Procedure::where('member_id', $member->id)
+                                ->where('availment_date', '>=', $effectiveDate)
+                                // ->whereIn('status', ['valid', 'processed'])
+                                ->get();
+
+                            foreach ($procedures as $procedure) {
+                                $balance -= $procedure->applied_fee ?? 0;
+                            }
+
+                            $member->update(['mbl_balance' => $balance]);
+                        }
+                    }
+
                     $record->update($updateData);
 
                     $accountService = AccountService::where('account_id', $record->id);

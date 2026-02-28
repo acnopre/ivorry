@@ -176,6 +176,36 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                         'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
                     ]);
 
+                    // If migration mode and MBL type changed from Procedural to Fixed, update members and deduct procedures
+                    if (
+                        $this->migrationMode &&
+                        $existingAccount->mbl_type === 'Procedural' &&
+                        ($row['mbl_type'] ?? null) === 'Fixed' &&
+                        !empty($row['mbl_amount'])
+                    ) {
+
+                        $effectiveDate = $this->transformDate($row['effective_date']) ?? $existingAccount->effective_date;
+                        $mblAmount = $row['mbl_amount'];
+
+                        // Update all members with new MBL balance
+                        $members = \App\Models\Member::where('account_id', $existingAccount->id)->get();
+                        foreach ($members as $member) {
+                            $balance = $mblAmount;
+
+                            // Deduct procedures within coverage period
+                            $procedures = \App\Models\Procedure::where('member_id', $member->id)
+                                ->where('availment_date', '>=', $effectiveDate)
+                                // ->whereIn('status', ['valid', 'processed'])
+                                ->get();
+
+                            foreach ($procedures as $procedure) {
+                                $balance -= $procedure->applied_fee ?? 0;
+                            }
+
+                            $member->update(['mbl_balance' => $balance]);
+                        }
+                    }
+
                     foreach ($services as $service) {
                         $serviceName = $service->slug;
                         if (isset($row[$serviceName])) {
@@ -225,10 +255,6 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
             DB::beginTransaction();
             try {
-                // Insert HIP to hips table if not exists
-                if (!empty($row['hip'])) {
-                    Hip::firstOrCreate(['name' => $row['hip']]);
-                }
 
                 $account = Account::create([
                     'company_name' => $row['company_name'],

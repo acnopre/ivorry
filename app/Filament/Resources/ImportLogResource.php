@@ -32,6 +32,7 @@ class ImportLogResource extends Resource
                     ->colors([
                         'primary' => 'account',
                         'success' => 'member',
+                        'info' => 'procedure',
                     ]),
                 TextColumn::make('user.name')->label('Imported By')->searchable(),
                 BadgeColumn::make('status')

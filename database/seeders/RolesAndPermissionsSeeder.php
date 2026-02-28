@@ -69,6 +69,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'dentist.update',
             'clinic.import',
 
+            // Procedures
+            'procedure.import',
+            'procedure.import.migration-mode',
+
             // System
             'system.logs',
             'system.audit',
@@ -116,6 +120,8 @@ class RolesAndPermissionsSeeder extends Seeder
                     'member.import',
                     'import-logs.view',
                     'import-logs.details.view',
+                    'procedure.import',
+                    'procedure.import.migration-mode',
                 ],
                 'users' => [
                     [

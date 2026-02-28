@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('import_log', function (Blueprint $table) {
-            $table->enum('import_type', ['account', 'member', 'procedure'])->default('account')->after('filename');
+        Schema::table('procedures', function (Blueprint $table) {
+            $table->boolean('is_migrated')->default(false)->after('adc_number_from');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('import_log', function (Blueprint $table) {
-            $table->dropColumn('import_type');
+        Schema::table('procedures', function (Blueprint $table) {
+            $table->dropColumn('is_migrated');
         });
     }
 };

@@ -16,6 +16,6 @@ class ListProcedures extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return []; // remove create button
+        return [];
     }
 }

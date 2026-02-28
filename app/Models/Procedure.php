@@ -22,7 +22,8 @@ class Procedure extends Model
         'applied_fee',
         'adc_number',
         'is_fee_adjusted',
-        'adc_number_from'
+        'adc_number_from',
+        'is_migrated',
     ];
 
     protected $casts = [

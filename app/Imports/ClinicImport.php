@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Models\ImportLogItem;
 use App\Models\ImportLog;
 use App\Models\Service;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -168,12 +167,12 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
     private function normalizeEnumValue($value, array $validOptions)
     {
         if (empty($value)) return null;
-        
+
         if (is_numeric($value)) {
             $percentage = ($value * 100) . '%';
             return in_array($percentage, $validOptions) ? $percentage : null;
         }
-        
+
         return in_array($value, $validOptions) ? $value : null;
     }
 

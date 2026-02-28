@@ -7,6 +7,8 @@ use App\Models\ImportLogItem;
 use App\Models\ImportLog;
 use App\Models\Service;
 use App\Models\Hip;
+use App\Services\MblBalanceService;
+use App\Services\AccountEndorsementService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Collection;
@@ -71,9 +73,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
             // Handle RENEWAL: find existing account and create renewal
             if ($endorsementType === 'RENEWAL') {
-                $existingAccount = Account::where('company_name', $row['company_name'])
-                    ->where('policy_code', $row['policy_code'])
-                    ->first();
+                $existingAccount = $this->findExistingAccount($row);
 
                 if (!$existingAccount) {
                     $this->logValidationError($index, $row, 'Account not found for renewal');
@@ -82,15 +82,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
                 DB::beginTransaction();
                 try {
-                    // Soft delete existing pending renewals and their services
-                    $pendingRenewals = \App\Models\AccountRenewal::where('account_id', $existingAccount->id)
-                        ->where('status', 'PENDING')
-                        ->get();
-
-                    foreach ($pendingRenewals as $pendingRenewal) {
-                        $pendingRenewal->services()->delete();
-                        $pendingRenewal->delete();
-                    }
+                    AccountEndorsementService::deletePendingRenewals($existingAccount->id);
 
                     $renewal = \App\Models\AccountRenewal::create([
                         'account_id' => $existingAccount->id,
@@ -105,30 +97,11 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                         'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
                     ]);
 
-                    // Use existing account services for renewal
-                    // For renewal: reset quantity to default_quantity (renew = restore to original)
                     $accountServices = \App\Models\AccountService::where('account_id', $existingAccount->id)->get();
-                    foreach ($accountServices as $accountService) {
-                        $defaultQty = ($accountService->default_quantity ?? 0) ?: ($accountService->quantity ?? null);
-
-                        $renewal->services()->create([
-                            'service_id' => $accountService->service_id,
-                            'quantity' => $defaultQty, // Reset to default for renewal
-                            'default_quantity' => $defaultQty,
-                            'is_unlimited' => $accountService->is_unlimited,
-                        ]);
-                    }
+                    AccountEndorsementService::attachServicesToRenewal($renewal, $accountServices);
 
                     DB::commit();
-
-                    ImportLogItem::create([
-                        'import_log_id' => $this->log->id,
-                        'row_number' => $index + 2,
-                        'raw_data' => json_encode($row),
-                        'status' => 'success',
-                    ]);
-
-                    $this->log->increment('success_rows');
+                    $this->logSuccess($index, $row);
                 } catch (\Throwable $e) {
                     DB::rollBack();
                     $this->logValidationError($index, $row, $this->sanitizeErrorMessage($e));
@@ -138,9 +111,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
             // Handle AMENDMENT: find existing account and create amendment
             if ($endorsementType === 'AMENDMENT') {
-                $existingAccount = Account::where('company_name', $row['company_name'])
-                    ->where('policy_code', $row['policy_code'])
-                    ->first();
+                $existingAccount = $this->findExistingAccount($row);
 
                 if (!$existingAccount) {
                     $this->logValidationError($index, $row, 'Account not found for amendment');
@@ -149,10 +120,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
                 DB::beginTransaction();
                 try {
-                    // Soft delete existing pending amendments
-                    \App\Models\AccountAmendment::where('account_id', $existingAccount->id)
-                        ->where('endorsement_status', 'PENDING')
-                        ->delete();
+                    AccountEndorsementService::deletePendingAmendments($existingAccount->id);
 
                     $amendment = \App\Models\AccountAmendment::create([
                         'account_id' => $existingAccount->id,
@@ -176,63 +144,25 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                         'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
                     ]);
 
-                    // If migration mode and MBL type changed from Procedural to Fixed, update members and deduct procedures
-                    if (
-                        $this->migrationMode &&
-                        $existingAccount->mbl_type === 'Procedural' &&
-                        ($row['mbl_type'] ?? null) === 'Fixed' &&
-                        !empty($row['mbl_amount'])
-                    ) {
-
-                        $effectiveDate = $this->transformDate($row['effective_date']) ?? $existingAccount->effective_date;
-                        $mblAmount = $row['mbl_amount'];
-
-                        // Update all members with new MBL balance
-                        $members = \App\Models\Member::where('account_id', $existingAccount->id)->get();
-                        foreach ($members as $member) {
-                            $balance = $mblAmount;
-
-                            // Deduct procedures within coverage period
-                            $procedures = \App\Models\Procedure::where('member_id', $member->id)
-                                ->where('availment_date', '>=', $effectiveDate)
-                                // ->whereIn('status', ['valid', 'processed'])
-                                ->get();
-
-                            foreach ($procedures as $procedure) {
-                                $balance -= $procedure->applied_fee ?? 0;
-                            }
-
-                            $member->update(['mbl_balance' => $balance]);
+                    // Handle MBL type change if in migration mode
+                    if ($this->migrationMode && isset($row['mbl_type'])) {
+                        $newMblType = $row['mbl_type'];
+                        if ($existingAccount->mbl_type !== $newMblType) {
+                            $effectiveDate = $this->transformDate($row['effective_date']) ?? $existingAccount->effective_date;
+                            MblBalanceService::handleMblTypeChange(
+                                $existingAccount->id,
+                                $existingAccount->mbl_type,
+                                $newMblType,
+                                $row['mbl_amount'] ?? null,
+                                $effectiveDate
+                            );
                         }
                     }
 
-                    foreach ($services as $service) {
-                        $serviceName = $service->slug;
-                        if (isset($row[$serviceName])) {
-                            $value = $row[$serviceName];
-                            $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
-                            $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
-
-                            // For amendment: new quantity becomes the new default
-                            $amendment->services()->create([
-                                'service_id' => $service->id,
-                                'quantity' => $quantity,
-                                'default_quantity' => $quantity,
-                                'is_unlimited' => $isUnlimited,
-                            ]);
-                        }
-                    }
+                    $this->attachServicesToAmendment($amendment, $services, $row);
 
                     DB::commit();
-
-                    ImportLogItem::create([
-                        'import_log_id' => $this->log->id,
-                        'row_number' => $index + 2,
-                        'raw_data' => json_encode($row),
-                        'status' => 'success',
-                    ]);
-
-                    $this->log->increment('success_rows');
+                    $this->logSuccess($index, $row);
                 } catch (\Throwable $e) {
                     DB::rollBack();
                     $this->logValidationError($index, $row, $this->sanitizeErrorMessage($e));
@@ -272,36 +202,10 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                     'created_by' => $this->userId,
                 ]);
 
-                $pivotData = [];
-                foreach ($services as $service) {
-                    $serviceName = $service->slug;
-                    if (isset($row[$serviceName])) {
-                        $value = $row[$serviceName];
-                        $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
-                        $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
-
-                        $pivotData[$service->id] = [
-                            'quantity' => $quantity,
-                            'default_quantity' => $quantity,
-                            'is_unlimited' => $isUnlimited,
-                        ];
-                    }
-                }
-
-                if (!empty($pivotData)) {
-                    $account->services()->sync($pivotData);
-                }
+                $this->attachServicesToAccount($account, $services, $row);
 
                 DB::commit();
-
-                ImportLogItem::create([
-                    'import_log_id' => $this->log->id,
-                    'row_number' => $index + 2,
-                    'raw_data' => json_encode($row),
-                    'status' => 'success',
-                ]);
-
-                $this->log->increment('success_rows');
+                $this->logSuccess($index, $row);
             } catch (\Throwable $e) {
                 DB::rollBack();
 
@@ -413,6 +317,66 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    private function findExistingAccount(array $row): ?Account
+    {
+        return Account::where('company_name', $row['company_name'])
+            ->where('policy_code', $row['policy_code'])
+            ->first();
+    }
+
+    private function attachServicesToAccount(Account $account, $services, array $row): void
+    {
+        $pivotData = [];
+        foreach ($services as $service) {
+            $serviceName = $service->slug;
+            if (isset($row[$serviceName])) {
+                $value = $row[$serviceName];
+                $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
+                $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
+
+                $pivotData[$service->id] = [
+                    'quantity' => $quantity,
+                    'default_quantity' => $quantity,
+                    'is_unlimited' => $isUnlimited,
+                ];
+            }
+        }
+
+        if (!empty($pivotData)) {
+            $account->services()->sync($pivotData);
+        }
+    }
+
+    private function attachServicesToAmendment($amendment, $services, array $row): void
+    {
+        foreach ($services as $service) {
+            $serviceName = $service->slug;
+            if (isset($row[$serviceName])) {
+                $value = $row[$serviceName];
+                $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
+                $quantity = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
+
+                $amendment->services()->create([
+                    'service_id' => $service->id,
+                    'quantity' => $quantity,
+                    'default_quantity' => $quantity,
+                    'is_unlimited' => $isUnlimited,
+                ]);
+            }
+        }
+    }
+
+    private function logSuccess(int $index, array $row): void
+    {
+        ImportLogItem::create([
+            'import_log_id' => $this->log->id,
+            'row_number' => $index + 2,
+            'raw_data' => json_encode($row),
+            'status' => 'success',
+        ]);
+        $this->log->increment('success_rows');
     }
 
     public function failed(\Throwable $exception)

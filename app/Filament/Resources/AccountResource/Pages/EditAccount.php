@@ -5,6 +5,7 @@ namespace App\Filament\Resources\AccountResource\Pages;
 use App\Filament\Resources\AccountResource;
 use App\Models\AccountAmendment;
 use App\Models\AccountRenewal;
+use App\Services\AccountEndorsementService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
@@ -88,17 +89,8 @@ class EditAccount extends EditRecord
         if ($data['endorsement_type'] === 'RENEWAL') {
 
             DB::transaction(function () use ($record, $data) {
-                // Soft delete existing pending renewals and their services
-                $pendingRenewals = AccountRenewal::where('account_id', $record->id)
-                    ->where('status', 'PENDING')
-                    ->get();
+                AccountEndorsementService::deletePendingRenewals($record->id);
 
-                foreach ($pendingRenewals as $pendingRenewal) {
-                    $pendingRenewal->services()->delete();
-                    $pendingRenewal->delete();
-                }
-
-                // Create renewal header
                 $renewal = AccountRenewal::create([
                     'account_id'      => $record->id,
                     'effective_date'  => $data['effective_date'] ?? null,
@@ -111,26 +103,8 @@ class EditAccount extends EditRecord
                 $record->endorsement_status = 'PENDING';
                 $record->save();
 
-                // Save Renewal Services (basic + enhancement + special)
-                // For renewal: reset quantity to default_quantity (renew = restore to original)
                 $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
-                foreach (['basic', 'enhancement', 'special'] as $type) {
-                    if (empty($servicesByType[$type])) {
-                        continue;
-                    }
-
-                    foreach ($servicesByType[$type] as $serviceId => $serviceData) {
-                        $defaultQty = ($serviceData['default_quantity'] ?? 0) ?: ($serviceData['quantity'] ?? null);
-
-                        $renewal->services()->create([
-                            'service_id'       => $serviceId,
-                            'quantity'         => $defaultQty, // Reset to default for renewal
-                            'default_quantity' => $defaultQty,
-                            'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
-                            'remarks'          => $serviceData['remarks'] ?? null,
-                        ]);
-                    }
-                }
+                AccountEndorsementService::attachServicesToRenewalFromForm($renewal, $servicesByType);
             });
 
             Notification::make()
@@ -149,18 +123,8 @@ class EditAccount extends EditRecord
         if ($data['endorsement_type'] === 'AMENDMENT') {
 
             DB::transaction(function () use ($record, $data) {
+                AccountEndorsementService::deletePendingAmendments($record->id);
 
-                // Soft delete any existing pending amendments and their services
-                $existingAmendments = AccountAmendment::where('account_id', $record->id)
-                    ->where('endorsement_status', 'PENDING')
-                    ->get();
-
-                foreach ($existingAmendments as $amendment) {
-                    $amendment->services()->delete();
-                    $amendment->delete();
-                }
-
-                // Create Amendment Header (Snapshot)
                 $amendment = AccountAmendment::create([
                     'account_id'        => $record->id,
                     'company_name'      => $data['company_name'],
@@ -178,29 +142,13 @@ class EditAccount extends EditRecord
                     'requested_by'      => auth()->id(),
                 ]);
 
-                // Update main account status only
                 $record->update([
                     'endorsement_type'   => 'AMENDMENT',
                     'endorsement_status' => 'PENDING',
                 ]);
 
-                // Save Amendment Services
                 $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
-                foreach (['basic', 'enhancement', 'special'] as $type) {
-                    if (empty($servicesByType[$type])) continue;
-
-                    foreach ($servicesByType[$type] as $serviceId => $serviceData) {
-                        $newQty = $serviceData['quantity'] ?? null;
-
-                        $amendment->services()->create([
-                            'service_id'       => $serviceId,
-                            'quantity'         => $newQty,
-                            'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
-                            'remarks'          => $serviceData['remarks'] ?? null,
-                            'default_quantity' => $newQty, // For amendment, new quantity becomes the new default
-                        ]);
-                    }
-                }
+                AccountEndorsementService::attachServicesToAmendmentFromForm($amendment, $servicesByType);
             });
 
             Notification::make()

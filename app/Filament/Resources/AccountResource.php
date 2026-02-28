@@ -254,7 +254,7 @@ class AccountResource extends Resource
 
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')
-                                ->visible($record?->account_status == 'active')
+                                // ->visible($record?->account_status == 'active')
                                 ->hintAction(
                                     Forms\Components\Actions\Action::make('endorsementInfo')
                                         ->label('')
@@ -287,6 +287,11 @@ class AccountResource extends Resource
                                         // Enable all fields by setting necessary defaults if needed
                                         // For example, you could preload existing service values
                                     }
+
+                                    if (!$record) {
+                                        return;
+                                    }
+
                                     // Load existing BASIC services from the account
                                     $basicServices = AccountService::where('account_id', $record->id)
                                         ->whereHas('service', fn($q) => $q->where('type', 'basic'))
@@ -625,7 +630,10 @@ class AccountResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('company_name')->label('Company Name')->sortable()->searchable(),
+                TextColumn::make('company_name')
+                    ->label('Company Name')
+                    ->sortable()
+                    ->searchable(),
 
                 TextColumn::make('endorsement_type')
                     ->label('Endorsement Type')
@@ -651,7 +659,6 @@ class AccountResource extends Resource
                         'danger' => fn($state) => $state === 'REJECTED',
                     ]),
 
-
                 TextColumn::make('account_status')
                     ->label('Account Status')
                     ->badge()
@@ -671,10 +678,20 @@ class AccountResource extends Resource
                         'info'   => 'INDIVIDUAL',
                     ]),
 
-                TextColumn::make('effective_date')->label('Effective')->date(),
-                TextColumn::make('expiration_date')->label('Expiration')->date(),
-                TextColumn::make('created_at')->label('Created')->dateTime(),
+                TextColumn::make('effective_date')
+                    ->label('Effective')
+                    ->date(),
+
+                TextColumn::make('expiration_date')
+                    ->label('Expiration')
+                    ->date(),
+
+                TextColumn::make('created_at')
+                    ->label('Created')
+                    ->dateTime()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 SelectFilter::make('endorsement_type')
                     ->label('Endorsement Type')
@@ -687,10 +704,25 @@ class AccountResource extends Resource
                     ->label('Endorsement Status')
                     ->multiple()
                     ->options([
-                        'PENDING'   => 'PENDING',
-                        'APPROVED'  => 'APPROVED',
-                        'REJECTED'  => 'REJECTED',
-                        'RETURNED'  => 'RETURNED',
+                        'PENDING' => 'Pending',
+                        'APPROVED' => 'Approved',
+                        'REJECTED' => 'Rejected',
+                    ]),
+
+                SelectFilter::make('account_status')
+                    ->label('Account Status')
+                    ->multiple()
+                    ->options([
+                        'active' => 'Active',
+                        'inactive' => 'Inactive',
+                        'expired' => 'Expired',
+                    ]),
+
+                SelectFilter::make('plan_type')
+                    ->label('Plan Type')
+                    ->options([
+                        'INDIVIDUAL' => 'Individual',
+                        'SHARED' => 'Shared',
                     ]),
             ])
 

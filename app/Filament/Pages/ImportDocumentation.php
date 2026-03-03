@@ -79,7 +79,7 @@ class ImportDocumentation extends Page
             ],
         ];
 
-        if (!isset($files[$type])) {
+        if (!isset($files[$type]) || !file_exists($files[$type]['path'])) {
             return;
         }
 

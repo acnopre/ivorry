@@ -30,6 +30,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'member-myprofile',
             'member.myaccount',
 
+            // Documentation
+            'documentation.view',
+
             // Claims
             'claims.view',
             'claims.search',
@@ -122,6 +125,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'import-logs.details.view',
                     'procedure.import',
                     'procedure.import.migration-mode',
+                    'documentation.view',
                 ],
                 'users' => [
                     [

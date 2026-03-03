@@ -23,8 +23,14 @@ class DentistSeeder extends Seeder
         // Loop through 5 clinics
         for ($c = 1; $c <= 5; $c++) {
 
-            $clinicName = $faker->company . ' Dental Clinic';
-            $registeredName = $clinicName . ' Inc.';
+            // First clinic has a real name, rest use faker
+            if ($c === 1) {
+                $clinicName = 'Bright Smile Dental Clinic';
+                $registeredName = 'Bright Smile Dental Clinic Inc.';
+            } else {
+                $clinicName = $faker->company . ' Dental Clinic';
+                $registeredName = $clinicName . ' Inc.';
+            }
 
             // Create owner user
             $firstName = $faker->firstName;

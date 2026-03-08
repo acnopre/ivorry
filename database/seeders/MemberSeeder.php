@@ -2,65 +2,116 @@
 
 namespace Database\Seeders;
 
+use App\Models\Account;
+use App\Models\Member;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
-use Faker\Factory as Faker;
 
 class MemberSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = Faker::create();
+        $memberUsers = [
+            'member@example.com' => [
+                'company' => 'Demo Healthcare Corp',
+                'policy' => 'DEMO-2024-001',
+                'first_name' => 'Juliana',
+                'last_name' => 'Saw',
+            ],
+            'ivory.member@example.com' => [
+                'company' => 'Ivory Healthcare Inc',
+                'policy' => 'IVORY-2024-001',
+                'first_name' => 'Ivory',
+                'last_name' => 'Member',
+            ],
+        ];
 
-        // Create the "Member" role and assign permissions
-        $role = Role::firstOrCreate(['name' => 'Member']);
+        foreach ($memberUsers as $email => $data) {
+            $user = User::where('email', $email)->first();
 
-        // Get all account IDs
-        $accountIds = DB::table('accounts')->pluck('id');
-        $c = 1;
-        foreach ($accountIds as $accountId) {
-            for ($i = 1; $i <= 3; $i++) {
-                // Generate a random full name
-                $firstName = $faker->firstName;
-                $lastName = $faker->lastName;
-                $middleName = $faker->firstName;
-                $suffix = $faker->optional()->randomElement(['Jr.', 'Sr.', 'III', 'IV']);
+            if (!$user) continue;
 
-                // Create a new user for this member
-                $user = User::create([
-                    'name'     => $firstName . ' ' . $lastName,
-                    'email' => "member{$c}@example.com",
-                    'password' => Hash::make('password'),
-                ]);
-                $c++;
+            $account = Account::firstOrCreate(
+                ['policy_code' => $data['policy']],
+                [
+                    'company_name' => $data['company'],
+                    'hip' => 'HIP-' . strtoupper(substr($data['company'], 0, 3)),
+                    'effective_date' => now(),
+                    'expiration_date' => now()->addYear(),
+                    'account_status' => 'active',
+                    'plan_type' => 'INDIVIDUAL',
+                    'coverage_period_type' => 'ACCOUNT',
+                    'mbl_type' => 'Fixed',
+                    'mbl_amount' => 50000,
+                ]
+            );
 
-                $user->assignRole($role);
-
-                // Create the member linked to this account and user
-                DB::table('members')->insert([
-                    'account_id'  => $accountId,
-                    'user_id'     => $user->id,
-                    'first_name'  => $firstName,
-                    'last_name'   => $lastName,
-                    'middle_name' => $middleName,
-                    'suffix'      => $suffix,
-                    'member_type' => $i === 1 ? 'PRINCIPAL' : 'DEPENDENT',
-                    'card_number' => 'CARD-' . rand(1000, 9999),
-                    'birthdate'   => $faker->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),
-                    'gender'      => $faker->randomElement(['Male', 'Female']),
-                    'email'       => $user->email,
-                    'phone'       => '+639' . $faker->numerify('#########'),
-                    'address'     => $faker->address,
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
+            if (!$user->member) {
+                Member::create([
+                    'account_id' => $account->id,
+                    'user_id' => $user->id,
+                    'first_name' => $data['first_name'],
+                    'last_name' => $data['last_name'],
+                    'member_type' => 'Principal',
+                    'card_number' => 'CARD-' . strtoupper(substr($data['first_name'], 0, 3)) . '-' . rand(1000, 9999),
+                    'birthdate' => now()->subYears(30),
+                    'gender' => 'Female',
+                    'email' => $email,
+                    'effective_date' => now(),
+                    'expiration_date' => now()->addYear(),
+                    'status' => 'active',
+                    'endorsement_status' => 'APPROVED'
                 ]);
             }
+
+            // Attach services to account if not already attached
+            if (DB::table('account_service')->where('account_id', $account->id)->count() === 0) {
+                $this->attachServices($account->id);
+            }
+
+            $this->command->info("✅ Member data created for {$email}");
+        }
+    }
+
+    private function attachServices(int $accountId): void
+    {
+        $basicServices = DB::table('services')->where('type', 'basic')->pluck('id');
+        $enhancementServices = DB::table('services')->where('type', 'enhancement')->pluck('id');
+        $specialServices = DB::table('services')->where('type', 'special')->pluck('id');
+
+        foreach ($basicServices as $serviceId) {
+            DB::table('account_service')->insert([
+                'account_id' => $accountId,
+                'service_id' => $serviceId,
+                'is_unlimited' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
-        $this->command->info('✅ Members and users seeded successfully with random names!');
+        foreach ($enhancementServices as $serviceId) {
+            DB::table('account_service')->insert([
+                'account_id' => $accountId,
+                'service_id' => $serviceId,
+                'default_quantity' => 3,
+                'quantity' => 3,
+                'is_unlimited' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        foreach ($specialServices as $serviceId) {
+            DB::table('account_service')->insert([
+                'account_id' => $accountId,
+                'service_id' => $serviceId,
+                'default_quantity' => 2,
+                'quantity' => 2,
+                'is_unlimited' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

@@ -47,7 +47,7 @@ class DatabaseSeeder extends Seeder
             SpecializationSeeder::class,
             EndorsementTypeSeeder::class,
             // AccountSeeder::class,
-            // MemberSeeder::class,
+            MemberSeeder::class,
             ServicesSeeder::class,
             DropdownSeeder::class,
             UnitTypeSeeder::class,

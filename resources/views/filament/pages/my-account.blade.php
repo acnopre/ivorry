@@ -140,7 +140,7 @@
             Procedures
         </x-slot>
         @php
-        $procedures = $account->procedures->where('member_id', auth()->user()->member->id);
+        $procedures = $account->procedures->where('member_id', auth()->user()->member?->id ?? 0);
         @endphp
 
         @if ($procedures->isNotEmpty())
@@ -180,8 +180,11 @@
     </x-filament::section>
     @else
     <x-filament::section>
-        <p class="text-gray-600 text-sm">No account is assigned to your user profile.</p>
+        <div class="text-center py-8">
+            <x-filament::icon icon="heroicon-o-exclamation-triangle" class="w-12 h-12 mx-auto text-warning-500 mb-4" />
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Account Found</h3>
+            <p class="text-gray-600 dark:text-gray-400">No account is assigned to your user profile. Please contact support for assistance.</p>
+        </div>
     </x-filament::section>
-
     @endif
 </x-filament::page>

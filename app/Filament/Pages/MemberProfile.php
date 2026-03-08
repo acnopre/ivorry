@@ -21,9 +21,17 @@ class MemberProfile extends Page
     {
         $member = auth()->user()->member;
 
-        if ($member) {
-            $this->form->fill($member->toArray());
+        if (!$member) {
+            Notification::make()
+                ->title('No member profile found')
+                ->body('Your account is not linked to a member profile. Please contact support.')
+                ->warning()
+                ->persistent()
+                ->send();
+            return;
         }
+
+        $this->form->fill($member->toArray());
     }
 
     public function form(Form $form): Form
@@ -80,18 +88,25 @@ class MemberProfile extends Page
     {
         $member = auth()->user()->member;
 
-        if ($member) {
-            $member->update([
-                'email' => $this->data['email'],
-                'phone' => $this->data['phone'],
-                'address' => $this->data['address'],
-            ]);
-
+        if (!$member) {
             Notification::make()
-                ->title('Profile updated successfully')
-                ->success()
+                ->title('Unable to save')
+                ->body('No member profile found.')
+                ->danger()
                 ->send();
+            return;
         }
+
+        $member->update([
+            'email' => $this->data['email'],
+            'phone' => $this->data['phone'],
+            'address' => $this->data['address'],
+        ]);
+
+        Notification::make()
+            ->title('Profile updated successfully')
+            ->success()
+            ->send();
     }
 
     public static function canAccess(): bool

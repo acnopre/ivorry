@@ -19,11 +19,19 @@ class MyAccount extends Page
     public function mount(): void
     {
         $user = Auth::user();
-
-        // Find the account linked to this user through the member record
         $member = $user->member ?? null;
 
-        if ($member && $member->account) {
+        if (!$member) {
+            \Filament\Notifications\Notification::make()
+                ->title('No member profile found')
+                ->body('Your account is not linked to a member profile. Please contact support.')
+                ->warning()
+                ->persistent()
+                ->send();
+            return;
+        }
+
+        if ($member->account) {
             $this->account = $member->account->load('services');
         }
     }

@@ -43,7 +43,8 @@ class MemberSeeder extends Seeder
                     'plan_type' => 'INDIVIDUAL',
                     'coverage_period_type' => 'ACCOUNT',
                     'mbl_type' => 'Fixed',
-                    'endorsement_status' => 'APPROVED'
+                    'endorsement_status' => 'APPROVED',
+                    'mbl_amount' => 50000,
                 ]
             );
 

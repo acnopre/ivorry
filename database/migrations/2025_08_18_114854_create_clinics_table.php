@@ -37,13 +37,7 @@ return new class extends Migration
             ])->nullable();
 
             // BUSINESS TYPE
-            $table->enum('business_type', [
-                'SOLE PROPRIETORSHIP',
-                'PARTNERSHIP',
-                'GENERAL PROFESSIONAL PARTNERSHIP',
-                'CORPORATION',
-                'ONE PERSON CORPORATION',
-            ])->nullable();
+            $table->string('business_type')->nullable();
 
             // VAT TYPE
             $table->enum('vat_type', [

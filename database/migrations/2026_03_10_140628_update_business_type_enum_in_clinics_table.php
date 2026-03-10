@@ -10,8 +10,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("UPDATE clinics SET business_type = 'PROPRIETORSHIP' WHERE business_type = 'SOLE PROPRIETORSHIP'");
-        DB::statement("ALTER TABLE clinics MODIFY COLUMN business_type ENUM('PROPRIETORSHIP', 'PARTNERSHIP', 'GENERAL PROFESSIONAL PARTNERSHIP', 'CORPORATION', 'ONE PERSON CORPORATION') NULL");
+        DB::statement("ALTER TABLE clinics MODIFY COLUMN business_type VARCHAR(255) NULL");
     }
 
     /**
@@ -20,6 +19,5 @@ return new class extends Migration
     public function down(): void
     {
         DB::statement("ALTER TABLE clinics MODIFY COLUMN business_type ENUM('SOLE PROPRIETORSHIP', 'PARTNERSHIP', 'GENERAL PROFESSIONAL PARTNERSHIP', 'CORPORATION', 'ONE PERSON CORPORATION') NULL");
-        DB::statement("UPDATE clinics SET business_type = 'SOLE PROPRIETORSHIP' WHERE business_type = 'PROPRIETORSHIP'");
     }
 };

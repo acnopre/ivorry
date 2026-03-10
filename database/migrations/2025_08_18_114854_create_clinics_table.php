@@ -30,31 +30,16 @@ return new class extends Migration
             $table->string('complete_address')->nullable();
 
             // UPDATE INFO PER BIR FORM 1903
-            $table->enum('update_info_1903', [
-                'CHANGE IN BUSINESS NAME',
-                'CHANGE IN ADDRESS',
-                'CHANGE IN TAX TYPE',
-            ])->nullable();
+            $table->string('update_info_1903')->nullable();
 
             // BUSINESS TYPE
             $table->string('business_type')->nullable();
 
             // VAT TYPE
-            $table->enum('vat_type', [
-                'VAT 12%',
-                'VAT ZERO',
-                'VAT EXEMPT',
-                'NON-VAT',
-            ])->nullable();
+            $table->string('vat_type')->nullable();
 
             // WITHHOLDING TAX
-            $table->enum('withholding_tax', [
-                'ZERO',
-                '2%',
-                '5%',
-                '10%',
-                '15%',
-            ])->nullable();
+            $table->string('withholding_tax')->nullable();
 
 
             $table->string('sec_registration_no')->nullable();
@@ -84,7 +69,7 @@ return new class extends Migration
             $table->string('bank_account_number')->nullable();
             $table->string('bank_name')->nullable();
             $table->string('bank_branch')->nullable();
-            $table->enum('account_type', ['SAVINGS', 'CURRENT'])->nullable();
+            $table->string('account_type')->nullable();
             // Status
             $table->enum('accreditation_status', ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT', 'SPECIFIC HIP'])->default('INACTIVE');
             $table->foreignId('account_id')->nullable()->constrained()->cascadeOnDelete(); // linked to Accounts

@@ -95,7 +95,13 @@ class RolesAndPermissionsSeeder extends Seeder
             'generated_adc.view',
             'generated_adc.approve',
             'generated_adc.request',
-            'generated_adc.print_original'
+            'generated_adc.print_original',
+
+            // Lookup Tables
+            'lookup_tables.view',
+            'lookup_tables.create',
+            'lookup_tables.edit',
+            'lookup_tables.delete',
 
         ];
 

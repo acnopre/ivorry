@@ -18,6 +18,26 @@ class AccreditationStatusResource extends Resource
     public static ?string $navigationIcon = 'heroicon-o-check-badge';
     protected static ?int $navigationSort = 5;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->check() && auth()->user()->can('lookup_tables.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->check() && auth()->user()->can('lookup_tables.create');
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->check() && auth()->user()->can('lookup_tables.edit');
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->check() && auth()->user()->can('lookup_tables.delete');
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -40,8 +60,7 @@ class AccreditationStatusResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
+        return auth()->check() && auth()->user()->can('lookup_tables.view');
     }
 
     public static function getPages(): array

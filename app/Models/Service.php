@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
-    //
+    protected $fillable = ['name', 'slug', 'type', 'unit_type'];
+
     public function accounts()
     {
         return $this->belongsToMany(Account::class, 'account_service')

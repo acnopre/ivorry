@@ -390,7 +390,8 @@ class SearchMember extends Page implements HasActions
                     // If current service has units, only check for exclusive service on same units
                     foreach ($unitIds as $unitId) {
                         if ($this->hasProcedureOnUnit($memberId, $clinicId, $availmentDate, $exclusive, $unitId)) {
-                            return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same unit on the same date as {$exclusive}.");
+                            // return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same unit on the same date as {$exclusive}.");
+                            return $this->showError("{$exclusive} Restriction", "No other procedure can be done with extraction on same tooth number..");
                         }
                     }
                 } else {
@@ -694,7 +695,7 @@ class SearchMember extends Page implements HasActions
                 $unitTypeName = $service?->unitType?->name ?? '—';
                 $set('unit_type_name', $unitTypeName);
                 $set('unit_type_id', $service?->unitType?->id);
-                
+
                 // Set quantity to 1 and disable if unit type is Session
                 if ($unitTypeName === 'Session') {
                     $set('quantity', 1);

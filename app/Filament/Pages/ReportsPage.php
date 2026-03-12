@@ -608,17 +608,16 @@ class ReportsPage extends Page implements HasForms, HasTable
         $f = $this->reportFilters;
 
         return Procedure::query()
-
+            ->with(['member.account', 'clinic', 'service', 'units.unitType'])
             ->when($f['procedure_status'] ?? null, fn($q, $v) => $q->where('status', $v))
-            ->when($f['clinid_id'] ?? null, fn($q, $v) => $q->where('clinid_id', $v))
+            ->when($f['clinic_id'] ?? null, fn($q, $v) => $q->where('clinic_id', $v))
             ->when($f['hip'] ?? null, function ($query, $hip) {
                 $query->whereHas('member.account', function ($q) use ($hip) {
                     $q->where('hip', $hip);
                 });
             })
-
             ->when($f['account_id'] ?? null, function ($query, $account_id) {
-                $query->whereHas('member.account', function ($q) use ($account_id) {
+                $query->whereHas('member', function ($q) use ($account_id) {
                     $q->where('account_id', $account_id);
                 });
             })
@@ -709,12 +708,25 @@ class ReportsPage extends Page implements HasForms, HasTable
             ],
 
             'procedures' => [
+                Tables\Columns\TextColumn::make('availment_date')
+                    ->label('Availment Date')
+                    ->date('M d, Y')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('full_name')
                     ->label('Member Name')
-                    ->getStateUsing(fn($record) => $record->member->first_name . ' ' . $record->member->last_name),
-
-                Tables\Columns\TextColumn::make('clinic.clinic_name')->label('Clinic Name'),
-                Tables\Columns\TextColumn::make('service.name')->label('Procedure Name'),
+                    ->getStateUsing(fn($record) => $record->member->first_name . ' ' . $record->member->last_name)
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('member.account.company_name')
+                    ->label('Account')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('member.account.hip')
+                    ->label('HIP'),
+                Tables\Columns\TextColumn::make('clinic.clinic_name')
+                    ->label('Clinic Name')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('service.name')
+                    ->label('Procedure Name')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('units')
                     ->label('Units')
                     ->getStateUsing(function ($record) {
@@ -722,9 +734,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->map(function ($unit) {
                                 $unitTypeName = $unit->unitType->name ?? 'N/A';
                                 $unitName = $unit->name ?? 'N/A';
-
                                 $surface = isset($unit->pivot->surface) ? ' — Surface: ' . $unit->pivot->surface->name : '';
-
                                 return $unitTypeName . ': ' . $unitName . $surface;
                             })
                             ->join(', ');
@@ -732,11 +742,17 @@ class ReportsPage extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('applied_fee')
                     ->label('Applied Fee')
                     ->money('php', true),
-
-                Tables\Columns\TextColumn::make('availment_date')->label('Availment Date'),
-                Tables\Columns\TextColumn::make('approval_code')->label('Approval Code'),
-                Tables\Columns\TextColumn::make('status')->badge(),
-                Tables\Columns\TextColumn::make('created_at')->date()->label('Date Added'),
+                Tables\Columns\TextColumn::make('approval_code')
+                    ->label('Approval Code')
+                    ->copyable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->badge(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Date Added')
+                    ->date('M d, Y')
+                    ->sortable(),
             ],
 
             'accounts' => [

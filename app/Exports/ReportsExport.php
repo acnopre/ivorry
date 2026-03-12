@@ -41,7 +41,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
             'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Type', 'Gender', 'Status', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
             'dentists' => ['Clinic Name', 'Dentist Name', 'Specialization', 'Status', 'Date Added'],
             'clinics' => ['Clinic Name', 'Registered Name', 'Address', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
-            'procedures' => ['Member Name', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Availment Date', 'Approval Code', 'Status', 'Date Added'],
+            'procedures' => ['Availment Date', 'Member Name', 'Account', 'HIP', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Approval Code', 'Status', 'Date Added'],
             'accounts' => ['Account Name', 'Policy Code', 'HIP', 'Effective Date', 'Expiration Date', 'Plan Type', 'Coverage Period Type', 'Account Status', 'Date Created'],
             default => [],
         };
@@ -85,21 +85,21 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
             ],
 
             'procedures' => [
+                optional($row->availment_date)->format('Y-m-d'),
                 trim($row->member?->first_name . ' ' . $row->member?->last_name),
+                $row->member?->account?->company_name,
+                $row->member?->account?->hip,
                 $row->clinic?->clinic_name,
                 $row->service?->name,
-                // Parse units from pivot
                 $row->units
                     ->map(function ($unit) {
                         $unitTypeName = $unit->unitType?->name ?? 'N/A';
                         $unitName = $unit->name ?? 'N/A';
                         $surface = $unit->pivot->surface?->name ? ' — Surface: ' . $unit->pivot->surface->name : '';
-
                         return $unitTypeName . ': ' . $unitName . $surface;
                     })
                     ->join(', '),
                 $row->applied_fee,
-                optional($row->availment_date)->format('Y-m-d'),
                 $row->approval_code,
                 $row->status,
                 optional($row->created_at)->format('Y-m-d'),

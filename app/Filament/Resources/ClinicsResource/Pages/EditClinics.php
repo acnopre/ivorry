@@ -25,12 +25,9 @@ class EditClinics extends EditRecord
         ];
     }
 
-    /**
-     * Remove service fields from the main table data.
-     */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Check if email already exists before saving
+        // Validate email uniqueness
         if (!empty($data['clinic_email'])) {
             $existingUser = User::where('email', $data['clinic_email'])
                 ->where('id', '!=', $this->record->user_id)
@@ -40,7 +37,7 @@ class EditClinics extends EditRecord
                 Notification::make()
                     ->danger()
                     ->title('Email Already Exists')
-                    ->body('A user with the email ' . $data['clinic_email'] . ' already exists. Please use a different email address.')
+                    ->body('A user with the email ' . $data['clinic_email'] . ' already exists.')
                     ->persistent()
                     ->send();
 
@@ -48,10 +45,22 @@ class EditClinics extends EditRecord
             }
         }
 
-        // Store all services (basic + enhancement)
-        $this->servicesData = $data['services'] ?? [];
+        // Validate owner dentist exists
+        if (!empty($data['dentists'])) {
+            $hasOwner = collect($data['dentists'])->contains('is_owner', true);
+            if (!$hasOwner) {
+                Notification::make()
+                    ->danger()
+                    ->title('Owner Required')
+                    ->body('At least one dentist must be marked as the clinic owner.')
+                    ->persistent()
+                    ->send();
 
-        // Remove from main record fields (pivot only)
+                $this->halt();
+            }
+        }
+
+        $this->servicesData = $data['services'] ?? [];
         unset($data['services']);
 
         if ($data['accreditation_status'] === 'SPECIFIC HIP') {
@@ -63,59 +72,53 @@ class EditClinics extends EditRecord
         return $data;
     }
 
-    /**
-     * After saving the Account, sync related services with pivot table.
-     */
     protected function afterSave(): void
     {
-        $account = $this->record;
+        $clinic = $this->record;
+        $ownerDentist = $clinic->dentists()->where('is_owner', true)->first();
 
-        // Handle owner dentist user creation if not already created
-        $ownerDentist = $account->dentists()->where('is_owner', true)->first();
-        
-        if ($ownerDentist && !$account->user_id && !empty($account->clinic_email)) {
-            $plainPassword = Str::random(12);
-            
-            $user = User::create([
-                'name' => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
-                'email' => $account->clinic_email,
-                'password' => Hash::make($plainPassword),
-                'must_change_password' => true,
-            ]);
+        // Create or update user for owner dentist
+        if ($ownerDentist && !empty($clinic->clinic_email)) {
+            if (!$clinic->user_id) {
+                // Create new user
+                $plainPassword = Str::random(12);
 
-            $user->assignRole('Dentist');
-            $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+                $user = User::create([
+                    'name' => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
+                    'email' => $clinic->clinic_email,
+                    'password' => Hash::make($plainPassword),
+                    'must_change_password' => true,
+                ]);
 
-            $account->update(['user_id' => $user->id]);
+                $user->assignRole('Dentist');
+                $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+
+                $clinic->update(['user_id' => $user->id]);
+            } else {
+                // Update existing user
+                $clinic->user->update([
+                    'name' => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
+                    'email' => $clinic->clinic_email,
+                ]);
+            }
         }
 
-        // Get only the enhancement new fees from the form state
+        // Sync enhancement new fees
         $enhancementFees = $this->data['services']['enhancement_new_fee'] ?? [];
 
-        if (empty($enhancementFees)) {
-            return;
-        }
+        if (!empty($enhancementFees)) {
+            $syncData = collect($enhancementFees)
+                ->filter(fn($fee) => !is_null($fee) && $fee !== '')
+                ->mapWithKeys(fn($fee, $serviceId) => [$serviceId => ['new_fee' => $fee]])
+                ->toArray();
 
-        // Prepare pivot data for sync
-        $syncData = collect($enhancementFees)
-            ->filter(fn($fee, $serviceId) => !is_null($serviceId) && $serviceId !== '')
-            ->mapWithKeys(fn($fee, $serviceId) => [
-                $serviceId => ['new_fee' => $fee],
-            ])
-            ->toArray();
+            foreach ($syncData as $serviceId => $pivotData) {
+                $clinic->services()->updateExistingPivot($serviceId, $pivotData);
+            }
 
-        // Sync only the new fees to the pivot table
-        // This will update existing ones and keep other pivot data intact
-        foreach ($syncData as $serviceId => $pivotData) {
-            $account->services()->updateExistingPivot($serviceId, $pivotData);
-        }
-
-        $hasChanges = collect($this->data['services']['enhancement_new_fee'] ?? [])
-            ->filter(fn($fee) => $fee !== null && $fee !== '')
-            ->isNotEmpty();
-
-        if ($hasChanges) {
-            $account->update(['fee_approval' => 'pending']);
+            if (!empty($syncData)) {
+                $clinic->update(['fee_approval' => 'pending']);
+            }
         }
     }
 }

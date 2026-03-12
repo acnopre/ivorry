@@ -314,6 +314,19 @@ class SearchMember extends Page implements HasActions
             return $this->showError('Special Service Restriction', 'Please call HPDAI for approval to avail this special service.');
         }
 
+        // Check if member has procedure in different clinic on same date
+        if ($availmentDate) {
+            $existsInDifferentClinic = Procedure::where('member_id', $memberId)
+                ->where('clinic_id', '!=', $clinicId)
+                ->where('availment_date', $availmentDate)
+                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->exists();
+
+            if ($existsInDifferentClinic) {
+                return $this->showError('Multiple Clinic Restriction', 'Member cannot have procedures in different clinics on the same date.');
+            }
+        }
+
         // Check if procedure exists - include units if present
         $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
         $hasUnits = false;
@@ -737,7 +750,10 @@ class SearchMember extends Page implements HasActions
             ->disabled(fn(callable $get) => $this->isUnitType($get, 'Session'))
             ->dehydrated()
             ->maxValue(fn(callable $get) => $this->getMaxQuantity($get))
-            ->helperText(fn(callable $get) => $this->getQuantityHelperText($get));
+            ->helperText(fn(callable $get) => $this->getQuantityHelperText($get))
+            ->validationMessages([
+                'max' => 'Quantity cannot exceed the maximum allowed per date.',
+            ]);
     }
 
     protected function getUnitFields(): array
@@ -837,35 +853,45 @@ class SearchMember extends Page implements HasActions
 
     protected function getMaxQuantity(callable $get): int
     {
-        $accountId = $this->members->first()->account_id ?? null;
         $serviceId = $get('service_id');
-        if (!$accountId || !$serviceId) return 3;
+        if (!$serviceId) return 3;
+
+        $service = Service::find($serviceId);
+        $maxPerDate = $service?->max_per_date ?? 3;
+
+        $accountId = $this->members->first()->account_id ?? null;
+        if (!$accountId) return $maxPerDate;
 
         $accountService = AccountService::where('account_id', $accountId)
             ->where('service_id', $serviceId)
             ->first();
 
         return $accountService && !$accountService->is_unlimited
-            ? min($accountService->quantity, 3)
-            : 3;
+            ? min($accountService->quantity, $maxPerDate)
+            : $maxPerDate;
     }
 
     protected function getQuantityHelperText(callable $get): string
     {
-        $accountId = $this->members->first()->account_id ?? null;
         $serviceId = $get('service_id');
-        if (!$accountId || !$serviceId) return 'Enter quantity (max: 3)';
+        if (!$serviceId) return 'Enter quantity';
+
+        $service = Service::find($serviceId);
+        $maxPerDate = $service?->max_per_date ?? 3;
+
+        $accountId = $this->members->first()->account_id ?? null;
+        if (!$accountId) return "Max per date: {$maxPerDate}";
 
         $accountService = AccountService::where('account_id', $accountId)
             ->where('service_id', $serviceId)
             ->first();
 
         if ($accountService && !$accountService->is_unlimited) {
-            $max = min($accountService->quantity, 3);
-            return "Max: {$max} | Balance: {$accountService->quantity}";
+            $max = min($accountService->quantity, $maxPerDate);
+            return "Max: {$max} | Balance: {$accountService->quantity} | Max per date: {$maxPerDate}";
         }
 
-        return 'Enter quantity (max: 3)';
+        return "Max per date: {$maxPerDate}";
     }
 
 

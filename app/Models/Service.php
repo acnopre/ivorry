@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
-    protected $fillable = ['name', 'slug', 'type', 'unit_type'];
+    protected $fillable = ['name', 'slug', 'type', 'unit_type', 'max_per_date'];
 
     public function accounts()
     {

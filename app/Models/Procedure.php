@@ -36,6 +36,7 @@ class Procedure extends Model
     public const STATUS_REJECT = 'invalid';
     public const STATUS_RETURN = 'returned';
     public const STATUS_PROCESSED = 'processed';
+    public const STATUS_CANCELLED = 'cancelled';
 
     protected $with = ['units'];
 

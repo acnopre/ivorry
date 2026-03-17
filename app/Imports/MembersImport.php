@@ -47,7 +47,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return null;
         }
 
-        if (strtoupper($account->status) !== 'ACTIVE') {
+        if (strtoupper($account->account_status) !== 'ACTIVE') {
             $this->logError($row, "Account '{$row['account_name']}' is not active");
             return null;
         }
@@ -166,7 +166,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 ->where('card_number', $row['card_number'])
                 ->where('first_name', $row['first_name'])
                 ->where('last_name', $row['last_name'])
-                ->exists()) {
+                ->exists()
+            ) {
                 return 'Card number already assigned to this member';
             }
         }

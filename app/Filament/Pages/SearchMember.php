@@ -46,6 +46,10 @@ class SearchMember extends Page implements HasActions
     public bool $hasSearched = false;
 
     public ?string $approvalCode = null;
+    public bool $showApprovalModal = false;
+    public bool $showCancelModal = false;
+    public ?int $cancelProcedureId = null;
+    public ?string $cancelReason = null;
 
     public function mount(): void
     {
@@ -60,7 +64,8 @@ class SearchMember extends Page implements HasActions
                     Forms\Components\Grid::make(3)->schema([
                         Forms\Components\TextInput::make('card_number')
                             ->label('Card Number')
-                            ->placeholder('Enter Card Number'),
+                            ->placeholder('Enter Card Number')
+                            ->required(fn() => Auth::user()->hasRole('Dentist')),
 
                         Forms\Components\TextInput::make('first_name')
                             ->label('First Name')
@@ -83,14 +88,25 @@ class SearchMember extends Page implements HasActions
 
     public function search(): void
     {
+        if (Auth::user()->hasRole('Dentist') && empty($this->card_number)) {
+            $this->members = collect();
+            $this->hasSearched = false;
+            Notification::make()
+                ->title('Card Number Required')
+                ->body('Card number is required to search.')
+                ->warning()
+                ->send();
+            return;
+        }
+
         if (! $this->card_number && ! $this->first_name && ! $this->last_name) {
             $this->members = collect();
             $this->hasSearched = false;
-            $this->dispatch('open-notification', [
-                'title' => 'No Filters Applied',
-                'body' => 'Please enter at least one search filter before searching.',
-                'type' => 'warning',
-            ]);
+            Notification::make()
+                ->title('No Filters Applied')
+                ->body('Please enter at least one search filter before searching.')
+                ->warning()
+                ->send();
             return;
         }
 
@@ -106,7 +122,7 @@ class SearchMember extends Page implements HasActions
             $query->where('account_id', $clinic->account_id);
         }
 
-        $this->members = $query->limit(1)->get();
+        $this->members = Auth::user()->hasRole('Dentist') ? $query->limit(1)->get() : $query->get();
         $this->hasSearched = true;
     }
 
@@ -292,8 +308,8 @@ class SearchMember extends Page implements HasActions
 
         // UI updates
         $this->dispatch('close-modal', id: 'add-procedure');
-        $this->dispatch('open-modal', id: 'approval-code');
         $this->approvalCode = $approvalCode;
+        $this->showApprovalModal = true;
 
         $this->search();
     }
@@ -655,7 +671,7 @@ class SearchMember extends Page implements HasActions
             }
         }
 
-        $this->dispatch('open-modal', id: 'approval-code');
+        $this->showApprovalModal = true;
         $this->search();
     }
 
@@ -895,6 +911,36 @@ class SearchMember extends Page implements HasActions
         return "Max per date: {$maxPerDate}";
     }
 
+
+    public function openCancelModal(int $procedureId): void
+    {
+        $this->cancelProcedureId = $procedureId;
+        $this->cancelReason = null;
+        $this->showCancelModal = true;
+    }
+
+    public function confirmCancelProcedure(): void
+    {
+        $procedure = Procedure::find($this->cancelProcedureId);
+
+        if (!$procedure || $procedure->status !== Procedure::STATUS_PENDING) {
+            Notification::make()->title('Cannot Cancel')->body('Only pending procedures can be cancelled.')->danger()->send();
+            $this->showCancelModal = false;
+            return;
+        }
+
+        $procedure->update([
+            'status'  => Procedure::STATUS_CANCELLED,
+            'remarks' => $this->cancelReason,
+        ]);
+
+        $this->showCancelModal = false;
+        $this->cancelProcedureId = null;
+        $this->cancelReason = null;
+
+        Notification::make()->title('Procedure Cancelled')->success()->send();
+        $this->search();
+    }
 
     public static function shouldRegisterNavigation(): bool
     {

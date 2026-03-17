@@ -47,6 +47,11 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return null;
         }
 
+        if (strtoupper($account->status) !== 'ACTIVE') {
+            $this->logError($row, "Account '{$row['account_name']}' is not active");
+            return null;
+        }
+
         if ($error = $this->validateRow($row, $account)) {
             $this->logError($row, $error);
             return null;
@@ -152,9 +157,19 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
         }
 
-        // if (Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->where('first_name', '!=', $row['first_name'])->where('last_name', '!=', $row['last_name'])->exists()) {
-        //     return 'Card number already exists for another member in this account';
-        // }
+        if (strtoupper($account->plan_type) === 'INDIVIDUAL') {
+            if (Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->exists()) {
+                return 'Card number already exists in this account';
+            }
+        } elseif (strtoupper($account->plan_type) === 'SHARED') {
+            if (Member::where('account_id', $account->id)
+                ->where('card_number', $row['card_number'])
+                ->where('first_name', $row['first_name'])
+                ->where('last_name', $row['last_name'])
+                ->exists()) {
+                return 'Card number already assigned to this member';
+            }
+        }
 
         if (strtoupper($account->coverage_period_type) === 'MEMBER' && (empty($row['effective_date']) || empty($row['expiration_date']))) {
             return 'Effective date and expiration date are required when account coverage type is MEMBER';

@@ -14,6 +14,7 @@ class Member extends Model
         'suffix',
         'member_type',
         'card_number',
+        'coc_number',
         'birthdate',
         'gender',
         'email',
@@ -24,7 +25,7 @@ class Member extends Model
         'expiration_date',
         'status',
         'inactive_date',
-        'mbl_balance'
+        'mbl_balance',
     ];
 
 
@@ -34,6 +35,18 @@ class Member extends Model
         'effective_date' => 'date',
         'expiration_date' => 'date',
     ];
+
+    public static function generateCocNumber(): string
+    {
+        $prefix = 'COC' . now()->format('mdY'); // e.g. COC03182026
+        $last = static::where('coc_number', 'like', $prefix . '%')
+            ->orderByDesc('coc_number')
+            ->value('coc_number');
+
+        $sequence = $last ? (int) substr($last, strlen($prefix)) + 1 : 1;
+
+        return $prefix . str_pad($sequence, 2, '0', STR_PAD_LEFT);
+    }
 
     public function account()
     {

@@ -13,7 +13,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\{DatePicker, FileUpload, Section, Select, Textarea, TextInput};
+use Filament\Forms\Components\{DatePicker, FileUpload, Grid, Section, Select, Textarea, TextInput, Toggle};
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\{TextColumn, BadgeColumn};
 use Filament\Tables\Filters\SelectFilter;
@@ -48,10 +48,37 @@ class MemberResource extends Resource
                             ->searchable()
                             ->reactive(),
 
-                        TextInput::make('card_number')
-                            ->label('Card Number')
-                            ->required()
-                            ->unique(ignoreRecord: true),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('card_number')
+                                    ->label('Card Number')
+                                    ->required(fn(callable $get) => ! $get('use_coc_number'))
+                                    ->hidden(fn(callable $get) => $get('use_coc_number'))
+                                    ->dehydrated(true)
+                                    ->unique(ignoreRecord: true),
+
+                                TextInput::make('coc_number')
+                                    ->label('COC Number')
+                                    ->required(fn(callable $get) => $get('use_coc_number'))
+                                    ->hidden(fn(callable $get) => ! $get('use_coc_number'))
+                                    ->dehydrated(true)
+                                    ->unique(ignoreRecord: true),
+
+                                Toggle::make('use_coc_number')
+                                    ->label('Enable COC Number')
+                                    ->default(false)
+                                    ->reactive()
+                                    ->dehydrated(false)
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        if ($state && empty($get('coc_number'))) {
+                                            $set('coc_number', \App\Models\Member::generateCocNumber());
+                                        }
+                                        if ($state) $set('card_number', null);
+                                    })
+                                    ->columnStart(2)
+                                    ->inline(false),
+                            ])
+                            ->columnSpan(1),
 
                         TextInput::make('first_name')->required()->maxLength(255),
                         TextInput::make('last_name')->required()->maxLength(255),
@@ -67,10 +94,10 @@ class MemberResource extends Resource
 
                         Select::make('status')
                             ->options([
-                                'active' => 'Active',
-                                'inactive' => 'Inactive',
+                                'ACTIVE' => 'Active',
+                                'INACTIVE' => 'Inactive',
                             ])
-                            ->default('active')
+                            ->default('ACTIVE')
                             ->required()
                             ->reactive(),
 

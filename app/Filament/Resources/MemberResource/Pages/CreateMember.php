@@ -18,6 +18,14 @@ class CreateMember extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // If COC number is provided, clear card_number; otherwise clear coc_number
+        if (! empty($data['coc_number'])) {
+            $data['card_number'] = null;
+        } else {
+            $data['coc_number'] = null;
+        }
+        unset($data['use_coc_number']);
+
         if (! empty($data['email']) && User::where('email', $data['email'])->exists()) {
             Notification::make()
                 ->title('This email is already registered.')

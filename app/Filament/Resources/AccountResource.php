@@ -165,7 +165,8 @@ class AccountResource extends Resource
                                         ->label('Suffix')
                                         ->maxLength(50),
                                     Forms\Components\DatePicker::make('birthdate')
-                                        ->label('Birthdate'),
+                                        ->label('Birthdate')
+                                        ->native(false),
 
                                     Forms\Components\Select::make('gender')
                                         ->label('Gender')
@@ -220,6 +221,7 @@ class AccountResource extends Resource
                         ->schema([
                             DatePicker::make('effective_date')
                                 ->label('Effective Date')
+                                ->native(false)
                                 ->reactive()
                                 ->disabled(fn(Forms\Get $get) => !($isAmendment($get) || $get('endorsement_type') === 'RENEWAL'))
                                 ->rules([
@@ -233,24 +235,15 @@ class AccountResource extends Resource
                                 ])
                                 ->afterStateUpdated(function ($state, callable $set) {
                                     if ($state) {
-                                        $expiration = Carbon::parse($state)->addYear();
+                                        $expiration = Carbon::parse($state)->addYear()->subDay();
                                         $set('expiration_date', $expiration->format('Y-m-d'));
                                     }
                                 }),
 
                             DatePicker::make('expiration_date')
-                                ->label('Expiration Date')
-                                ->reactive()
-                                ->disabled(fn(Forms\Get $get) => !($isAmendment($get) || $get('endorsement_type') === 'RENEWAL'))
-                                ->rules([
-                                    fn(Forms\Get $get) => function ($attribute, $value, $fail) use ($get, $record) {
-                                        if ($get('endorsement_type') === 'RENEWAL' && $record) {
-                                            if ($value === $record->expiration_date) {
-                                                $fail('For renewal, the expiration date must be different from the current expiration date.');
-                                            }
-                                        }
-                                    },
-                                ]),
+                                ->label('Valid Until')
+                                ->native(false)
+                                ->dehydrated(true),
 
                             Select::make('endorsement_type')
                                 ->label('Endorsement Type')

@@ -127,17 +127,19 @@ class MemberResource extends Resource
                         DatePicker::make('effective_date')
                             ->label('Effective Date')
                             ->reactive()
+                            ->native(false)
                             ->afterStateUpdated(function ($state, callable $set) {
                                 if ($state) {
                                     $set(
                                         'expiration_date',
-                                        Carbon::parse($state)->addYear()->format('Y-m-d')
+                                        Carbon::parse($state)->addYear()->subDay()->format('Y-m-d')
                                     );
                                 }
                             }),
 
                         DatePicker::make('expiration_date')
-                            ->label('Expiration Date'),
+                            ->label('Expiration Date')
+                            ->native(false),
                     ])
                     ->columns(2)
                     ->visible(

@@ -112,11 +112,11 @@
                                 <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Status</div>
                                 @php
                                 $accStatus = $member->account->account_status;
-                                $accColor = match($accStatus) {
+                                $accColor = match(strtolower($accStatus)) {
                                 'active' => 'success', 'inactive' => 'warning', 'expired' => 'danger', default => 'gray',
                                 };
                                 @endphp
-                                <x-filament::badge :color="$accColor" size="sm">{{ ucfirst($accStatus) }}</x-filament::badge>
+                                <div class="inline-flex"><x-filament::badge :color="$accColor" size="sm">{{ ucfirst($accStatus) }}</x-filament::badge></div>
                             </div>
                             <div>
                                 <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Plan Type</div>
@@ -167,7 +167,7 @@
                     {{-- Covered Services --}}
                     @if($member->account)
                     @php
-                    $filteredServices = $member->account->services->filter(fn($s) => $s->pivot->is_unlimited || $s->pivot->quantity > 0);
+                    $filteredServices = $member->account->services->filter(fn($s) => ($s->pivot->is_unlimited || $s->pivot->quantity > 0) && !(auth()->user()->hasRole('Dentist') && $s->type === 'special'));
                     @endphp
                     @if($filteredServices->isNotEmpty())
                     <div class="rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -205,17 +205,27 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if(auth()->user()->hasRole('Dentist') && $member->account?->services->contains(fn($s) => $s->type === 'special'))
+                        <div class="px-4 py-2.5 border-t border-amber-100 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 flex items-center gap-2">
+                            <x-heroicon-o-phone class="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span class="text-xs text-amber-600 dark:text-amber-400">Special services included. Call HPDAI for details.</span>
+                        </div>
+                        @endif
                     </div>
                     @endif
                     @endif
 
                     {{-- Procedures --}}
                     @php
-                    $procedures = \App\Models\Procedure::with(['units.unitType', 'service'])
+                    $procedures = \App\Models\Procedure::with(['units.unitType', 'service', 'clinic'])
                     ->where('member_id', $member->id)
+                    ->when(auth()->user()->hasRole('Dentist'), fn($q) => $q->whereHas('service', fn($s) => $s->where('type', '!=', 'special')))
                     ->orderByDesc('availment_date')
                     ->get();
+                    $hasSpecialServices = $member->account?->services->contains(fn($s) => $s->type === 'special');
                     @endphp
+
+
                     <div class="rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
                             <x-heroicon-o-clipboard-document-list class="w-4 h-4 text-primary-500" />
@@ -228,6 +238,7 @@
                                 <thead class="bg-gray-50 dark:bg-gray-800">
                                     <tr>
                                         <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Service</th>
+                                        <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Clinic</th>
                                         <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Units</th>
                                         <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Approval Code</th>
                                         <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date</th>
@@ -248,6 +259,7 @@
                                     @if($procedure->units->isEmpty())
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                         <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
+                                        <td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300">{{ $procedure->clinic->clinic_name ?? '—' }}</td>
                                         <td class="px-4 py-2.5 text-gray-400 italic text-xs">—</td>
                                         <td class="px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-300">{{ $procedure->approval_code }}</td>
                                         <td class="px-4 py-2.5 text-gray-600 dark:text-gray-300">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '—' }}</td>
@@ -266,6 +278,7 @@
                                     @foreach($procedure->units as $unit)
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                         <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
+                                        <td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300">{{ $procedure->clinic->clinic_name ?? '—' }}</td>
                                         <td class="px-4 py-2.5 text-xs text-gray-600 dark:text-gray-300">
                                             @if($unit->pivot->surface_id)
                                             {{ $unit->unitType->name ?? '—' }}: {{ \App\Models\Unit::find($unit->pivot->unit_id)?->name ?? '—' }} / {{ $unit->name ?? '—' }}
@@ -319,12 +332,7 @@
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md relative">
             <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">Cancel Procedure</h2>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Please provide a reason for cancelling this procedure.</p>
-            <textarea
-                wire:model="cancelReason"
-                rows="3"
-                placeholder="Enter reason..."
-                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            ></textarea>
+            <textarea wire:model="cancelReason" rows="3" placeholder="Enter reason..." class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
             <div class="flex justify-end gap-3 mt-4">
                 <x-filament::button color="gray" wire:click="$set('showCancelModal', false)">Dismiss</x-filament::button>
                 <x-filament::button color="danger" wire:click="confirmCancelProcedure">Confirm Cancel</x-filament::button>

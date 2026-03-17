@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProcedureResource\Pages;
 use App\Models\Procedure;
-use App\Models\Role;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Resources\Resource;
@@ -37,6 +36,11 @@ class ProcedureResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('clinic.clinic_name')
+                    ->label('Clinic')
+                    ->sortable()
+                    ->searchable(),
+
                 Tables\Columns\TextColumn::make('member.full_name')
                     ->label('Member Name')
                     ->sortable()
@@ -123,13 +127,16 @@ class ProcedureResource extends Resource
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn($state) => ucfirst($state))
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'signed',
-                        'danger'  => 'rejected',
-                        'warning'    => 'returned',
-                        'success' => 'valid',
-                    ]),
+                    ->color(fn($state) => match($state) {
+                        'pending'   => 'warning',
+                        'signed'    => 'info',
+                        'valid'     => 'success',
+                        'invalid'   => 'danger',
+                        'returned'  => 'warning',
+                        'processed' => 'success',
+                        'cancelled' => 'danger',
+                        default     => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('approval_code')
                     ->label('Approval Code')
@@ -142,13 +149,38 @@ class ProcedureResource extends Resource
                     ->label('Status')
                     ->options([
                         'pending'   => 'Pending',
-                        'sign' => 'Signed',
+                        'sign'      => 'Signed',
                         'valid'     => 'Valid',
                         'rejected'  => 'Rejected',
                         'returned'  => 'Returned',
+                        'cancelled' => 'Cancelled',
                     ]),
             ])
             ->actions([
+                // ❌ CANCEL PROCEDURE
+                Tables\Actions\Action::make('cancel')
+                    ->label('Cancel')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn($record) => $record->status === Procedure::STATUS_PENDING)
+                    ->modalHeading('Cancel Procedure')
+                    ->modalDescription('Please provide a reason for cancelling this procedure.')
+                    ->modalWidth('md')
+                    ->form([
+                        Forms\Components\Textarea::make('cancel_reason')
+                            ->label('Reason')
+                            ->required()
+                            ->rows(3),
+                    ])
+                    ->action(function (Procedure $record, array $data) {
+                        $record->update([
+                            'status'  => Procedure::STATUS_CANCELLED,
+                            'remarks' => $data['cancel_reason'],
+                        ]);
+
+                        Notification::make()->title('Procedure Cancelled')->success()->send();
+                    }),
+
                 // ✅ SIGN PROCEDURE
                 Tables\Actions\Action::make('sign')
                     ->label('Sign Procedure')
@@ -185,7 +217,8 @@ class ProcedureResource extends Resource
                         }
                     }),
             ])
-            ->bulkActions([]);
+            ->bulkActions([])
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getPages(): array

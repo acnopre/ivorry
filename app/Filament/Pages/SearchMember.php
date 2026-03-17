@@ -688,9 +688,11 @@ class SearchMember extends Page implements HasActions
 
     protected function getServiceField(): Forms\Components\Select
     {
+        $isDentist = Auth::user()->hasRole('Dentist');
+
         return Forms\Components\Select::make('service_id')
             ->label('Service')
-            ->options(function () {
+            ->options(function () use ($isDentist) {
                 $accountId = $this->members->first()->account_id ?? null;
                 if (!$accountId) return collect();
 
@@ -698,9 +700,19 @@ class SearchMember extends Page implements HasActions
                     ->where(fn($q) => $q->where('quantity', '>', 0)->orWhere('is_unlimited', true))
                     ->with('service')
                     ->get()
+                    ->when($isDentist, fn($col) => $col->filter(fn($as) => $as->service?->type !== 'special'))
                     ->groupBy('service.type')
                     ->map(fn($group) => $group->pluck('service.name', 'service_id'))
                     ->toArray();
+            })
+            ->helperText(function () use ($isDentist) {
+                if (!$isDentist) return null;
+                $accountId = $this->members->first()->account_id ?? null;
+                if (!$accountId) return null;
+                $hasSpecial = AccountService::where('account_id', $accountId)
+                    ->whereHas('service', fn($q) => $q->where('type', 'special'))
+                    ->exists();
+                return $hasSpecial ? new \Illuminate\Support\HtmlString('<span class="text-xs text-amber-500">📞 Special services included. Call HPDAI for details.</span>') : null;
             })
             ->live()
             ->afterStateUpdated(function ($state, callable $set, callable $get) {

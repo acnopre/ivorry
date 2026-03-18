@@ -685,6 +685,7 @@ class AccountResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
+            ->persistFiltersInSession()
             ->filters([
                 SelectFilter::make('endorsement_type')
                     ->label('Endorsement Type')
@@ -781,7 +782,35 @@ class AccountResource extends Resource
 
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('approve')
+                        ->label('Approve Selected')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('Approve Selected Accounts')
+                        ->modalDescription('This will set Endorsement Status to Approved and Account Status to Active for all selected accounts.')
+                        ->visible(fn() => auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::MIDDLE_MANAGEMENT))
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
+                            $eligible = $records->filter(fn($r) => $r->endorsement_type === 'NEW');
+
+                            $eligible->each(fn($r) => $r->update([
+                                'endorsement_status' => 'APPROVED',
+                                'account_status'     => 'active',
+                            ]));
+
+                            $skipped = $records->count() - $eligible->count();
+
+                            Notification::make()
+                                ->title('Accounts Approved')
+                                ->body($eligible->count() . ' account(s) approved.' . ($skipped > 0 ? " {$skipped} skipped (Renewal/Amendment must be approved individually)." : ''))
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn() => auth()->user()?->hasRole(Role::SUPER_ADMIN)),
+                ]),
             ]);
     }
 

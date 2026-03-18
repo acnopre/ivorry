@@ -58,6 +58,8 @@ class ViewAccount extends ViewRecord
                                 ->subject('Account Approved');
                         });
                     }
+
+                    $this->redirect(AccountResource::getUrl('index'));
                 }),
 
             Actions\Action::make('rejectAccount')
@@ -97,6 +99,8 @@ class ViewAccount extends ViewRecord
                                 ->subject('Account Rejected');
                         });
                     }
+
+                    $this->redirect(AccountResource::getUrl('index'));
                 }),
 
             Actions\Action::make('rejectRenewal')
@@ -151,6 +155,8 @@ class ViewAccount extends ViewRecord
                                 ->subject('Account Renewal Rejected');
                         });
                     }
+
+                    $this->redirect(AccountResource::getUrl('index'));
                 }),
 
             Actions\Action::make('renewAccount')
@@ -223,6 +229,8 @@ class ViewAccount extends ViewRecord
                                 ->subject('Account Renewal Approved');
                         });
                     }
+
+                    $this->redirect(AccountResource::getUrl('index'));
                 }),
 
             Actions\Action::make('rejectAmendment')
@@ -284,6 +292,8 @@ class ViewAccount extends ViewRecord
                                 ->subject('Account Amendment Rejected');
                         });
                     }
+
+                    $this->redirect(AccountResource::getUrl('index'));
                 }),
 
             Actions\Action::make('approveAmendment')
@@ -371,6 +381,8 @@ class ViewAccount extends ViewRecord
                                 ->subject('Account Amendment Approved');
                         });
                     }
+
+                    $this->redirect(AccountResource::getUrl('index'));
                 }),
         ];
     }

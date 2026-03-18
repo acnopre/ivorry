@@ -543,7 +543,8 @@ class ReportsPage extends Page implements HasForms, HasTable
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) =>
                 $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])
-            );
+            )
+            ->orderBy('created_at', 'desc');
 
         $this->hasGenerated = false;
     }
@@ -593,7 +594,8 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->when(
                 $f['specialization_id'] ?? null,
                 fn($q, $v) => $q->whereHas('specializations', fn($q2) => $q2->where('specializations.id', $v))
-            );
+            )
+            ->orderBy('created_at', 'desc');
         $this->hasGenerated = false;
     }
 
@@ -616,7 +618,8 @@ class ReportsPage extends Page implements HasForms, HasTable
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) =>
                 $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])
-            );
+            )
+            ->orderBy('created_at', 'desc');
         return $query;
     }
 
@@ -642,7 +645,8 @@ class ReportsPage extends Page implements HasForms, HasTable
                 !empty($f['availment_from']) && !empty($f['availment_to']),
                 fn($q) =>
                 $q->whereBetween('availment_date', [$f['availment_from'], $f['availment_to']])
-            );
+            )
+            ->orderBy('availment_date', 'desc');
     }
 
     protected function accountsQuery(): Builder
@@ -660,7 +664,8 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->when(
                 !empty($f['fromDate']) && !empty($f['toDate']),
                 fn($q) => $q->whereBetween('created_at', [$f['fromDate'], $f['toDate']])
-            );
+            )
+            ->orderBy('created_at', 'desc');
     }
 
 

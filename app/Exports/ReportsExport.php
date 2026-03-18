@@ -8,10 +8,25 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
-class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents, WithCustomStartCell
+class ReportsExport extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithEvents, WithCustomStartCell, WithColumnFormatting, WithCustomValueBinder
 {
+    public function bindValue(Cell $cell, $value): bool
+    {
+        if (is_string($value) && is_numeric($value)) {
+            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
+    }
     public function __construct(
         protected Builder $query,
         protected string $type,
@@ -38,7 +53,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
     public function headings(): array
     {
         return match ($this->type) {
-            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Type', 'Gender', 'Status', 'Source', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
+            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Number', 'Gender', 'Status', 'Source', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
             'dentists' => ['Clinic Name', 'Dentist Name', 'Specialization', 'Status', 'Date Added'],
             'clinics' => ['Clinic Name', 'Registered Name', 'Address', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
             'procedures' => ['Availment Date', 'Member Name', 'Account', 'HIP', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Approval Code', 'Status', 'Date Added'],
@@ -55,10 +70,10 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                 optional($row->account)->hip,
                 $row->full_name,
                 $row->member_type,
-                $row->card_number,
+                (string) $row->card_number,
                 $row->gender,
                 $row->status,
-                match($row->import_source) {
+                match ($row->import_source) {
                     'import_inactive' => 'Imported (Inactive)',
                     'import_active'   => 'Imported (Active)',
                     default           => 'Manual',
@@ -105,7 +120,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                     })
                     ->join(', '),
                 $row->applied_fee,
-                $row->approval_code,
+                (string) $row->approval_code,
                 $row->status,
                 optional($row->created_at)->format('Y-m-d'),
             ],
@@ -113,7 +128,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
 
             'accounts' => [
                 $row->company_name,
-                $row->policy_code,
+                (string) $row->policy_code,
                 $row->hip,
                 optional($row->effective_date)->format('Y-m-d'),
                 optional($row->expiration_date)->format('Y-m-d'),
@@ -125,6 +140,14 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
 
             default => [],
         };
+    }
+
+    public function columnFormats(): array
+    {
+        return array_fill_keys(
+            range('A', 'Z'),
+            NumberFormat::FORMAT_TEXT
+        );
     }
 
     public function registerEvents(): array

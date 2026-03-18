@@ -56,6 +56,14 @@ class SystemVersionResource extends Resource
             ->defaultSort('released_at', 'desc')
             ->filters([])
             ->actions([
+                Tables\Actions\Action::make('view_details')
+                    ->label('View Details')
+                    ->icon('heroicon-o-eye')
+                    ->color('gray')
+                    ->modalHeading(fn($record) => 'Version ' . $record->version)
+                    ->modalContent(fn($record) => view('filament.system-version.details', ['record' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close'),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

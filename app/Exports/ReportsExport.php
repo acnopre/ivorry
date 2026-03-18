@@ -27,7 +27,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
     public function startCell(): string
     {
         return match ($this->type) {
-            'members' => 'A9',
+            'members' => 'A10',
             'dentists' => 'A10',
             'clinics' => 'A12',
             'procedures' => 'A9',
@@ -38,7 +38,7 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
     public function headings(): array
     {
         return match ($this->type) {
-            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Type', 'Gender', 'Status', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
+            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Type', 'Gender', 'Status', 'Source', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
             'dentists' => ['Clinic Name', 'Dentist Name', 'Specialization', 'Status', 'Date Added'],
             'clinics' => ['Clinic Name', 'Registered Name', 'Address', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
             'procedures' => ['Availment Date', 'Member Name', 'Account', 'HIP', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Approval Code', 'Status', 'Date Added'],
@@ -58,6 +58,11 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                 $row->card_number,
                 $row->gender,
                 $row->status,
+                match($row->import_source) {
+                    'import_inactive' => 'Imported (Inactive)',
+                    'import_active'   => 'Imported (Active)',
+                    default           => 'Manual',
+                },
                 $row->account->effective_date->format('Y-m-d'),
                 $row->account->expiration_date->format('Y-m-d'),
                 optional($row->inactive_date)?->format('Y-m-d'),
@@ -152,17 +157,20 @@ class ReportsExport implements FromQuery, WithHeadings, WithMapping, WithEvents,
                     $sheet->setCellValue('A6', 'Member Type');
                     $sheet->setCellValue('B6', $filters['member_type'] ?? 'All');
 
+                    $sheet->setCellValue('A7', 'Source');
+                    $sheet->setCellValue('B7', $filters['source'] ?? 'All');
+
                     // Style text & values
-                    $sheet->getStyle('A2:B6')->applyFromArray([
+                    $sheet->getStyle('A2:B7')->applyFromArray([
                         'font' => ['bold' => false, 'size' => 11],
                         'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
                     ]);
 
                     // Add a border box around the filter area
-                    $sheet->getStyle('B2:C6')->getBorders()->getAllBorders()
+                    $sheet->getStyle('B2:C7')->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
-                    $sheet->getStyle('A1:C6')->getAlignment()->setWrapText(true);
+                    $sheet->getStyle('A1:C7')->getAlignment()->setWrapText(true);
 
                     foreach (range('A', 'Z') as $column) {
                         $sheet->getColumnDimension($column)->setAutoSize(true);

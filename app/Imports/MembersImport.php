@@ -101,24 +101,27 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     'address'       => $row['address'] ?? null,
                     'status'        => $row['status'] ?? 'active',
                     'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
+                    'import_source' => strtoupper($row['status'] ?? 'ACTIVE') === 'INACTIVE' ? 'import_inactive' : 'import_active',
                     'effective_date' => is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null,
                     'expiration_date' => is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null,
                     'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
                 ]);
                 $member->save();
 
-                $user = User::create([
-                    'name'     => $row['first_name'] . ' ' . $row['last_name'],
-                    'email'    => $row['email'] ?? null,
-                    'password' => bcrypt('password'),
-                ]);
+                if (strtoupper($row['status'] ?? 'ACTIVE') === 'ACTIVE') {
+                    $user = User::create([
+                        'name'     => $row['first_name'] . ' ' . $row['last_name'],
+                        'email'    => $row['email'] ?? null,
+                        'password' => bcrypt('password'),
+                    ]);
 
-                $user->assignRole('Member');
-                $member->update(['user_id' => $user->id]);
+                    $user->assignRole('Member');
+                    $member->update(['user_id' => $user->id]);
+                }
             }
 
             DB::commit();
-            $this->logSuccess($row);
+            $this->logSuccess($row, $member->wasRecentlyCreated ? 'Created' : 'Updated');
             $this->imported++;
             return $member;
         } catch (\Exception $e) {
@@ -158,7 +161,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         }
 
         if (strtoupper($account->plan_type) === 'INDIVIDUAL') {
-            if (Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->exists()) {
+            $existingMember = Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->first();
+            if ($existingMember && $existingMember->first_name !== $row['first_name'] && $existingMember->last_name !== $row['last_name']) {
                 return 'Card number already exists in this account';
             }
         } elseif (strtoupper($account->plan_type) === 'SHARED') {
@@ -196,13 +200,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         return $message;
     }
 
-    private function logSuccess($row)
+    private function logSuccess($row, string $message = 'Created')
     {
         ImportLogItem::create([
             'import_log_id' => $this->importLog->id,
             'row_number' => $this->rowNumber,
             'raw_data' => json_encode($row),
             'status' => 'success',
+            'message' => $message,
         ]);
         $this->importLog->increment('total_rows');
         $this->importLog->increment('success_rows');

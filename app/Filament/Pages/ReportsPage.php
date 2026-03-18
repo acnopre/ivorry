@@ -214,6 +214,16 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ])
                             ->visible(fn($get) => $get('reportType') === 'members'),
 
+                        Forms\Components\Select::make('import_source')
+                            ->label('Filter by Source')
+                            ->options([
+                                'manual'          => 'Manual',
+                                'import_active'   => 'Imported (Active)',
+                                'import_inactive' => 'Imported (Inactive)',
+                            ])
+                            ->placeholder('All')
+                            ->visible(fn($get) => $get('reportType') === 'members'),
+
 
                         Forms\Components\Select::make('clinic_id')
                             ->label('Select Clinic')
@@ -422,6 +432,12 @@ class ReportsPage extends Page implements HasForms, HasTable
                     'to_date'       => $this->reportFilters['toDate'] ?? '-',
                     'member_status' => $this->reportFilters['status'] ?? 'All',
                     'member_type'   => $this->reportFilters['memberType'] ?? 'All',
+                    'source'        => match($this->reportFilters['import_source'] ?? null) {
+                        'import_inactive' => 'Imported (Inactive)',
+                        'import_active'   => 'Imported (Active)',
+                        'manual'          => 'Manual',
+                        default           => 'All',
+                    },
                 ];
             })(),
 
@@ -506,6 +522,7 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->with('account') // eager load account
             ->when($f['status'] ?? null, fn($q, $v) => $q->where('status', $v))
             ->when($f['memberType'] ?? null, fn($q, $v) => $q->where('member_type', $v))
+            ->when($f['import_source'] ?? null, fn($q, $v) => $q->where('import_source', $v))
             ->when($f['account_id'] ?? null, fn($q, $v) => $q->where('account_id', $v))
             ->when(
                 $f['hip'] ?? null,
@@ -664,6 +681,19 @@ class ReportsPage extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('card_number')->label('Card Number'),
                 Tables\Columns\TextColumn::make('gender'),
                 Tables\Columns\TextColumn::make('status')->badge(),
+                Tables\Columns\TextColumn::make('import_source')
+                    ->label('Source')
+                    ->badge()
+                    ->color(fn($state) => match($state) {
+                        'import_inactive' => 'danger',
+                        'import_active'   => 'success',
+                        default           => 'gray',
+                    })
+                    ->formatStateUsing(fn($state) => match($state) {
+                        'import_inactive' => 'Imported (Inactive)',
+                        'import_active'   => 'Imported (Active)',
+                        default           => 'Manual',
+                    }),
                 Tables\Columns\TextColumn::make('account.effective_date')
                     ->label('Account Effective Date')
                     ->date('M d, Y'),

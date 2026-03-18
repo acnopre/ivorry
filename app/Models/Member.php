@@ -25,6 +25,7 @@ class Member extends Model
         'expiration_date',
         'status',
         'inactive_date',
+        'import_source',
         'mbl_balance',
     ];
 

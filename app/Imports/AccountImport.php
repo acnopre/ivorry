@@ -368,13 +368,14 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
         }
     }
 
-    private function logSuccess(int $index, array $row): void
+    private function logSuccess(int $index, array $row, string $message = 'Imported'): void
     {
         ImportLogItem::create([
             'import_log_id' => $this->log->id,
             'row_number' => $index + 2,
             'raw_data' => json_encode($row),
             'status' => 'success',
+            'message' => $message,
         ]);
         $this->log->increment('success_rows');
     }

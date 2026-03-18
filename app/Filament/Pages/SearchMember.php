@@ -317,7 +317,7 @@ class SearchMember extends Page implements HasActions
 
     private function validateBusinessRules($data, $clinicId): bool
     {
-        $service = \App\Models\Service::find($data['service_id']);
+        $service = Service::find($data['service_id']);
         $serviceName = $service->name;
         $availmentDate = $data['availment_date'] ?? null;
         $memberId = $this->selectedMemberId;
@@ -335,7 +335,7 @@ class SearchMember extends Page implements HasActions
             $existsInDifferentClinic = Procedure::where('member_id', $memberId)
                 ->where('clinic_id', '!=', $clinicId)
                 ->where('availment_date', $availmentDate)
-                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
                 ->exists();
 
             if ($existsInDifferentClinic) {
@@ -360,7 +360,7 @@ class SearchMember extends Page implements HasActions
             foreach ($unitIds as $unitId) {
                 $exists = Procedure::where('service_id', $data['service_id'])
                     ->where('member_id', $memberId)
-                    ->where('status', '!=', Procedure::STATUS_VALID)
+                    ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
                     ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
                     ->exists();
 
@@ -372,7 +372,7 @@ class SearchMember extends Page implements HasActions
             // Check if procedure without units exists
             if (Procedure::where('service_id', $data['service_id'])
                 ->where('member_id', $memberId)
-                ->where('status', '!=', Procedure::STATUS_VALID)
+                ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
                 ->exists()
             ) {
                 return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
@@ -401,47 +401,55 @@ class SearchMember extends Page implements HasActions
             }
         } else {
             foreach ($exclusiveServices as $exclusive) {
-                // Check if exclusive service exists
+                // Always check if the exclusive service exists (it may have no units, e.g. Consultation)
+                if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $exclusive)) {
+                    return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same date as {$exclusive}.");
+                }
+
+                // Also check on same units if current service has units (e.g. extraction on same tooth)
                 if ($hasUnits) {
-                    // If current service has units, only check for exclusive service on same units
                     foreach ($unitIds as $unitId) {
                         if ($this->hasProcedureOnUnit($memberId, $clinicId, $availmentDate, $exclusive, $unitId)) {
-                            // return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same unit on the same date as {$exclusive}.");
-                            return $this->showError("{$exclusive} Restriction", "No other procedure can be done with extraction on same tooth number..");
+                            return $this->showError("{$exclusive} Restriction", "No other procedure can be done with extraction on same tooth number.");
                         }
-                    }
-                } else {
-                    // No units, check for exclusive service without unit restriction
-                    if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $exclusive)) {
-                        return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same date as {$exclusive}.");
                     }
                 }
             }
         }
 
-        // Service pair restrictions
+        // Service pair restrictions (bidirectional)
         $restrictions = [
             'Treatment of sores, blisters' => 'Oral Prophylaxis',
             'Desensitization of Hypersensitive teeth' => 'Oral Prophylaxis',
+            'Oral Prophylaxis' => ['Treatment of sores, blisters', 'Desensitization of Hypersensitive teeth'],
         ];
 
         if (isset($restrictions[$serviceName])) {
-            if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $restrictions[$serviceName])) {
-                return $this->showError('Service Restriction', "{$serviceName} cannot be done with {$restrictions[$serviceName]} on the same date.");
+            $conflicting = (array) $restrictions[$serviceName];
+            foreach ($conflicting as $conflictService) {
+                if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $conflictService)) {
+                    return $this->showError('Service Restriction', "{$serviceName} cannot be done with {$conflictService} on the same date.");
+                }
             }
         }
 
         // Tooth-specific validations
         if (isset($data['tooth'])) {
             foreach ($data['tooth'] as $toothId) {
-                // Temporary fillings vs Permanent filling
+                // Temporary fillings vs Permanent filling (bidirectional)
                 if ($serviceName === 'Temporary fillings' && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)'])) {
                     return $this->showError('Temporary Filling Restriction', 'Temporary fillings cannot be done on the same tooth as permanent filling on the same date.');
                 }
+                if (in_array($serviceName, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']) && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Temporary fillings'])) {
+                    return $this->showError('Permanent Filling Restriction', 'Permanent filling cannot be done on the same tooth as temporary fillings on the same date.');
+                }
 
-                // Desensitization vs Permanent filling
+                // Desensitization vs Permanent filling (bidirectional)
                 if ($serviceName === 'Desensitization of Hypersensitive teeth' && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)'])) {
                     return $this->showError('Desensitization Restriction', 'Desensitization cannot be done on the same tooth with permanent filling on the same date.');
+                }
+                if (in_array($serviceName, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']) && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Desensitization of Hypersensitive teeth'])) {
+                    return $this->showError('Permanent Filling Restriction', 'Permanent filling cannot be done on the same tooth with desensitization on the same date.');
                 }
 
                 // Extraction can only be done once per tooth
@@ -470,7 +478,7 @@ class SearchMember extends Page implements HasActions
         return Procedure::where('member_id', $memberId)
             ->where('clinic_id', $clinicId)
             ->where('availment_date', $date)
-            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
             ->exists();
     }
 
@@ -479,7 +487,7 @@ class SearchMember extends Page implements HasActions
         return Procedure::where('member_id', $memberId)
             ->where('clinic_id', $clinicId)
             ->where('availment_date', $date)
-            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
             ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
             ->exists();
     }
@@ -490,7 +498,7 @@ class SearchMember extends Page implements HasActions
             ->where('clinic_id', $clinicId)
             ->where('availment_date', $date)
             ->whereHas('service', fn($q) => $q->where('name', $serviceName))
-            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
             ->exists();
     }
 
@@ -501,7 +509,7 @@ class SearchMember extends Page implements HasActions
             ->where('availment_date', $date)
             ->whereHas('service', fn($q) => $q->where('name', $serviceName))
             ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
-            ->where('status', '!=', Procedure::STATUS_VALID)
+            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
             ->exists();
     }
 
@@ -512,7 +520,7 @@ class SearchMember extends Page implements HasActions
             ->whereHas('units', fn($q) => $q->where('unit_id', $toothId));
 
         if ($date) {
-            $query->where('availment_date', $date)->where('status', '!=', Procedure::STATUS_VALID);
+            $query->where('availment_date', $date)->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED]);
         }
 
         return $query->exists();

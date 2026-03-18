@@ -27,17 +27,20 @@
                 {{-- Card Header --}}
                 <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-4">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/40 shrink-0">
+                            <x-heroicon-o-user class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                        </div>
                         <div>
                             <h3 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">
                                 {{ trim("{$member->first_name} " . ($member->middle_name ? substr($member->middle_name,0,1).'. ' : '') . "{$member->last_name}" . ($member->suffix ? ', '.$member->suffix : '')) }}
                             </h3>
                             <div class="flex items-center gap-3 mt-0.5">
-                                <span class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                <span class="flex items-center gap-1 text-xs text-primary-600/70 dark:text-primary-400/70">
                                     <x-heroicon-o-identification class="w-3.5 h-3.5" />
                                     {{ $member->card_number }}
                                 </span>
                                 <span class="text-gray-300 dark:text-gray-600">|</span>
-                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $member->member_type }}</span>
+                                <span class="text-xs font-medium text-gray-600 dark:text-gray-300">{{ $member->member_type }}</span>
                                 <span class="text-gray-300 dark:text-gray-600">|</span>
                                 <x-filament::badge :color="$memberStatusColor" size="sm" class="!w-auto">{{ ucfirst($member->status ?? 'Unknown') }}</x-filament::badge>
                             </div>
@@ -61,33 +64,33 @@
                     {{-- Member Details --}}
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                         <div>
-                            <div class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Birthdate</div>
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                            <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Birthdate</div>
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-200">
                                 {{ $member->birthdate ? \Carbon\Carbon::parse($member->birthdate)->format('M d, Y') : '—' }}
                             </div>
                         </div>
                         <div>
-                            <div class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Gender</div>
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->gender ?? '—' }}</div>
+                            <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Gender</div>
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ $member->gender ?? '—' }}</div>
                         </div>
                         <div>
-                            <div class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Email</div>
-                            <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $member->email ?? '—' }}</div>
+                            <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Email</div>
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{{ $member->email ?? '—' }}</div>
                         </div>
                         <div>
-                            <div class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Phone</div>
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->phone ?? '—' }}</div>
+                            <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Phone</div>
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ $member->phone ?? '—' }}</div>
                         </div>
                         @if($member->inactive_date)
                         <div>
-                            <div class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Inactive Date</div>
-                            <div class="text-sm font-medium text-red-600 dark:text-red-400">{{ \Carbon\Carbon::parse($member->inactive_date)->format('M d, Y') }}</div>
+                            <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Inactive Date</div>
+                            <div class="text-sm font-semibold text-rose-600 dark:text-rose-400">{{ \Carbon\Carbon::parse($member->inactive_date)->format('M d, Y') }}</div>
                         </div>
                         @endif
                         @if($member->account?->mbl_type === 'Fixed' && auth()->user()->hasRole('CSR'))
                         <div>
-                            <div class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">MBL Balance</div>
-                            <div class="text-sm font-bold text-primary-600 dark:text-primary-400">₱{{ number_format($member->mbl_balance ?? 0, 2) }}</div>
+                            <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">MBL Balance</div>
+                            <div class="text-sm font-bold text-emerald-600 dark:text-emerald-400">₱{{ number_format($member->mbl_balance ?? 0, 2) }}</div>
                         </div>
                         @endif
                     </div>
@@ -101,34 +104,36 @@
                         </div>
                         <div class="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                             <div>
-                                <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Company</div>
-                                <div class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ $member->account->company_name ?? '—' }}</div>
+                                <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Company</div>
+                                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{{ $member->account->company_name ?? '—' }}</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Policy Code</div>
-                                <div class="text-sm font-mono font-semibold text-gray-900 dark:text-white">{{ $member->account->policy_code ?? '—' }}</div>
+                                <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Policy Code</div>
+                                <div class="text-sm font-mono font-semibold text-primary-700 dark:text-primary-300">{{ $member->account->policy_code ?? '—' }}</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Status</div>
+                                <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Status</div>
                                 @php
                                 $accStatus = $member->account->account_status;
                                 $accColor = match(strtolower($accStatus)) {
                                 'active' => 'success', 'inactive' => 'warning', 'expired' => 'danger', default => 'gray',
                                 };
                                 @endphp
-                                <div class="inline-flex"><x-filament::badge :color="$accColor" size="sm">{{ ucfirst($accStatus) }}</x-filament::badge></div>
+                                <div class="inline-flex">
+                                    <x-filament::badge :color="$accColor" size="sm">{{ ucfirst($accStatus) }}</x-filament::badge>
+                                </div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Plan Type</div>
-                                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ $member->account->plan_type ?? '—' }}</div>
+                                <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Plan Type</div>
+                                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">{{ $member->account->plan_type ?? '—' }}</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">MBL Type</div>
-                                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ $member->account->mbl_type ?? '—' }}</div>
+                                <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">MBL Type</div>
+                                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">{{ $member->account->mbl_type ?? '—' }}</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">HIP</div>
-                                <div class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ $member->account->hip ?? '—' }}</div>
+                                <div class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">HIP</div>
+                                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{{ $member->account->hip ?? '—' }}</div>
                             </div>
                         </div>
 
@@ -189,9 +194,13 @@
                                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                                     @foreach($filteredServices as $service)
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                        <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{{ $service->name }}</td>
-                                        <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400">{{ ucfirst($service->type) }}</td>
-                                        <td class="px-4 py-2.5 font-mono text-gray-700 dark:text-gray-300">{{ $service->pivot->quantity ?? '—' }}</td>
+                                        <td class="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-100">{{ $service->name }}</td>
+                                        <td class="px-4 py-2.5">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium {{ $service->type === 'special' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' : 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400' }}">
+                                                {{ ucfirst($service->type) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2.5 font-mono font-semibold text-gray-700 dark:text-gray-300">{{ $service->pivot->quantity ?? '—' }}</td>
                                         <td class="px-4 py-2.5">
                                             @if($service->pivot->is_unlimited)
                                             <x-filament::badge color="success" size="sm">Yes</x-filament::badge>
@@ -199,7 +208,7 @@
                                             <x-filament::badge color="gray" size="sm">No</x-filament::badge>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2.5 text-gray-400 dark:text-gray-500 italic text-xs">{{ $service->pivot->remarks ?? '—' }}</td>
+                                        <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 italic text-xs">{{ $service->pivot->remarks ?? '—' }}</td>
                                     </tr>
                                     @endforeach
                                 </tbody>
@@ -230,7 +239,7 @@
                         <div class="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
                             <x-heroicon-o-clipboard-document-list class="w-4 h-4 text-primary-500" />
                             <span class="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Procedures</span>
-                            <span class="ml-auto text-xs text-gray-400">{{ $procedures->count() }} record(s)</span>
+                            <span class="ml-auto text-xs font-medium text-gray-500 dark:text-gray-400">{{ $procedures->count() }} record(s)</span>
                         </div>
                         @if($procedures->isNotEmpty())
                         <div class="overflow-x-auto">
@@ -244,9 +253,10 @@
                                         <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date</th>
                                         <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
                                         <th class="px-4 py-2.5"></th>
+                                    </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
-                                    @foreach($procedures as $procedure)
+                                    @foreach($procedures as $index => $procedure)
                                     @php
                                     $procColor = match($procedure->status) {
                                     'approved' => 'success',
@@ -257,11 +267,11 @@
                                     };
                                     @endphp
                                     @if($procedure->units->isEmpty())
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                        <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
+                                    <tr class="{{ $index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/30' }} hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors">
+                                        <td class="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
                                         <td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300">{{ $procedure->clinic->clinic_name ?? '—' }}</td>
-                                        <td class="px-4 py-2.5 text-gray-400 italic text-xs">—</td>
-                                        <td class="px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-300">{{ $procedure->approval_code }}</td>
+                                        <td class="px-4 py-2.5 text-gray-300 dark:text-gray-600 italic text-xs">—</td>
+                                        <td class="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 dark:text-indigo-400">{{ $procedure->approval_code }}</td>
                                         <td class="px-4 py-2.5 text-gray-600 dark:text-gray-300">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '—' }}</td>
                                         <td class="px-4 py-2.5">
                                             <x-filament::badge :color="$procColor" size="sm">{{ ucfirst($procedure->status) }}</x-filament::badge>
@@ -276,8 +286,8 @@
                                     </tr>
                                     @else
                                     @foreach($procedure->units as $unit)
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                        <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
+                                    <tr class="{{ $index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/30' }} hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors">
+                                        <td class="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
                                         <td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300">{{ $procedure->clinic->clinic_name ?? '—' }}</td>
                                         <td class="px-4 py-2.5 text-xs text-gray-600 dark:text-gray-300">
                                             @if($unit->pivot->surface_id)
@@ -286,7 +296,7 @@
                                             {{ $unit->unitType->name ?? '—' }}: {{ $unit->name ?? '—' }}
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-300">{{ $procedure->approval_code }}</td>
+                                        <td class="px-4 py-2.5 font-mono text-xs font-medium text-indigo-600 dark:text-indigo-400">{{ $procedure->approval_code }}</td>
                                         <td class="px-4 py-2.5 text-gray-600 dark:text-gray-300">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '—' }}</td>
                                         <td class="px-4 py-2.5">
                                             <x-filament::badge :color="$procColor" size="sm">{{ ucfirst($procedure->status) }}</x-filament::badge>
@@ -306,8 +316,9 @@
                             </table>
                         </div>
                         @else
-                        <div class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500 italic">
-                            No procedures logged yet.
+                        <div class="px-4 py-10 text-center">
+                            <x-heroicon-o-clipboard-document class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                            <p class="text-sm text-gray-400 dark:text-gray-500">No procedures logged yet.</p>
                         </div>
                         @endif
                     </div>
@@ -317,9 +328,10 @@
             @endforeach
         </div>
         @else
-        <div class="text-center py-12 bg-white dark:bg-gray-900 rounded-2xl ring-1 ring-gray-950/5 dark:ring-white/10">
+        <div class="text-center py-16 bg-white dark:bg-gray-900 rounded-2xl ring-1 ring-gray-950/5 dark:ring-white/10">
+            <x-heroicon-o-user-minus class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <h3 class="text-base font-semibold text-gray-900 dark:text-white">No member found</h3>
-            <p class="mt-1 text-sm text-gray-400">Please contact HPDAI.</p>
+            <p class="mt-1 text-sm text-gray-400">Try a different search or contact HPDAI.</p>
         </div>
         @endif
         @endif
@@ -330,7 +342,10 @@
     {{-- Cancel Procedure Modal --}}
     <div x-data x-show="$wire.showCancelModal" x-cloak x-trap.noscroll @click.away="$wire.showCancelModal = false" x-on:keydown.escape.window="$wire.showCancelModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md relative">
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">Cancel Procedure</h2>
+            <div class="flex items-center gap-2 mb-1">
+                <x-heroicon-o-x-circle class="w-5 h-5 text-danger-500" />
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Cancel Procedure</h2>
+            </div>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Please provide a reason for cancelling this procedure.</p>
             <textarea wire:model="cancelReason" rows="3" placeholder="Enter reason..." class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
             <div class="flex justify-end gap-3 mt-4">
@@ -344,6 +359,7 @@
     <div x-data x-show="$wire.showApprovalModal" x-cloak x-trap.noscroll @click.away="$wire.showApprovalModal = false" x-on:keydown.escape.window="$wire.showApprovalModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md relative text-center">
 
+            <x-heroicon-o-check-circle class="w-16 h-16 text-primary-500 mx-auto mb-3" />
             <h2 class="text-2xl font-bold text-primary-600 mb-4">Procedure Approved</h2>
 
             <p class="text-gray-600 dark:text-gray-300 mb-3">
@@ -351,10 +367,12 @@
                 Here's your unique approval code:
             </p>
 
-            <div class="bg-primary-50 dark:bg-primary-900/30 rounded-lg py-4 px-6 mt-3">
+            <div x-data="{ copied: false }" class="bg-primary-50 dark:bg-primary-900/30 rounded-lg py-4 px-6 mt-3 flex items-center justify-center gap-3 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors" x-on:click="navigator.clipboard.writeText('{{ $approvalCode }}'); copied = true; setTimeout(() => copied = false, 2000)">
                 <span class="text-3xl font-extrabold tracking-widest text-primary-700 dark:text-primary-400">
                     {{ $approvalCode }}
                 </span>
+                <x-heroicon-o-clipboard-document class="w-5 h-5 text-primary-400 dark:text-primary-500" x-show="!copied" />
+                <x-heroicon-o-clipboard-document-check class="w-5 h-5 text-emerald-500" x-show="copied" x-cloak />
             </div>
 
             <p class="text-xs text-gray-500 mt-3">

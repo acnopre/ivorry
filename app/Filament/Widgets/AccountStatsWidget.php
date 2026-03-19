@@ -20,12 +20,6 @@ class AccountStatsWidget extends BaseWidget
                 ->description('Created today')
                 ->url(AccountResource::getUrl('index')),
 
-            Stat::make('Active Accounts', $q->clone()->where('account_status', 'active')->count())
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->description('Currently active')
-                ->chart([45, 50, 48, 55, 52, 60, $q->clone()->where('account_status', 'active')->count()])
-                ->url(AccountResource::getUrl('index', ['tableFilter' => 'account_status:active'])),
 
             Stat::make('Pending Renewals', $q->clone()->where('endorsement_type', 'RENEWAL')->where('endorsement_status', 'PENDING')->count())
                 ->icon('heroicon-o-arrow-path')
@@ -45,11 +39,7 @@ class AccountStatsWidget extends BaseWidget
                 ->description('Expiring within 30 days')
                 ->url(AccountResource::getUrl('index', ['tableFilter' => 'account_status:active'])),
 
-            Stat::make('Fixed MBL Accounts', $q->clone()->where('mbl_type', 'Fixed')->where('account_status', 'active')->count())
-                ->icon('heroicon-o-banknotes')
-                ->color('info')
-                ->description('Using fixed MBL')
-                ->url(AccountResource::getUrl('index', ['tableFilter' => 'account_status:active'])),
+
         ];
     }
 

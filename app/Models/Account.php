@@ -9,7 +9,7 @@ use Spatie\Activitylog\LogOptions;
 
 class Account extends Model
 {
-    use LogsActivity;
+    use SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'company_name',
@@ -26,7 +26,8 @@ class Account extends Model
         'mbl_type',
         'mbl_amount',
         'remarks',
-        'created_by'
+        'created_by',
+        'import_id',
     ];
     protected $casts = [
         'effective_date' => 'date',

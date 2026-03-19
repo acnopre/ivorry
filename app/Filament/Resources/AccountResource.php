@@ -40,6 +40,7 @@ use Filament\Forms\Components\{
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 
 class AccountResource extends Resource
 {
@@ -73,7 +74,12 @@ class AccountResource extends Resource
 
                             TextInput::make('policy_code')
                                 ->label('Policy Code')
-                                ->unique(ignoreRecord: true)
+                                ->unique(
+                                    table: 'accounts',
+                                    column: 'policy_code',
+                                    ignoreRecord: true,
+                                    modifyRuleUsing: fn($rule) => $rule->whereNull('deleted_at')
+                                )
                                 ->required()
                                 ->maxLength(50)
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
@@ -718,6 +724,8 @@ class AccountResource extends Resource
                         'INDIVIDUAL' => 'Individual',
                         'SHARED' => 'Shared',
                     ]),
+
+                TrashedFilter::make(),
             ])
 
             ->headerActions([
@@ -779,7 +787,11 @@ class AccountResource extends Resource
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn() => auth()->user()?->hasAnyRole(Role::SUPER_ADMIN)),
 
+                Tables\Actions\RestoreAction::make()
+                    ->visible(fn() => auth()->user()?->hasAnyRole(Role::SUPER_ADMIN)),
 
+                Tables\Actions\ForceDeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasAnyRole(Role::SUPER_ADMIN)),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

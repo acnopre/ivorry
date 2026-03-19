@@ -27,6 +27,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'member.upload',
             'import-logs.view',
             'import-logs.details.view',
+            'import.batch.delete',
+            'import.batch.restore',
             'member-myprofile',
             'member.myaccount',
 

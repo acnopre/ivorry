@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Member extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'account_id',
         'first_name',
@@ -27,6 +29,7 @@ class Member extends Model
         'inactive_date',
         'import_source',
         'mbl_balance',
+        'import_id',
     ];
 
 

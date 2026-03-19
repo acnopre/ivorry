@@ -170,16 +170,50 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                 continue;
             }
 
-            // Handle NEW: check if account already exists
-            if (Account::where('company_name', $row['company_name'])->where('policy_code', $row['policy_code'])->exists()) {
-                ImportLogItem::create([
-                    'import_log_id' => $this->log->id,
-                    'row_number' => $index + 2,
-                    'raw_data' => json_encode($row),
-                    'status' => 'skipped',
-                    'message' => 'Account already exists',
-                ]);
-                $this->log->increment('skipped_rows');
+            // Handle NEW: check if account already exists (including soft-deleted)
+            $existingAccount = Account::withTrashed()->where('company_name', $row['company_name'])->where('policy_code', $row['policy_code'])->first();
+
+            if ($existingAccount) {
+                if ($existingAccount->trashed()) {
+                    // Restore the soft-deleted account and update with latest row data
+                    DB::beginTransaction();
+                    try {
+                        $existingAccount->restore();
+                        $existingAccount->update([
+                            'company_name'        => $row['company_name'],
+                            'hip'                 => $row['hip'],
+                            'card_used'           => $row['card_used'],
+                            'effective_date'      => $this->transformDate($row['effective_date']),
+                            'expiration_date'     => $this->transformDate($row['expiration_date']),
+                            'plan_type'           => $row['plan_type'],
+                            'coverage_period_type'=> $row['coverage_type'],
+                            'mbl_type'            => $row['mbl_type'] ?? $existingAccount->mbl_type,
+                            'mbl_amount'          => $row['mbl_amount'] ?? $existingAccount->mbl_amount,
+                            'account_status'      => $this->migrationMode ? 'active' : 'inactive',
+                            'endorsement_status'  => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                            'import_id'           => $this->log->id,
+                        ]);
+
+                        // Restore and re-sync account services
+                        \App\Models\AccountService::withTrashed()->where('account_id', $existingAccount->id)->restore();
+                        $this->attachServicesToAccount($existingAccount, $services, $row);
+
+                        DB::commit();
+                        $this->logSuccess($index, $row, 'Restored (was soft-deleted)');
+                    } catch (\Throwable $e) {
+                        DB::rollBack();
+                        $this->logValidationError($index, $row, $this->sanitizeErrorMessage($e));
+                    }
+                } else {
+                    ImportLogItem::create([
+                        'import_log_id' => $this->log->id,
+                        'row_number' => $index + 2,
+                        'raw_data' => json_encode($row),
+                        'status' => 'skipped',
+                        'message' => 'Account already exists',
+                    ]);
+                    $this->log->increment('skipped_rows');
+                }
                 continue;
             }
 
@@ -200,6 +234,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
                     'account_status' => $this->migrationMode ? 'active' : 'inactive',
                     'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
                     'created_by' => $this->userId,
+                    'import_id' => $this->log->id,
                 ]);
 
                 $this->attachServicesToAccount($account, $services, $row);
@@ -321,7 +356,7 @@ class AccountImport implements ToCollection, ShouldQueue, WithChunkReading, With
 
     private function findExistingAccount(array $row): ?Account
     {
-        return Account::where('company_name', $row['company_name'])
+        return Account::withTrashed()->where('company_name', $row['company_name'])
             ->where('policy_code', $row['policy_code'])
             ->first();
     }

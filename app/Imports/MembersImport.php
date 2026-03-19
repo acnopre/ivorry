@@ -59,31 +59,44 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
         DB::beginTransaction();
         try {
-            $member = Member::where('account_id', $account->id)
+            $member = Member::withTrashed()->where('account_id', $account->id)
                 ->where('first_name', $row['first_name'])
                 ->where('last_name', $row['last_name'])
                 ->first();
 
             if ($member) {
-                $updateData = ['status' => $row['status']];
+                if ($member->trashed()) {
+                    $member->restore();
+                    $member->update([
+                        'card_number'    => $row['card_number'],
+                        'member_type'    => $row['member_type'],
+                        'status'         => $row['status'] ?? $member->status,
+                        'inactive_date'  => !empty($row['inactive_date']) && is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : $member->inactive_date,
+                        'effective_date' => !empty($row['effective_date']) && is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : $member->effective_date,
+                        'expiration_date'=> !empty($row['expiration_date']) && is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : $member->expiration_date,
+                        'import_id'      => $this->importLog->id,
+                    ]);
+                } else {
+                    $updateData = ['status' => $row['status']];
 
-                if (!empty($row['inactive_date'])) {
-                    $updateData['inactive_date'] = is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;
-                }
-                if (!empty($row['effective_date'])) {
-                    $updateData['effective_date'] = is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null;
-                }
-                if (!empty($row['expiration_date'])) {
-                    $updateData['expiration_date'] = is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null;
-                }
+                    if (!empty($row['inactive_date'])) {
+                        $updateData['inactive_date'] = is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;
+                    }
+                    if (!empty($row['effective_date'])) {
+                        $updateData['effective_date'] = is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null;
+                    }
+                    if (!empty($row['expiration_date'])) {
+                        $updateData['expiration_date'] = is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null;
+                    }
 
-                $member->update($updateData);
+                    $member->update($updateData);
 
-                // If SHARED plan and PRINCIPAL set to INACTIVE, set all dependents to INACTIVE
-                if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL' && strtoupper($row['status']) === 'INACTIVE') {
-                    Member::where('account_id', $account->id)
-                        ->where('member_type', 'DEPENDENT')
-                        ->update(['status' => 'inactive', 'inactive_date' => $updateData['inactive_date'] ?? now()->format('Y-m-d')]);
+                    // If SHARED plan and PRINCIPAL set to INACTIVE, set all dependents to INACTIVE
+                    if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL' && strtoupper($row['status']) === 'INACTIVE') {
+                        Member::where('account_id', $account->id)
+                            ->where('member_type', 'DEPENDENT')
+                            ->update(['status' => 'inactive', 'inactive_date' => $updateData['inactive_date'] ?? now()->format('Y-m-d')]);
+                    }
                 }
             } else {
                 $member = new Member([
@@ -105,6 +118,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     'effective_date' => is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null,
                     'expiration_date' => is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null,
                     'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+                    'import_id'     => $this->importLog->id,
                 ]);
                 $member->save();
 
@@ -123,7 +137,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             DB::commit();
             $this->logSuccess($row, $member->wasRecentlyCreated ? 'Created' : 'Updated');
             $this->imported++;
-            return $member;
+            return null; // we handle save() manually, prevent Maatwebsite from calling save() again
         } catch (\Exception $e) {
             DB::rollBack();
             $this->logError($row, $this->sanitizeErrorMessage($e));
@@ -161,12 +175,12 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         }
 
         if (strtoupper($account->plan_type) === 'INDIVIDUAL') {
-            $existingMember = Member::where('account_id', $account->id)->where('card_number', $row['card_number'])->first();
+            $existingMember = Member::withTrashed()->where('account_id', $account->id)->where('card_number', $row['card_number'])->first();
             if ($existingMember && $existingMember->first_name !== $row['first_name'] && $existingMember->last_name !== $row['last_name']) {
                 return 'Card number already exists in this account';
             }
         } elseif (strtoupper($account->plan_type) === 'SHARED') {
-            if (Member::where('account_id', $account->id)
+            if (Member::withTrashed()->where('account_id', $account->id)
                 ->where('card_number', $row['card_number'])
                 ->where('first_name', $row['first_name'])
                 ->where('last_name', $row['last_name'])
@@ -180,11 +194,11 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Effective date and expiration date are required when account coverage type is MEMBER';
         }
 
-        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL' && Member::where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
+        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL' && Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->where('first_name', '!=', $row['first_name'])->where('last_name', '!=', $row['last_name'])->exists()) {
             return 'Account with SHARED plan type can only have 1 PRINCIPAL member';
         }
 
-        if (strtoupper($row['member_type']) === 'DEPENDENT' && !Member::where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
+        if (strtoupper($row['member_type']) === 'DEPENDENT' && !Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
             return 'Cannot add DEPENDENT member without a PRINCIPAL member in the account';
         }
 

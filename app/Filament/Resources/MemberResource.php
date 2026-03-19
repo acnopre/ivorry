@@ -17,6 +17,7 @@ use Filament\Forms\Components\{DatePicker, FileUpload, Grid, Section, Select, Te
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\{TextColumn, BadgeColumn};
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Tables\Actions\Action;
@@ -55,14 +56,24 @@ class MemberResource extends Resource
                                     ->required(fn(callable $get) => ! $get('use_coc_number'))
                                     ->hidden(fn(callable $get) => $get('use_coc_number'))
                                     ->dehydrated(true)
-                                    ->unique(ignoreRecord: true),
+                                    ->unique(
+                                        table: 'members',
+                                        column: 'card_number',
+                                        ignoreRecord: true,
+                                        modifyRuleUsing: fn($rule) => $rule->whereNull('deleted_at')
+                                    ),
 
                                 TextInput::make('coc_number')
                                     ->label('COC Number')
                                     ->required(fn(callable $get) => $get('use_coc_number'))
                                     ->hidden(fn(callable $get) => ! $get('use_coc_number'))
                                     ->dehydrated(true)
-                                    ->unique(ignoreRecord: true),
+                                    ->unique(
+                                        table: 'members',
+                                        column: 'coc_number',
+                                        ignoreRecord: true,
+                                        modifyRuleUsing: fn($rule) => $rule->whereNull('deleted_at')
+                                    ),
 
                                 Toggle::make('use_coc_number')
                                     ->label('Enable COC Number')
@@ -208,6 +219,8 @@ class MemberResource extends Resource
                         'active' => 'Active',
                         'inactive' => 'Inactive',
                     ]),
+
+                TrashedFilter::make(),
             ])
             ->headerActions([
                 Action::make('importXls')
@@ -256,6 +269,8 @@ class MemberResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+                Tables\Actions\RestoreAction::make(),
+                Tables\Actions\ForceDeleteAction::make(),
             ])
 
             ->bulkActions([

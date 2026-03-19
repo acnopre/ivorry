@@ -11,12 +11,24 @@ class ListAccounts extends ListRecords
 {
     protected static string $resource = AccountResource::class;
 
-    // protected function getHeaderWidgets(): array
-    // {
-    //     return [
-    //         AccountStatsWidget::class,
-    //     ];
-    // }
+    public function mount(): void
+    {
+        parent::mount();
+
+        if ($filters = request('tableFilter')) {
+            foreach (explode(',', $filters) as $filter) {
+                [$column, $value] = explode(':', $filter, 2);
+                $this->tableFilters[$column]['values'] = [$value];
+            }
+        }
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            // AccountStatsWidget::class,
+        ];
+    }
 
     protected function getHeaderActions(): array
     {

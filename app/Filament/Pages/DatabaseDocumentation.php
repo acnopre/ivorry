@@ -2,9 +2,10 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -84,9 +85,31 @@ class DatabaseDocumentation extends Page
         Notification::make()->title('Schema refreshed successfully.')->success()->send();
     }
 
+    public function exportPdf(): mixed
+    {
+        $schema = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, fn() => $this->buildSchema());
+
+        $pdf = Pdf::loadView('pdf.database-documentation', [
+            'schema'      => $schema,
+            'totalTables' => count($schema),
+            'totalColumns' => collect($schema)->sum(fn($t) => count($t['columns'])),
+            'generatedAt' => now()->format('F d, Y h:i A'),
+        ])->setPaper('a4', 'landscape');
+
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            'database-documentation-' . now()->format('Y-m-d') . '.pdf'
+        );
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('exportPdf')
+                ->label('Export PDF')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('primary')
+                ->action('exportPdf'),
             Action::make('refresh')
                 ->label('Refresh Schema')
                 ->icon('heroicon-o-arrow-path')

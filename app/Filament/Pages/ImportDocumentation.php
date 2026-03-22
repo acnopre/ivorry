@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Illuminate\Support\Facades\Response;
 
 class ImportDocumentation extends Page
@@ -19,38 +21,57 @@ class ImportDocumentation extends Page
         return auth()->user()->can('documentation.view');
     }
 
+    public function exportPdf(): mixed
+    {
+        $pdf = Pdf::loadView('pdf.import-documentation', [
+            'generatedAt' => now()->format('F d, Y h:i A'),
+        ])->setPaper('a4', 'portrait');
+
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            'import-documentation-' . now()->format('Y-m-d') . '.pdf'
+        );
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('downloadDocs')
-                ->label('Download Documentation')
-                ->icon('heroicon-o-document-text')
-                ->color('info')
-                ->action(fn() => $this->downloadFile('docs')),
-            
-            Action::make('downloadAccount')
-                ->label('Account Template')
+            Action::make('exportPdf')
+                ->label('Export PDF')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('primary')
-                ->action(fn() => $this->downloadFile('account')),
-            
-            Action::make('downloadMember')
-                ->label('Member Template')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('success')
-                ->action(fn() => $this->downloadFile('member')),
-            
-            Action::make('downloadProcedure')
-                ->label('Procedure Template')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('warning')
-                ->action(fn() => $this->downloadFile('procedure')),
-            
-            Action::make('downloadClinic')
-                ->label('Clinic Template')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('gray')
-                ->action(fn() => $this->downloadFile('clinic')),
+                ->action('exportPdf'),
+
+            ActionGroup::make([
+                Action::make('downloadDocs')
+                    ->label('Documentation (.md)')
+                    ->icon('heroicon-o-document-text')
+                    ->action(fn() => $this->downloadFile('docs')),
+
+                Action::make('downloadAccount')
+                    ->label('Account Template')
+                    ->icon('heroicon-o-table-cells')
+                    ->action(fn() => $this->downloadFile('account')),
+
+                Action::make('downloadMember')
+                    ->label('Member Template')
+                    ->icon('heroicon-o-table-cells')
+                    ->action(fn() => $this->downloadFile('member')),
+
+                Action::make('downloadProcedure')
+                    ->label('Procedure Template')
+                    ->icon('heroicon-o-table-cells')
+                    ->action(fn() => $this->downloadFile('procedure')),
+
+                Action::make('downloadClinic')
+                    ->label('Clinic Template')
+                    ->icon('heroicon-o-table-cells')
+                    ->action(fn() => $this->downloadFile('clinic')),
+            ])
+            ->label('Download Templates')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('gray')
+            ->button(),
         ];
     }
 

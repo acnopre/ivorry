@@ -19,22 +19,22 @@
         @if($hasSearched && $members->isNotEmpty())
         @foreach ($members as $member)
         @php
-            $canAdd        = $this->canAddProcedure($member);
-            $reason        = $this->getCanAddProcedureReason($member);
-            $statusColor   = match(strtolower($member->status ?? '')) { 'active' => 'success', 'inactive' => 'danger', default => 'gray' };
-            $accStatus     = $member->account?->account_status;
-            $accColor      = match(strtolower($accStatus ?? '')) { 'active' => 'success', 'inactive' => 'warning', 'expired' => 'danger', default => 'gray' };
-            $procedures    = \App\Models\Procedure::with(['units.unitType', 'service', 'clinic'])
-                                ->where('member_id', $member->id)
-                                ->when(auth()->user()->hasRole('Dentist'), fn($q) => $q->whereHas('service', fn($s) => $s->where('type', '!=', 'special')))
-                                ->orderByDesc('availment_date')
-                                ->get();
-            $filteredServices = $member->account?->services->filter(fn($s) =>
-                ($s->pivot->is_unlimited || $s->pivot->quantity > 0) &&
-                !(auth()->user()->hasRole('Dentist') && $s->type === 'special')
-            ) ?? collect();
-            $isCsr         = auth()->user()->hasRole('CSR');
-            $userClinicId  = auth()->user()->clinic?->id;
+        $canAdd = $this->canAddProcedure($member);
+        $reason = $this->getCanAddProcedureReason($member);
+        $statusColor = match(strtolower($member->status ?? '')) { 'active' => 'success', 'inactive' => 'danger', default => 'gray' };
+        $accStatus = $member->account?->account_status;
+        $accColor = match(strtolower($accStatus ?? '')) { 'active' => 'success', 'inactive' => 'warning', 'expired' => 'danger', default => 'gray' };
+        $procedures = \App\Models\Procedure::with(['units.unitType', 'service', 'clinic'])
+        ->where('member_id', $member->id)
+        ->when(auth()->user()->hasRole('Dentist'), fn($q) => $q->whereHas('service', fn($s) => $s->where('type', '!=', 'special')))
+        ->orderByDesc('availment_date')
+        ->get();
+        $filteredServices = $member->account?->services->filter(fn($s) =>
+        ($s->pivot->is_unlimited || $s->pivot->quantity > 0) &&
+        !(auth()->user()->hasRole('Dentist') && $s->type === 'special')
+        ) ?? collect();
+        $isCsr = auth()->user()->hasRole('CSR');
+        $userClinicId = auth()->user()->clinic?->id;
         @endphp
 
         <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 overflow-hidden">
@@ -59,14 +59,7 @@
                     </div>
                 </div>
                 <div class="flex flex-col items-start gap-y-1 sm:items-end shrink-0">
-                    <x-filament::button
-                        color="primary"
-                        size="sm"
-                        icon="heroicon-o-plus"
-                        :disabled="!$canAdd"
-                        wire:click="$set('selectedMemberId', {{ $member->id }})"
-                        x-on:click="$wire.mountAction('addProcedure')"
-                    >
+                    <x-filament::button color="primary" size="sm" icon="heroicon-o-plus" :disabled="!$canAdd" wire:click="$set('selectedMemberId', {{ $member->id }})" x-on:click="$wire.mountAction('addProcedure')">
                         Add Procedure
                     </x-filament::button>
                     @if(!$canAdd)
@@ -133,7 +126,9 @@
                             </div>
                             <div>
                                 <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                <dd class="mt-1"><x-filament::badge :color="$accColor" size="sm">{{ ucfirst($accStatus ?? '—') }}</x-filament::badge></dd>
+                                <dd class="mt-1">
+                                    <x-filament::badge :color="$accColor" size="sm">{{ ucfirst($accStatus ?? '—') }}</x-filament::badge>
+                                </dd>
                             </div>
                             <div>
                                 <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Plan Type</dt>
@@ -152,8 +147,8 @@
 
                     {{-- Coverage Dates --}}
                     @php
-                        $hasMemberDates  = $member->effective_date || $member->expiration_date;
-                        $hasAccountDates = $member->account->effective_date || $member->account->expiration_date;
+                    $hasMemberDates = $member->effective_date || $member->expiration_date;
+                    $hasAccountDates = $member->account->effective_date || $member->account->expiration_date;
                     @endphp
                     @if($hasMemberDates || $hasAccountDates)
                     <div class="px-4 pb-3 pt-3 border-t border-gray-200 dark:border-white/10">
@@ -249,7 +244,7 @@
                     @if(auth()->user()->hasRole('Dentist') && $member->account?->services->contains(fn($s) => $s->type === 'special'))
                     <div class="px-4 py-2 border-t border-amber-100 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 flex items-center gap-2">
                         <x-heroicon-o-phone class="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span class="text-xs text-amber-600 dark:text-amber-400">Special services included. Call IVORY for details.</span>
+                        <span class="text-xs text-amber-600 dark:text-amber-400">Special services included. Call HPDAI for details.</span>
                     </div>
                     @endif
                 </div>
@@ -279,16 +274,16 @@
                             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                                 @foreach($procedures as $procedure)
                                 @php
-                                    $procColor = match($procedure->status) {
-                                        'valid'      => 'success',
-                                        'signed'     => 'info',
-                                        'cancelled'  => 'danger',
-                                        'invalid'    => 'danger',
-                                        'processed'  => 'gray',
-                                        default      => 'warning',
-                                    };
-                                    $showCancel = $procedure->status === 'pending' && ($isCsr || $userClinicId === $procedure->clinic_id);
-                                    $rows = $procedure->units->isEmpty() ? [null] : $procedure->units;
+                                $procColor = match($procedure->status) {
+                                'valid' => 'success',
+                                'signed' => 'info',
+                                'cancelled' => 'danger',
+                                'invalid' => 'danger',
+                                'processed' => 'gray',
+                                default => 'warning',
+                                };
+                                $showCancel = $procedure->status === 'pending' && ($isCsr || $userClinicId === $procedure->clinic_id);
+                                $rows = $procedure->units->isEmpty() ? [null] : $procedure->units;
                                 @endphp
                                 @foreach($rows as $unit)
                                 <tr class="hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors">
@@ -335,18 +330,14 @@
     <x-filament-actions::modals />
 
     {{-- Cancel Modal --}}
-    <div x-data x-show="$wire.showCancelModal" x-cloak x-trap.noscroll
-         @click.away="$wire.showCancelModal = false"
-         x-on:keydown.escape.window="$wire.showCancelModal = false"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div x-data x-show="$wire.showCancelModal" x-cloak x-trap.noscroll @click.away="$wire.showCancelModal = false" x-on:keydown.escape.window="$wire.showCancelModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md">
             <div class="flex items-center gap-2 mb-1">
                 <x-heroicon-o-x-circle class="w-5 h-5 text-danger-500 shrink-0" />
                 <h2 class="text-base font-bold text-gray-900 dark:text-white">Cancel Procedure</h2>
             </div>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Please provide a reason for cancelling this procedure.</p>
-            <textarea wire:model="cancelReason" rows="3" placeholder="Enter reason..."
-                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"></textarea>
+            <textarea wire:model="cancelReason" rows="3" placeholder="Enter reason..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"></textarea>
             <div class="flex justify-end gap-2 mt-4">
                 <x-filament::button color="gray" wire:click="$set('showCancelModal', false)">Dismiss</x-filament::button>
                 <x-filament::button color="danger" wire:click="confirmCancelProcedure">Confirm Cancel</x-filament::button>
@@ -355,18 +346,13 @@
     </div>
 
     {{-- Approval Code Modal --}}
-    <div x-data x-show="$wire.showApprovalModal" x-cloak x-trap.noscroll
-         @click.away="$wire.showApprovalModal = false"
-         x-on:keydown.escape.window="$wire.showApprovalModal = false"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div x-data x-show="$wire.showApprovalModal" x-cloak x-trap.noscroll @click.away="$wire.showApprovalModal = false" x-on:keydown.escape.window="$wire.showApprovalModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <x-heroicon-o-check-circle class="w-12 h-12 text-primary-500 mx-auto mb-3" />
             <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">Procedure Approved</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Share this approval code with the member.</p>
 
-            <div x-data="{ copied: false }"
-                 class="bg-primary-50 dark:bg-primary-900/30 rounded-lg py-4 px-6 flex items-center justify-center gap-3 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
-                 x-on:click="navigator.clipboard.writeText('{{ $approvalCode }}'); copied = true; setTimeout(() => copied = false, 2000)">
+            <div x-data="{ copied: false }" class="bg-primary-50 dark:bg-primary-900/30 rounded-lg py-4 px-6 flex items-center justify-center gap-3 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors" x-on:click="navigator.clipboard.writeText('{{ $approvalCode }}'); copied = true; setTimeout(() => copied = false, 2000)">
                 <span class="text-2xl font-extrabold tracking-widest text-primary-700 dark:text-primary-300">{{ $approvalCode }}</span>
                 <x-heroicon-o-clipboard-document class="w-4 h-4 text-primary-400" x-show="!copied" />
                 <x-heroicon-o-clipboard-document-check class="w-4 h-4 text-emerald-500" x-show="copied" x-cloak />

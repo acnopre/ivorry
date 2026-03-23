@@ -151,6 +151,10 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Required fields: first_name, last_name, member_type, card_number';
         }
 
+        if (!preg_match('/^[\w\-\/.]([\w\-\/.\s]*[\w\-\/.])?$/u', $row['card_number'])) {
+            return 'Invalid card_number. Cannot start or end with a space, and only letters, numbers, spaces, hyphens, slashes, and dots are allowed';
+        }
+
         if (!in_array(strtoupper($row['member_type']), ['PRINCIPAL', 'DEPENDENT'])) {
             return 'Invalid member_type. Must be PRINCIPAL or DEPENDENT';
         }

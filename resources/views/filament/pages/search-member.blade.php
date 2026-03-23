@@ -23,7 +23,7 @@
         $reason = $this->getCanAddProcedureReason($member);
         $statusColor = match(strtolower($member->status ?? '')) { 'active' => 'success', 'inactive' => 'danger', default => 'gray' };
         $accStatus = $member->account?->account_status;
-        $accColor = match(strtolower($accStatus ?? '')) { 'active' => 'success', 'inactive' => 'warning', 'expired' => 'danger', default => 'gray' };
+        $accColor = match($accStatus) { 'active' => 'success', 'expired' => 'danger', default => 'gray' };
         $procedures = \App\Models\Procedure::with(['units.unitType', 'service', 'clinic'])
         ->where('member_id', $member->id)
         ->when(auth()->user()->hasRole('Dentist'), fn($q) => $q->whereHas('service', fn($s) => $s->where('type', '!=', 'special')))
@@ -126,7 +126,7 @@
                             </div>
                             <div>
                                 <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                <dd class="mt-1">
+                                <dd class="mt-1 inline-flex">
                                     <x-filament::badge :color="$accColor" size="sm">{{ ucfirst($accStatus ?? '—') }}</x-filament::badge>
                                 </dd>
                             </div>

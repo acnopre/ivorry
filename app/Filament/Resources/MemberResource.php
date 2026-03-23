@@ -238,7 +238,7 @@ class MemberResource extends Resource
                             ->storeFileNamesIn('original_filename')
                             ->required(),
                     ])
-                    ->action(function (array $data): void {
+                    ->action(function (array $data, \Filament\Actions\Action $action): void {
                         $relativePath = $data['file'];
                         $disk = Storage::disk('public');
                         $absolutePath = $disk->path($relativePath);
@@ -248,6 +248,16 @@ class MemberResource extends Resource
                         }
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
+
+                        if (\App\Models\ImportLog::where('filename', $originalFileName)->where('import_type', 'member')->exists()) {
+                            Notification::make()
+                                ->title('Duplicate File')
+                                ->body("A file named \"{$originalFileName}\" has already been imported. Please rename the file or check the Import Logs.")
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
                         $import = new MembersImport($originalFileName);
                         Excel::import($import, $absolutePath);
 

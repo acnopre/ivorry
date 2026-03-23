@@ -759,6 +759,16 @@ class AccountResource extends Resource
                         }
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
+
+                        if (\App\Models\ImportLog::where('filename', $originalFileName)->where('import_type', 'account')->exists()) {
+                            Notification::make()
+                                ->title('Duplicate File')
+                                ->body("A file named \"{$originalFileName}\" has already been imported. Please rename the file or check the Import Logs.")
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
                         $migrationMode = $data['migration_mode'] ?? false;
 
                         $log = ImportLog::create([

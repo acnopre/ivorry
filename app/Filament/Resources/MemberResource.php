@@ -238,7 +238,7 @@ class MemberResource extends Resource
                             ->storeFileNamesIn('original_filename')
                             ->required(),
                     ])
-                    ->action(function (array $data, \Filament\Actions\Action $action): void {
+                    ->action(function (array $data): void {
                         $relativePath = $data['file'];
                         $disk = Storage::disk('public');
                         $absolutePath = $disk->path($relativePath);

@@ -73,11 +73,23 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                         'status'         => $row['status'] ?? $member->status,
                         'inactive_date'  => !empty($row['inactive_date']) && is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : $member->inactive_date,
                         'effective_date' => !empty($row['effective_date']) && is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : $member->effective_date,
-                        'expiration_date'=> !empty($row['expiration_date']) && is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : $member->expiration_date,
+                        'expiration_date' => !empty($row['expiration_date']) && is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : $member->expiration_date,
                         'import_id'      => $this->importLog->id,
                     ]);
                 } else {
                     $updateData = ['status' => $row['status']];
+                    if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
+                        $cardTaken = Member::withTrashed()
+                            ->where('card_number', $row['card_number'])
+                            ->where('id', '!=', $member->id)
+                            ->exists();
+                        if ($cardTaken) {
+                            $this->logError($row, 'Card number already assigned to another member in this account');
+                            DB::rollBack();
+                            return null;
+                        }
+                        $updateData['card_number'] = $row['card_number'];
+                    }
 
                     if (!empty($row['inactive_date'])) {
                         $updateData['inactive_date'] = is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;
@@ -151,7 +163,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Required fields: first_name, last_name, member_type, card_number';
         }
 
-        if (!preg_match('/^[\w\-\/.]([\w\-\/.\s]*[\w\-\/.])?$/u', $row['card_number'])) {
+        if (!preg_match('/^[a-zA-Z0-9_\-\/.]([a-zA-Z0-9_\-\/.\s]*[a-zA-Z0-9_\-\/.])?$/', $row['card_number'])) {
             return 'Invalid card_number. Cannot start or end with a space, and only letters, numbers, spaces, hyphens, slashes, and dots are allowed';
         }
 
@@ -179,12 +191,12 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         }
 
         if (strtoupper($account->plan_type) === 'INDIVIDUAL') {
-            $existingMember = Member::withTrashed()->where('account_id', $account->id)->where('card_number', $row['card_number'])->first();
-            if ($existingMember && $existingMember->first_name !== $row['first_name'] && $existingMember->last_name !== $row['last_name']) {
-                return 'Card number already exists in this account';
+            $existingMember = Member::withTrashed()->where('card_number', $row['card_number'])->first();
+            if ($existingMember && ($existingMember->first_name !== $row['first_name'] || $existingMember->last_name !== $row['last_name'])) {
+                return 'Card number already exists in the system';
             }
         } elseif (strtoupper($account->plan_type) === 'SHARED') {
-            if (Member::withTrashed()->where('account_id', $account->id)
+            if (Member::withTrashed()
                 ->where('card_number', $row['card_number'])
                 ->where('first_name', $row['first_name'])
                 ->where('last_name', $row['last_name'])

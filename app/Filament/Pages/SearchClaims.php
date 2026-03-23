@@ -39,6 +39,7 @@ class SearchClaims extends Page implements HasForms, HasTable
     public ?array $data = [];
     public bool $hasSearched = false;
     public bool $isResultHasValid = false;
+    public ?array $previewData = null;
 
     public function mount(): void
     {
@@ -342,6 +343,18 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->modalSubmitAction(false)
             ])
             ->headerActions([
+                Tables\Actions\Action::make('preview_adc')
+                    ->label('Preview ADC')
+                    ->color('info')
+                    ->icon('heroicon-o-eye')
+                    ->visible(auth()->user()->can('claims.generate'))
+                    ->disabled(fn() => $this->isResultHasValid)
+                    ->mountUsing(fn() => $this->previewAdc())
+                    ->modalHeading('ADC Print Preview')
+                    ->modalWidth('7xl')
+                    ->modalContent(fn() => view('filament.pages.partials.adc-preview', ['previewData' => $this->previewData]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close'),
                 Tables\Actions\Action::make('generate_adc')
                     ->label('Print ADC')
                     ->color('success')
@@ -439,6 +452,74 @@ class SearchClaims extends Page implements HasForms, HasTable
         $this->dispatch('$refresh');
     }
 
+
+    public function previewAdc(): void
+    {
+        if (!$this->hasSearched) {
+            Notification::make()->title('Search Required')->body('Please apply search filters before previewing.')->warning()->send();
+            return;
+        }
+
+        $data = $this->data;
+        $claims = Procedure::query()
+            ->with(['member.account', 'clinic', 'service', 'units.unitType'])
+            ->when($data['member_name'] ?? null, fn($q, $name) => $q->whereHas('member', fn($sub) => $sub->where('first_name', 'like', "%{$name}%")->orWhere('last_name', 'like', "%{$name}%")->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"])))
+            ->when($data['approval_code'] ?? null, fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%"))
+            ->when($data['clinic_id'] ?? null, fn($q, $id) => $q->where('clinic_id', $id))
+            ->when($data['status'] ?? null, fn($q, $s) => $q->where('status', $s))
+            ->when(isset($data['availment_from'], $data['availment_to']), fn($q) => $q->whereBetween('availment_date', [$data['availment_from'], $data['availment_to']]))
+            ->where('status', Procedure::STATUS_VALID)
+            ->get()
+            ->map(function ($procedure) {
+                $vatRate = $this->parseVatType($procedure->clinic->vat_type ?? null);
+                $ewtRate = $this->parsePercentage($procedure->clinic->withholding_tax ?? null);
+                $serviceFee = $procedure->applied_fee;
+                $vatAmount = $serviceFee * $vatRate;
+                $ewtAmount = $serviceFee * $ewtRate;
+                $procedure->clinic_service_fee = $serviceFee;
+                $procedure->vat_amount = $vatAmount;
+                $procedure->ewt_amount = $ewtAmount;
+                $procedure->net = round(($serviceFee + $vatAmount) - $ewtAmount, 2);
+                return $procedure;
+            });
+
+        if ($claims->isEmpty()) {
+            Notification::make()->title('No Data')->body('No valid procedures found.')->warning()->send();
+            return;
+        }
+
+        $clinicDetails = Clinic::find($data['clinic_id']);
+        $dentist = $clinicDetails?->dentists->where('is_owner', 1)->first();
+
+        $this->previewData = [
+            'claims'         => $claims->map(fn($p) => [
+                'availment_date'    => $p->availment_date,
+                'member_name'       => $p->member->first_name . ' ' . $p->member->last_name,
+                'company_name'      => $p->member->account->company_name ?? '—',
+                'service_name'      => $p->service->name ?? '—',
+                'units'             => $p->units->map(fn($u) => ($u->unitType?->name ?? '—') . ': ' . ($u->name ?? '—'))->join(', '),
+                'clinic_service_fee'=> $p->clinic_service_fee,
+                'vat_amount'        => $p->vat_amount,
+                'ewt_amount'        => $p->ewt_amount,
+                'net'               => $p->net,
+            ])->toArray(),
+            'clinic_name'    => $clinicDetails?->clinic_name,
+            'dentist_name'   => $dentist ? $dentist->first_name . ' ' . $dentist->last_name : '—',
+            'registered_name'=> $clinicDetails?->registered_name,
+            'tin'            => $clinicDetails?->tax_identification_no,
+            'is_branch'      => $clinicDetails?->is_branch,
+            'address'        => $clinicDetails?->complete_address,
+            'vat_type'       => $clinicDetails?->vat_type,
+            'ewt'            => $clinicDetails?->withholding_tax,
+            'from'           => $data['availment_from'] ?? null,
+            'to'             => $data['availment_to'] ?? null,
+            'total_fee'      => $claims->sum('clinic_service_fee'),
+            'total_vat'      => $claims->sum('vat_amount'),
+            'total_ewt'      => $claims->sum('ewt_amount'),
+            'total_net'      => $claims->sum('net'),
+        ];
+
+    }
 
     public function generateClaims(string $status)
     {

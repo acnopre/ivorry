@@ -277,7 +277,7 @@
                                             <x-filament::badge :color="$procColor" size="sm">{{ ucfirst($procedure->status) }}</x-filament::badge>
                                         </td>
                                         <td class="px-4 py-2.5">
-                                            @if($procedure->status === 'pending')
+                                            @if($procedure->status === 'pending' && auth()->user()->clinic?->id === $procedure->clinic_id || auth()->user()->hasRole('CSR'))
                                             <x-filament::button color="danger" size="xs" wire:click="openCancelModal({{ $procedure->id }})">
                                                 Cancel
                                             </x-filament::button>
@@ -302,7 +302,7 @@
                                             <x-filament::badge :color="$procColor" size="sm">{{ ucfirst($procedure->status) }}</x-filament::badge>
                                         </td>
                                         <td class="px-4 py-2.5">
-                                            @if($procedure->status === 'pending')
+                                            @if($procedure->status === 'pending' && auth()->user()->clinic?->id === $procedure->clinic_id || auth()->user()->hasRole('CSR'))
                                             <x-filament::button color="danger" size="xs" wire:click="openCancelModal({{ $procedure->id }})">
                                                 Cancel
                                             </x-filament::button>

@@ -17,6 +17,9 @@ class ImportLog extends Model
         'total_rows',
         'success_rows',
         'error_rows',
+        'skipped_rows',
+        'duplicate_rows',
+        'updated_rows',
         'error_message',
     ];
 

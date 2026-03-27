@@ -13,15 +13,21 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Maatwebsite\Excel\Concerns\RemembersRowNumber;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsOnError
 {
-    use SkipsErrors;
+    use SkipsErrors, RemembersRowNumber;
     public $imported = 0;
+    public $duplicates = [];
     public $failed = [];
     public $importLog;
-    private $rowNumber = 1;
+
+    private int $successRows   = 0;
+    private int $updatedRows   = 0;
+    private int $duplicateRows = 0;
+    private int $errorRows     = 0;
 
     public function __construct($filename)
     {
@@ -37,8 +43,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
     public function model(array $row)
     {
-        $this->rowNumber++;
         $row = array_map(fn($value) => is_string($value) ? trim($value) : $value, $row);
+
+        if (!empty($row['card_number'])) {
+            if (!preg_match('/^[a-zA-Z0-9]+$/u', $row['card_number'])) {
+                $this->logError($row, "Invalid card_number '{$row['card_number']}': special characters are not allowed");
+                return null;
+            }
+        }
 
         $account = Account::where('company_name', $row['account_name'])->first();
 
@@ -59,6 +71,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
         DB::beginTransaction();
         try {
+            $restored = false;
             $member = Member::withTrashed()->where('account_id', $account->id)
                 ->where('first_name', $row['first_name'])
                 ->where('last_name', $row['last_name'])
@@ -67,6 +80,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             if ($member) {
                 if ($member->trashed()) {
                     $member->restore();
+                    $restored = true;
                     $member->update([
                         'card_number'    => $row['card_number'],
                         'member_type'    => $row['member_type'],
@@ -77,15 +91,63 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                         'import_id'      => $this->importLog->id,
                     ]);
                 } else {
-                    $updateData = ['status' => $row['status']];
+                    $oldData = [
+                        'card_number'    => $member->card_number,
+                        'member_type'    => $member->member_type,
+                        'status'         => $member->status,
+                        'inactive_date'  => $member->inactive_date,
+                        'effective_date' => $member->effective_date,
+                        'expiration_date'=> $member->expiration_date,
+                        'birthdate'      => $member->birthdate,
+                        'gender'         => $member->gender,
+                        'email'          => $member->email,
+                        'phone'          => $member->phone,
+                        'middle_name'    => $member->middle_name,
+                        'suffix'         => $member->suffix,
+                    ];
+
+                    $incomingBirthdate = !empty($row['birthdate']) && is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : ($row['birthdate'] ?? null);
+                    $incomingInactive = !empty($row['inactive_date']) && is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;
+                    $incomingEffective = !empty($row['effective_date']) && is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null;
+                    $incomingExpiration = !empty($row['expiration_date']) && is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null;
+
+                    $isDuplicate = $member->middle_name == ($row['middle_name'] ?? null)
+                        && $member->suffix == ($row['suffix'] ?? null)
+                        && strtolower($member->member_type) === strtolower($row['member_type'] ?? '')
+                        && $member->card_number === $row['card_number']
+                        && $member->birthdate == $incomingBirthdate
+                        && strtolower($member->gender ?? '') === strtolower($row['gender'] ?? '')
+                        && $member->email == ($row['email'] ?? null)
+                        && $member->phone == ($row['phone'] ?? null)
+                        && $member->address == ($row['address'] ?? null)
+                        && strtolower($member->status) === strtolower($row['status'] ?? '')
+                        && $member->inactive_date == $incomingInactive
+                        && $member->effective_date == $incomingEffective
+                        && $member->expiration_date == $incomingExpiration;
+
+                    if ($isDuplicate) {
+                        DB::rollBack();
+                        $this->logDuplicate($row);
+                        return null;
+                    }
+
+                    $updateData = [
+                        'status'      => $row['status'],
+                        'middle_name' => $row['middle_name'] ?? null,
+                        'suffix'      => $row['suffix'] ?? null,
+                        'gender'      => !empty($row['gender']) ? strtolower($row['gender']) : null,
+                        'email'       => $row['email'] ?? null,
+                        'phone'       => $row['phone'] ?? null,
+                        'birthdate'   => !empty($row['birthdate']) && is_numeric($row['birthdate']) && $row['birthdate'] > 0 ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : ((!empty($row['birthdate']) && !is_numeric($row['birthdate'])) ? $row['birthdate'] : null),
+                    ];
                     if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
                         $cardTaken = Member::withTrashed()
                             ->where('card_number', $row['card_number'])
                             ->where('id', '!=', $member->id)
                             ->exists();
                         if ($cardTaken) {
-                            $this->logError($row, 'Card number already assigned to another member in this account');
                             DB::rollBack();
+                            $this->logError($row, 'Card number already assigned to another member in this account');
                             return null;
                         }
                         $updateData['card_number'] = $row['card_number'];
@@ -147,7 +209,13 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
 
             DB::commit();
-            $this->logSuccess($row, $member->wasRecentlyCreated ? 'Created' : 'Updated');
+            if ($member->wasRecentlyCreated) {
+                $this->logSuccess($row, 'Created');
+            } elseif (isset($restored) && $restored) {
+                $this->logSuccess($row, 'Restored');
+            } else {
+                $this->logUpdated($row, $oldData);
+            }
             $this->imported++;
             return null; // we handle save() manually, prevent Maatwebsite from calling save() again
         } catch (\Exception $e) {
@@ -163,8 +231,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Required fields: first_name, last_name, member_type, card_number';
         }
 
-        if (!preg_match('/^[a-zA-Z0-9_\-\/.]([a-zA-Z0-9_\-\/.\s]*[a-zA-Z0-9_\-\/.])?$/', $row['card_number'])) {
-            return 'Invalid card_number. Cannot start or end with a space, and only letters, numbers, spaces, hyphens, slashes, and dots are allowed';
+        if (!preg_match('/^[a-zA-Z0-9]+$/u', $row['card_number'])) {
+            return 'Invalid card_number. Only letters and numbers are allowed';
         }
 
         if (!in_array(strtoupper($row['member_type']), ['PRINCIPAL', 'DEPENDENT'])) {
@@ -180,7 +248,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         }
 
         if (!empty($row['birthdate'])) {
-            $birthdate = is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate']) : new \DateTime($row['birthdate']);
+            try {
+                $birthdate = is_numeric($row['birthdate'])
+                    ? Date::excelToDateTimeObject($row['birthdate'])
+                    : new \DateTime($row['birthdate']);
+            } catch (\Exception $e) {
+                return 'Invalid birthdate. Please use a valid date format';
+            }
+
             if ($birthdate > new \DateTime()) {
                 return 'Birthdate cannot be in the future';
             }
@@ -206,6 +281,10 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
         }
 
+        if (!empty($row['gender']) && !in_array(strtolower($row['gender']), ['male', 'female'])) {
+            return 'Invalid gender. Only Male or Female is accepted';
+        }
+
         if (strtoupper($account->coverage_period_type) === 'MEMBER' && (empty($row['effective_date']) || empty($row['expiration_date']))) {
             return 'Effective date and expiration date are required when account coverage type is MEMBER';
         }
@@ -225,36 +304,99 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
     {
         $message = $e->getMessage();
 
+        if (str_contains($message, 'Incorrect date value')) {
+            return 'Invalid date value in one of the date fields. Please check the format.';
+        }
+        if (str_contains($message, 'Duplicate entry')) {
+            return 'A record with this card number already exists.';
+        }
+        if (str_contains($message, 'SQLSTATE') || str_contains($message, 'Connection:')) {
+            return 'A database error occurred while saving this record. Please contact support if this persists.';
+        }
 
-        // Return actual error message for debugging
         return $message;
+    }
+
+    private function diffSummary(array $old, array $new): string
+    {
+        $changes = [];
+        $compare = ["card_number", "member_type", "status", "inactive_date", "effective_date", "expiration_date", "birthdate", "gender", "email", "phone", "middle_name", "suffix"];
+        $dateFields = ["birthdate", "inactive_date", "effective_date", "expiration_date"];
+        $labels = ["card_number" => "Card Number", "member_type" => "Member Type", "status" => "Status", "inactive_date" => "Inactive Date", "effective_date" => "Effective Date", "expiration_date" => "Expiration Date", "birthdate" => "Birthdate", "gender" => "Gender", "email" => "Email", "phone" => "Phone", "middle_name" => "Middle Name", "suffix" => "Suffix"];
+        foreach ($compare as $field) {
+            $oldVal = (string) ($old[$field] ?? "");
+            $newVal = (string) ($new[$field] ?? "");
+            if (in_array($field, $dateFields) && is_numeric($newVal) && $newVal !== "") {
+                $newVal = Date::excelToDateTimeObject((float) $newVal)->format("Y-m-d");
+            }
+            if (strtolower($oldVal) !== strtolower($newVal)) {
+                $from = $oldVal !== "" ? $oldVal : "empty";
+                $to   = $newVal !== "" ? $newVal : "empty";
+                $changes[] = $labels[$field] . " changed from '" . $from . "' to '" . $to . "'";
+            }
+        }
+        return $changes ? implode("; ", $changes) : "No changes detected";
+    }
+
+    private function cleanRow(array $row): array
+    {
+        return array_filter(
+            $row,
+            fn($key) => !is_numeric($key) && $key !== '',
+            ARRAY_FILTER_USE_KEY
+        );
+    }
+
+    private function logDuplicate($row)
+    {
+        $rowNum = $this->getRowNumber();
+        ImportLogItem::create([
+            'import_log_id' => $this->importLog->id,
+            'row_number'    => $rowNum,
+            'raw_data'      => $this->cleanRow($row),
+            'status'        => 'duplicate',
+            'message'       => 'Duplicate: all data matches existing record',
+        ]);
+        $this->duplicates[] = "Row {$rowNum}: duplicate";
+        $this->duplicateRows++;
+    }
+
+    private function logUpdated($row, array $oldData = [])
+    {
+        ImportLogItem::create([
+            'import_log_id' => $this->importLog->id,
+            'row_number'    => $this->getRowNumber(),
+            'raw_data'      => $this->cleanRow($row),
+            'status'        => 'updated',
+            'message'       => 'Updated: ' . $this->diffSummary($oldData, $this->cleanRow($row)),
+        ]);
+        $this->updatedRows++;
     }
 
     private function logSuccess($row, string $message = 'Created')
     {
         ImportLogItem::create([
             'import_log_id' => $this->importLog->id,
-            'row_number' => $this->rowNumber,
-            'raw_data' => json_encode($row),
-            'status' => 'success',
-            'message' => $message,
+            'row_number'    => $this->getRowNumber(),
+            'raw_data'      => $this->cleanRow($row),
+            'status'        => 'success',
+            'message'       => $message,
         ]);
-        $this->importLog->increment('total_rows');
-        $this->importLog->increment('success_rows');
+        $this->successRows++;
     }
 
     private function logError($row, $message)
     {
+        $rowNum = $this->getRowNumber();
         ImportLogItem::create([
             'import_log_id' => $this->importLog->id,
-            'row_number' => $this->rowNumber,
-            'raw_data' => json_encode($row),
-            'status' => 'error',
-            'message' => $message,
+            'row_number'    => $rowNum,
+            'raw_data'      => $this->cleanRow($row),
+            'status'        => 'error',
+            'message'       => $message,
         ]);
-        $this->failed[] = "Row {$this->rowNumber}: {$message}";
-        $this->importLog->increment('total_rows');
-        $this->importLog->increment('error_rows');
+        $this->failed[] = "Row {$rowNum}: {$message}";
+        $this->errorRows++;
     }
 
     public function chunkSize(): int
@@ -273,8 +415,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
     public function __destruct()
     {
+        $total = $this->successRows + $this->updatedRows + $this->duplicateRows + $this->errorRows;
         $this->importLog->update([
-            'status' => $this->importLog->error_rows > 0 ? 'partial' : 'completed',
+            'status'         => $this->errorRows > 0 ? 'partial' : 'completed',
+            'total_rows'     => $total,
+            'success_rows'   => $this->successRows,
+            'updated_rows'   => $this->updatedRows,
+            'duplicate_rows' => $this->duplicateRows,
+            'error_rows'     => $this->errorRows,
         ]);
     }
 }

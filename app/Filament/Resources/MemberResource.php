@@ -79,6 +79,7 @@ class MemberResource extends Resource
                                     ->label('Enable COC Number')
                                     ->default(false)
                                     ->reactive()
+                                    ->hidden(fn(callable $get) => filled($get('card_number')))
                                     ->dehydrated(false)
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                         if ($state && empty($get('coc_number'))) {
@@ -249,19 +250,15 @@ class MemberResource extends Resource
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
 
-                        if (\App\Models\ImportLog::where('filename', $originalFileName)->where('import_type', 'member')->exists()) {
-                            Notification::make()
-                                ->title('Duplicate File')
-                                ->body("A file named \"{$originalFileName}\" has already been imported. Please rename the file or check the Import Logs.")
-                                ->danger()
-                                ->send();
-                            return;
-                        }
+
 
                         $import = new MembersImport($originalFileName);
                         Excel::import($import, $absolutePath);
 
-                        $message = "Members import completed! {$import->imported} members imported.";
+                        $message = "Members import completed! {$import->imported} imported.";
+                        if (count($import->duplicates) > 0) {
+                            $message .= " " . count($import->duplicates) . " duplicates skipped.";
+                        }
                         if (count($import->failed) > 0) {
                             $message .= " " . count($import->failed) . " rows failed.";
                         }

@@ -498,14 +498,14 @@ class SearchClaims extends Page implements HasForms, HasTable
                 'company_name'      => $p->member->account->company_name ?? '—',
                 'service_name'      => $p->service->name ?? '—',
                 'units'             => $p->units->map(fn($u) => ($u->unitType?->name ?? '—') . ': ' . ($u->name ?? '—'))->join(', '),
-                'clinic_service_fee'=> $p->clinic_service_fee,
+                'clinic_service_fee' => $p->clinic_service_fee,
                 'vat_amount'        => $p->vat_amount,
                 'ewt_amount'        => $p->ewt_amount,
                 'net'               => $p->net,
             ])->toArray(),
             'clinic_name'    => $clinicDetails?->clinic_name,
             'dentist_name'   => $dentist ? $dentist->first_name . ' ' . $dentist->last_name : '—',
-            'registered_name'=> $clinicDetails?->registered_name,
+            'registered_name' => $clinicDetails?->registered_name,
             'tin'            => $clinicDetails?->tax_identification_no,
             'is_branch'      => $clinicDetails?->is_branch,
             'address'        => $clinicDetails?->complete_address,
@@ -518,7 +518,6 @@ class SearchClaims extends Page implements HasForms, HasTable
             'total_ewt'      => $claims->sum('ewt_amount'),
             'total_net'      => $claims->sum('net'),
         ];
-
     }
 
     public function generateClaims(string $status)

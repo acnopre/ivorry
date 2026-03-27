@@ -20,7 +20,8 @@ class ViewMember extends ViewRecord
                     ->schema([
                         Grid::make(3)
                             ->schema([
-                                TextEntry::make('card_number')->label('Card Number'),
+                                TextEntry::make('card_number')->label('Card Number')->placeholder('—'),
+                                TextEntry::make('coc_number')->label('COC Number')->placeholder('—')->visible(fn($record) => filled($record->coc_number)),
                                 TextEntry::make('member_type')->label('Member Type')->badge(),
                                 TextEntry::make('status')
                                     ->badge()

@@ -760,14 +760,6 @@ class AccountResource extends Resource
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
 
-                        if (\App\Models\ImportLog::where('filename', $originalFileName)->where('import_type', 'account')->exists()) {
-                            Notification::make()
-                                ->title('Duplicate File')
-                                ->body("A file named \"{$originalFileName}\" has already been imported. Please rename the file or check the Import Logs.")
-                                ->danger()
-                                ->send();
-                            return;
-                        }
 
                         $migrationMode = $data['migration_mode'] ?? false;
 
@@ -779,11 +771,19 @@ class AccountResource extends Resource
                             'import_type' => 'account',
                         ]);
 
-                        Excel::import(new AccountImport($log, auth()->id(), $migrationMode), $absolutePath);
+                        $import = new AccountImport($log, auth()->id(), $migrationMode);
+                        Excel::import($import, $absolutePath);
+
+                        $message = "Accounts import completed! {$import->imported} imported.";
+                        if (count($import->duplicates) > 0) {
+                            $message .= ' ' . count($import->duplicates) . ' duplicates skipped.';
+                        }
+                        if (count($import->failed) > 0) {
+                            $message .= ' ' . count($import->failed) . ' rows failed.';
+                        }
 
                         Notification::make()
-                            ->title('Accounts import started')
-                            ->body('The import is being processed. Check the import logs for details.')
+                            ->title($message)
                             ->success()
                             ->send();
                     }),

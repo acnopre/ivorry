@@ -55,6 +55,8 @@ class ImportLogResource extends Resource
                     ]),
                 TextColumn::make('total_rows'),
                 TextColumn::make('success_rows')->color('success'),
+                TextColumn::make('updated_rows')->color('info'),
+                TextColumn::make('duplicate_rows')->color('warning'),
                 TextColumn::make('skipped_rows')->color('warning'),
                 TextColumn::make('error_rows')->color('danger'),
                 TextColumn::make('created_at')->dateTime(),

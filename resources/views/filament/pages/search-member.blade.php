@@ -35,9 +35,10 @@
         ) ?? collect();
         $isCsr = auth()->user()->hasRole('CSR');
         $userClinicId = auth()->user()->clinic?->id;
+        $defaultOpen = !$isCsr || $loop->first;
         @endphp
 
-        <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 overflow-hidden">
+        <div x-data="{ open: {{ $defaultOpen ? 'true' : 'false' }} }" class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 overflow-hidden">
 
             {{-- ── Header ── --}}
             <div class="fi-section-header flex flex-col gap-y-1 px-6 py-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-white/10">
@@ -58,6 +59,11 @@
                         </div>
                     </div>
                 </div>
+                @if($isCsr)
+                <button type="button" x-on:click="open = !open" class="ml-auto p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    <x-heroicon-o-chevron-down class="w-4 h-4 transition-transform duration-200" ::class="{ 'rotate-180': open }" />
+                </button>
+                @endif
                 <div class="flex flex-col items-start gap-y-1 sm:items-end shrink-0">
                     <x-filament::button color="primary" size="sm" icon="heroicon-o-plus" :disabled="!$canAdd" wire:click="$set('selectedMemberId', {{ $member->id }})" x-on:click="$wire.mountAction('addProcedure')">
                         Add Procedure
@@ -71,6 +77,7 @@
                 </div>
             </div>
 
+            <div x-show="open" x-collapse>
             {{-- ── Member Info ── --}}
             <div class="fi-section-content px-6 py-4 border-b border-gray-200 dark:border-white/10">
                 <dl class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-6 text-sm">
@@ -258,16 +265,24 @@
                         <span class="ml-auto text-xs text-gray-500 dark:text-gray-400">{{ $procedures->count() }} record(s)</span>
                     </div>
                     @if($procedures->isNotEmpty())
+                    @php
+                        $isDentist = auth()->user()->hasRole('Dentist');
+                        $hasOwnProcedure = $isDentist && $procedures->contains(fn($p) => $userClinicId && $userClinicId === $p->clinic_id);
+                    @endphp
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-xs divide-y divide-gray-100 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-800">
                                 <tr>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Service</th>
+                                    @if($isCsr)
                                     <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Clinic</th>
-                                    <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Units</th>
                                     <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Approval Code</th>
+                                    @endif
                                     <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Units</th>
+                                    @if($isCsr || $hasOwnProcedure)
                                     <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
+                                    @endif
                                     <th class="px-4 py-2"></th>
                                 </tr>
                             </thead>
@@ -275,36 +290,39 @@
                                 @foreach($procedures as $procedure)
                                 @php
                                 $procColor = match($procedure->status) {
-                                'valid' => 'success',
-                                'signed' => 'info',
-                                'cancelled' => 'danger',
-                                'invalid' => 'danger',
-                                'processed' => 'gray',
-                                default => 'warning',
+                                    'valid'     => 'success',
+                                    'signed'    => 'info',
+                                    'cancelled' => 'danger',
+                                    'invalid'   => 'danger',
+                                    'processed' => 'gray',
+                                    default     => 'warning',
                                 };
-                                $showCancel = $procedure->status === 'pending' && ($isCsr || $userClinicId === $procedure->clinic_id);
+                                $isOwnProcedure = $userClinicId && $userClinicId === $procedure->clinic_id;
+                                $showCancel = $procedure->status === 'pending' && ($isCsr || $isOwnProcedure);
                                 $rows = $procedure->units->isEmpty() ? [null] : $procedure->units;
                                 @endphp
                                 @foreach($rows as $unit)
                                 <tr class="hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors">
                                     <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
+                                    @if($isCsr)
                                     <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ $procedure->clinic->clinic_name ?? '—' }}</td>
+                                    <td class="px-4 py-2 font-mono font-semibold text-indigo-600 dark:text-indigo-400">{{ $procedure->approval_code }}</td>
+                                    @endif
+                                    <td class="px-4 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '—' }}</td>
                                     <td class="px-4 py-2 text-gray-500 dark:text-gray-400">
                                         @if($unit === null) <span class="text-gray-300 dark:text-gray-600 italic">—</span>
                                         @elseif($unit->pivot->surface_id) {{ $unit->unitType->name ?? '—' }}: {{ \App\Models\Unit::find($unit->pivot->unit_id)?->name ?? '—' }} / {{ $unit->name ?? '—' }}
                                         @else {{ $unit->unitType->name ?? '—' }}: {{ $unit->name ?? '—' }}
                                         @endif
                                     </td>
-                                    <td class="px-4 py-2 font-mono font-semibold text-indigo-600 dark:text-indigo-400">{{ $procedure->approval_code }}</td>
-                                    <td class="px-4 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '—' }}</td>
+                                    @if($isCsr || ($isDentist && $isOwnProcedure))
                                     <td class="px-4 py-2">
                                         <x-filament::badge :color="$procColor" size="sm">{{ ucfirst($procedure->status) }}</x-filament::badge>
                                     </td>
+                                    @endif
                                     <td class="px-4 py-2">
                                         @if($showCancel)
-                                        <x-filament::button color="danger" size="xs" wire:click="openCancelModal({{ $procedure->id }})">
-                                            Cancel
-                                        </x-filament::button>
+                                        <x-filament::button color="danger" size="xs" wire:click="openCancelModal({{ $procedure->id }})">Cancel</x-filament::button>
                                         @endif
                                     </td>
                                 </tr>
@@ -322,6 +340,7 @@
                 </div>
 
             </div>
+            </div>{{-- /x-show --}}
         </div>
         @endforeach
         @endif
@@ -348,7 +367,7 @@
     {{-- Approval Code Modal --}}
     <div x-data x-show="$wire.showApprovalModal" x-cloak x-trap.noscroll @click.away="$wire.showApprovalModal = false" x-on:keydown.escape.window="$wire.showApprovalModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <x-heroicon-o-check-circle class="w-12 h-12 text-primary-500 mx-auto mb-3" />
+            <x-heroicon-o-check-circle class="w-10 h-10 text-primary-500 mx-auto mb-3" />
             <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">Procedure Approved</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Share this approval code with the member.</p>
 

@@ -629,24 +629,17 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         // dd($claims, $accounts, $totalClinicFee, $totalEwt, $totalNet);
 
-        /** Create the SOA */
+        /** Create the SOA — created before PDF so we have the ID for the sequence number */
         $this->dispatch('update-progress', status: 'Creating SOA record...', progress: 70);
 
         $soa = GeneratedSoa::create([
-            'clinic_id' => $data['clinic_id'],
-            'from_date' => $data['availment_from'],
-            'to_date' => $data['availment_to'],
+            'clinic_id'    => $data['clinic_id'],
+            'from_date'    => $data['availment_from'],
+            'to_date'      => $data['availment_to'],
             'total_amount' => $totalClinicFee,
             'generated_by' => auth()->id(),
-            'status' => 'generated',
+            'status'       => 'generated',
         ]);
-
-        /** Attach procedures */
-        foreach ($claims as $procedure) {
-            $soa->procedures()->attach($procedure->id, [
-                'amount' => $procedure->clinic_service_fee
-            ]);
-        }
 
         $this->dispatch('update-progress', status: 'Generating PDF...', progress: 85);
 
@@ -688,7 +681,6 @@ class SearchClaims extends Page implements HasForms, HasTable
         $preparedBy = auth()->user()->name ?? 'System Generated';
         $timestamp = now()->format('Y-m-d_His');
 
-        // Sequence number
         $sequenceNumber = 'ADC' . str_pad($soa->id, 10, '0', STR_PAD_LEFT);
 
         // Views
@@ -805,6 +797,13 @@ class SearchClaims extends Page implements HasForms, HasTable
             if ($statusCode === 0) {
                 $this->dispatch('update-progress', status: 'Updating claim status...', progress: 97);
 
+                // Attach procedures to SOA after successful print
+                foreach ($claims as $procedure) {
+                    $soa->procedures()->attach($procedure->id, [
+                        'amount' => $procedure->clinic_service_fee,
+                    ]);
+                }
+
                 // Printing succeeded → mark procedures as processed
                 Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
 
@@ -814,6 +813,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->success()
                     ->send();
             } else {
+                $soa->delete(); // Remove SOA record since printing failed
                 $this->dispatch('close-printing');
 
                 Notification::make()
@@ -829,6 +829,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ]);
             }
         } else {
+            $soa->delete(); // Remove SOA record since no printer was found
             $this->dispatch('close-printing');
 
             Notification::make()
@@ -852,18 +853,18 @@ class SearchClaims extends Page implements HasForms, HasTable
         $this->dispatch('update-progress', status: 'Logging print activity...', progress: 98);
 
         // ----------------- Log print & duplicate -----------------
-        $soa->increment('print_count');
+        $soa?->increment('print_count');
 
         DB::table('print_logs')->insert([
-            'user_id' => auth()->id(),
-            'document_id' => $soa->id,
-            'copy_type' => 'ORIGINAL',
-            'printer' => $printerName ?? 'NO_PRINTER_AVAILABLE',
-            'created_at' => now(),
+            'user_id'     => auth()->id(),
+            'document_id' => $soa?->id,
+            'copy_type'   => 'ORIGINAL',
+            'printer'     => $printerName ?? 'NO_PRINTER_AVAILABLE',
+            'created_at'  => now(),
         ]);
 
-        $soa->update([
-            'file_path' => $originalPath,
+        $soa?->update([
+            'file_path'           => $originalPath,
             'duplicate_file_path' => $duplicatePath,
         ]);
 

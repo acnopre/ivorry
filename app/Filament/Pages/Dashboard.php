@@ -11,6 +11,7 @@ use App\Filament\Widgets\CSRStatsWidget;
 use App\Filament\Widgets\DashboardStats;
 use App\Filament\Widgets\DentistStatsWidget;
 use App\Filament\Widgets\DependentMemberStatsWidget;
+use App\Filament\Widgets\PendingAdcRequestsWidget;
 use App\Filament\Widgets\RecentClaimsTable;
 use App\Models\Role;
 use Filament\Notifications\Notification;
@@ -33,8 +34,13 @@ class Dashboard extends BaseDashboard
             return [
                 DashboardStats::class,
                 AccountStatsWidget::class,
+                PendingAdcRequestsWidget::class,
                 RecentClaimsTable::class,
                 ActivityTimeline::class,
+            ];
+        } else if (auth()->user()?->hasAnyRole(Role::MIDDLE_MANAGEMENT)) {
+            return [
+                PendingAdcRequestsWidget::class,
             ];
         } else if (auth()->user()?->hasAnyRole(Role::ACCOUNT_MANAGER)) {
             return [

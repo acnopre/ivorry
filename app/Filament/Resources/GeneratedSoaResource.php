@@ -262,6 +262,14 @@ class GeneratedSoaResource extends Resource
                     ->searchable()
                     ->preload(),
 
+                Tables\Filters\SelectFilter::make('request_status')
+                    ->label('Original Request Status')
+                    ->options([
+                        'PENDING'  => 'Pending',
+                        'APPROVED' => 'Approved',
+                        'REJECTED' => 'Rejected',
+                    ]),
+
                 // Date Range Filter
                 Tables\Filters\Filter::make('created_at')
                     ->label('Generated Date')
@@ -278,6 +286,25 @@ class GeneratedSoaResource extends Resource
                     }),
             ]);
     }
+    public static function getNavigationBadge(): ?string
+    {
+        if (! auth()->user()?->hasAnyRole([
+            Role::SUPER_ADMIN,
+            Role::UPPER_MANAGEMENT,
+            Role::MIDDLE_MANAGEMENT,
+        ])) {
+            return null;
+        }
+
+        $count = GeneratedSoa::where('request_status', 'PENDING')->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()

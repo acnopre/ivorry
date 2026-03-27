@@ -34,7 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->brandLogo(asset('images/ivory-logo-login.svg'))
+            ->brandLogo(asset('images/ivorry-logo-login.svg'))
             ->brandLogoHeight('80px')
             ->login()
             ->profile()

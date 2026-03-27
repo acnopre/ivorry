@@ -19,10 +19,10 @@ class MemberSeeder extends Seeder
                 'first_name' => 'Juliana',
                 'last_name' => 'Saw',
             ],
-            'ivory.member@example.com' => [
-                'company' => 'Ivory Healthcare Inc',
-                'policy' => 'IVORY-2024-001',
-                'first_name' => 'Ivory',
+            'ivorry.member@example.com' => [
+                'company' => 'Ivorry Healthcare Inc',
+                'policy' => 'IVORRY-2024-001',
+                'first_name' => 'Ivorry',
                 'last_name' => 'Member',
             ],
         ];

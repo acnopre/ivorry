@@ -1,7 +1,7 @@
 # Member Login Fix - Implementation Summary
 
 ## Problem
-When trying to login as `ivory.member@example.com`, the application threw errors because there was no associated Member or Account data in the database.
+When trying to login as `ivorry.member@example.com`, the application threw errors because there was no associated Member or Account data in the database.
 
 ## Solution
 Implemented **two approaches** to handle this issue:
@@ -40,7 +40,7 @@ After seeding, these member accounts are available:
 | Email | Password | Company | Policy Code |
 |-------|----------|---------|-------------|
 | member@example.com | password | Demo Healthcare Corp | DEMO-2024-001 |
-| ivory.member@example.com | password | Ivory Healthcare Inc | IVORY-2024-001 |
+| ivorry.member@example.com | password | Ivorry Healthcare Inc | IVORRY-2024-001 |
 
 ## Services Attached
 Each account includes:

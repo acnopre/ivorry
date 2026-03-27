@@ -3,7 +3,7 @@
         <!-- Header -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                IVORY Import Documentation
+                IVORRY Import Documentation
             </h2>
             <p class="text-gray-600 dark:text-gray-400">
                 Complete guide for importing Accounts, Members, and Procedures into the system.

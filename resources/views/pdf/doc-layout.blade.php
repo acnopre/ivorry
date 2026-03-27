@@ -378,7 +378,7 @@
 
         {{-- Logo --}}
         <div class="cover-logo-row">
-            <div class="cover-logo-name">IVORY</div>
+            <div class="cover-logo-name">IVORRY</div>
             <div class="cover-logo-tagline">Web Portal</div>
         </div>
 
@@ -406,7 +406,7 @@
     </div>
 
     <div class="cover-bottom">
-        <div class="cover-bottom-left">IVORY &mdash; Confidential Internal Documentation</div>
+        <div class="cover-bottom-left">IVORRY &mdash; Confidential Internal Documentation</div>
         <div class="cover-bottom-right">Generated: {{ $generatedAt }}</div>
     </div>
 
@@ -419,7 +419,7 @@
     <table style="width:100%;height:40px">
         <tr>
             <td class="hdr-left" style="vertical-align:middle">
-                <div class="sys-name">IVORY</div>
+                <div class="sys-name">IVORRY</div>
                 <div class="doc-title">{{ $title }}</div>
             </td>
             <td class="hdr-right" style="vertical-align:middle;text-align:right">
@@ -430,7 +430,7 @@
 
 <div class="page-footer-fixed">
     <div class="page-footer-fixed-inner">
-        <span class="footer-text">IVORY &mdash; {{ $title }}</span>
+        <span class="footer-text">IVORRY &mdash; {{ $title }}</span>
         <span class="footer-right">Generated: {{ $generatedAt }}</span>
     </div>
 </div>

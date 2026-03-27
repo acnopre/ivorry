@@ -84,10 +84,11 @@ class AccountResource extends Resource
                                 ->maxLength(50)
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
-                            Select::make('hip')
+                            Select::make('hip_id')
                                 ->label('HIP')
-                                ->options(Hip::pluck('name', 'name'))
+                                ->relationship('hip', 'name')
                                 ->searchable()
+                                ->preload()
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
                             TextInput::make('card_used')

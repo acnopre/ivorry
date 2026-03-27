@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountAmendment;
 use App\Models\AccountRenewal;
 use App\Models\AccountService;
+use App\Models\Hip;
 use App\Models\ImportLog;
 use App\Models\ImportLogItem;
 use App\Models\Service;
@@ -35,6 +36,28 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
     private int $errorRows     = 0;
 
     private $services;
+    private array $hipCache = [];
+
+    private function resolveHipId(?string $name): ?int
+    {
+        if (empty($name)) return null;
+        if (!isset($this->hipCache[$name])) {
+            $this->hipCache[$name] = Hip::where('name', $name)->value('id');
+        }
+        return $this->hipCache[$name] ?? null;
+    }
+
+    private function requireHipId(?string $name): int
+    {
+        if (empty($name)) {
+            throw new \RuntimeException('HIP is required but was not provided.');
+        }
+        $id = $this->resolveHipId($name);
+        if (!$id) {
+            throw new \RuntimeException("HIP '{$name}' does not exist in the lookup table.");
+        }
+        return $id;
+    }
 
     public function __construct(
         public ImportLog $log,
@@ -128,8 +151,9 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 'account_id'          => $account->id,
                 'company_name'        => $row['company_name'],
                 'policy_code'         => $row['policy_code'],
-                'hip'                 => $row['hip'] ?? $account->hip,
-                'card_used'           => $row['card_used'] ?? $account->card_used,
+                'hip_id'              => isset($row['hip']) && filled($row['hip'])
+                    ? $this->requireHipId($row['hip'])
+                    : $account->hip_id,
                 'effective_date'      => $this->transformDate($row['effective_date']) ?? $account->effective_date,
                 'expiration_date'     => $this->transformDate($row['expiration_date']) ?? $account->expiration_date,
                 'endorsement_type'    => 'AMENDMENT',
@@ -182,9 +206,7 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     $existing->restore();
                     $existing->update([
                         'company_name'         => $row['company_name'],
-                        'hip'                  => $row['hip'],
-                        'card_used'            => $row['card_used'],
-                        'effective_date'       => $this->transformDate($row['effective_date']),
+                        'hip_id'               => $this->requireHipId($row['hip'] ?? null),
                         'expiration_date'      => $this->transformDate($row['expiration_date']),
                         'plan_type'            => $row['plan_type'],
                         'coverage_period_type' => $row['coverage_type'],
@@ -215,7 +237,7 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             $account = Account::create([
                 'company_name'         => $row['company_name'],
                 'policy_code'          => $row['policy_code'],
-                'hip'                  => $row['hip'],
+                'hip_id'               => $this->requireHipId($row['hip'] ?? null),
                 'card_used'            => $row['card_used'],
                 'effective_date'       => $this->transformDate($row['effective_date']),
                 'expiration_date'      => $this->transformDate($row['expiration_date']),

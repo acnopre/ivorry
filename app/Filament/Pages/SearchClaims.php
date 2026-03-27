@@ -612,7 +612,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 return [
                     'account_id'   => $items->first()->member->account->id,
                     'account_name' => $items->first()->member->account->company_name ?? 'Unknown Account',
-                    'hip' => $items->first()->member->account->hip ?? 'Unknown HIP',
+                    'hip' => $items->first()->member->account->hip?->name ?? 'Unknown HIP',
                     'total_rate'   => $items->sum('clinic_service_fee'),
                     'total_vat'    => $items->sum('vat_amount'),
                     'total_ewt'    => $items->sum('ewt_amount'),

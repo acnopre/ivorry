@@ -67,7 +67,7 @@ class ReportsExport extends DefaultValueBinder implements FromQuery, WithHeading
         return match ($this->type) {
             'members' => [
                 optional($row->account)->company_name,
-                optional($row->account)->hip,
+                optional($row->account)->hip?->name,
                 $row->full_name,
                 $row->member_type,
                 (string) $row->card_number,
@@ -108,7 +108,7 @@ class ReportsExport extends DefaultValueBinder implements FromQuery, WithHeading
                 optional($row->availment_date)->format('Y-m-d'),
                 trim($row->member?->first_name . ' ' . $row->member?->last_name),
                 $row->member?->account?->company_name,
-                $row->member?->account?->hip,
+                $row->member?->account?->hip?->name,
                 $row->clinic?->clinic_name,
                 $row->service?->name,
                 $row->units
@@ -129,7 +129,7 @@ class ReportsExport extends DefaultValueBinder implements FromQuery, WithHeading
             'accounts' => [
                 $row->company_name,
                 (string) $row->policy_code,
-                $row->hip,
+                $row->hip?->name,
                 optional($row->effective_date)->format('Y-m-d'),
                 optional($row->expiration_date)->format('Y-m-d'),
                 $row->plan_type,

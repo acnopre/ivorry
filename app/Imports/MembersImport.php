@@ -46,10 +46,15 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         $row = array_map(fn($value) => is_string($value) ? trim($value) : $value, $row);
 
         if (!empty($row['card_number'])) {
-            if (!preg_match('/^[a-zA-Z0-9]+$/u', $row['card_number'])) {
-                $this->logError($row, "Invalid card_number '{$row['card_number']}': special characters are not allowed");
-                return null;
-            }
+            $row['card_number'] = preg_replace('/[^a-zA-Z0-9]/', '', $row['card_number']);
+        }
+
+        if (!empty($row['gender'])) {
+            $row['gender'] = match (strtolower(trim($row['gender']))) {
+                'm', 'male'   => 'male',
+                'f', 'female' => 'female',
+                default       => $row['gender'],
+            };
         }
 
         $account = Account::where('company_name', $row['account_name'])->first();
@@ -232,7 +237,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         }
 
         if (!preg_match('/^[a-zA-Z0-9]+$/u', $row['card_number'])) {
-            return 'Invalid card_number. Only letters and numbers are allowed';
+            return 'Invalid card_number. Only letters and numbers are allowed (after cleaning, value was empty or invalid)';
         }
 
         if (!in_array(strtoupper($row['member_type']), ['PRINCIPAL', 'DEPENDENT'])) {

@@ -31,7 +31,7 @@
             <ul class="space-y-1 text-sm">
                 <li><span class="font-medium">Member Name:</span> {{ $member?->first_name . ' ' . $member->last_name ?? 'N/A' }}</li>
                 <li><span class="font-medium">Clinic:</span> {{ $record->clinic?->clinic_name ?? 'N/A' }}</li>
-                <li><span class="font-medium">Account HIP:</span> {{ $account?->hip ?? 'N/A' }}</li>
+                <li><span class="font-medium">Account HIP:</span> {{ $account?->hip->name ?? 'N/A' }}</li>
             </ul>
         </div>
     </div>

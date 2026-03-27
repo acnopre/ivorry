@@ -314,7 +314,7 @@ class ViewAccount extends ViewRecord
                     $updateData = [
                         'company_name' => $amendment->company_name,
                         'policy_code' => $amendment->policy_code,
-                        'hip' => $amendment->hip,
+                        'hip_id' => $amendment->hip_id,
                         'card_used' => $amendment->card_used,
                         'effective_date' => $amendment->effective_date,
                         'expiration_date' => $amendment->expiration_date,
@@ -368,6 +368,8 @@ class ViewAccount extends ViewRecord
                         'endorsement_status' => 'APPROVED',
                         'approved_by' => auth()->id(),
                     ]);
+                    $amendment->services()->delete();
+                    $amendment->delete();
 
                     Notification::make()
                         ->title('Account amendment approved successfully.')
@@ -432,7 +434,7 @@ class ViewAccount extends ViewRecord
                                                     ->copyable()
                                                     ->copyMessage('Policy code copied!'),
 
-                                                TextEntry::make('hip')
+                                                TextEntry::make('hip.name')
                                                     ->label('HIP'),
 
                                                 TextEntry::make('card_used')
@@ -573,7 +575,7 @@ class ViewAccount extends ViewRecord
 
                                                 TextEntry::make('hip_amendment')
                                                     ->label('HIP')
-                                                    ->default($amendmentAccount?->hip),
+                                                    ->default($amendmentAccount?->hip?->name),
 
                                                 TextEntry::make('card_used_amendment')
                                                     ->label('Card Used')
@@ -586,7 +588,7 @@ class ViewAccount extends ViewRecord
                                                         'info' => fn($state): bool => $state === 'INDIVIDUAL',
                                                         'warning' => fn($state): bool => $state === 'SHARED',
                                                     ])
-                                                    ->default($this->record->plan_type),
+                                                    ->default($amendmentAccount?->plan_type ?? $this->record->plan_type),
 
                                                 TextEntry::make('coverage_period_type_amendment')
                                                     ->label('Coverage Type')
@@ -672,6 +674,7 @@ class ViewAccount extends ViewRecord
 
                                                 TextEntry::make('remarks')
                                                     ->label('Remarks')
+                                                    ->default($amendmentAccount?->remarks)
                                                     ->visible($amendmentAccount?->remarks != null)
 
                                             ]),
@@ -701,7 +704,7 @@ class ViewAccount extends ViewRecord
                                                     ->copyable()
                                                     ->copyMessage('Policy code copied!'),
 
-                                                TextEntry::make('hip')
+                                                TextEntry::make('hip.name')
                                                     ->label('HIP'),
 
                                                 TextEntry::make('card_used')

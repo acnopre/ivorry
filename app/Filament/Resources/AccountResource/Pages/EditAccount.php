@@ -129,7 +129,7 @@ class EditAccount extends EditRecord
                     'account_id'        => $record->id,
                     'company_name'      => $data['company_name'],
                     'policy_code'       => $data['policy_code'],
-                    'hip'               => $data['hip'] ?? null,
+                    'hip_id'            => $data['hip_id'] ?? null,
                     'card_used'         => $data['card_used'] ?? null,
                     'effective_date'    => $data['effective_date'] ?? null,
                     'expiration_date'   => $data['expiration_date'] ?? null,

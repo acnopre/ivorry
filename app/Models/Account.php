@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Hip;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -14,7 +15,7 @@ class Account extends Model
     protected $fillable = [
         'company_name',
         'policy_code',
-        'hip',
+        'hip_id',
         'card_used',
         'effective_date',
         'expiration_date',
@@ -45,6 +46,11 @@ class Account extends Model
     {
         return $this->hasMany(Member::class, 'account_id');
     }
+    public function hip()
+    {
+        return $this->belongsTo(Hip::class);
+    }
+
     public function endorsementType()
     {
         return $this->belongsTo(EndorsementType::class);

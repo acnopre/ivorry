@@ -36,7 +36,7 @@ class MemberSeeder extends Seeder
                 ['policy_code' => $data['policy']],
                 [
                     'company_name' => $data['company'],
-                    'hip' => 'HIP-' . strtoupper(substr($data['company'], 0, 3)),
+                    'hip_id' => 1,
                     'effective_date' => now(),
                     'expiration_date' => now()->addYear(),
                     'account_status' => 'active',

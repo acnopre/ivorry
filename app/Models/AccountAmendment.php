@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Hip;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -13,7 +14,7 @@ class AccountAmendment extends Model
         'account_id',
         'company_name',
         'policy_code',
-        'hip',
+        'hip_id',
         'card_used',
         'effective_date',
         'expiration_date',
@@ -26,6 +27,11 @@ class AccountAmendment extends Model
         'requested_by',
         'approved_by',
     ];
+
+    public function hip()
+    {
+        return $this->belongsTo(Hip::class);
+    }
 
     public function services()
     {

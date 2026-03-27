@@ -48,6 +48,7 @@ class DatabaseSeeder extends Seeder
             EndorsementTypeSeeder::class,
             // AccountSeeder::class,
             ServicesSeeder::class,
+            HipSeeder::class,
             MemberSeeder::class,
             DropdownSeeder::class,
             UnitTypeSeeder::class,
@@ -58,7 +59,6 @@ class DatabaseSeeder extends Seeder
             // ProcedureSeeder::class,
             ReturnReasonsSeeder::class,
             InvalidReasonsSeeder::class,
-            HipSeeder::class,
             MblTypeSeeder::class,
         ]);
     }

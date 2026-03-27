@@ -138,7 +138,7 @@ class ReportsPage extends Page implements HasForms, HasTable
 
 
                         Forms\Components\Select::make('status')
-                            ->label('Filter by Accrediation Status')
+                            ->label('Filter by Status')
                             ->options([
                                 'ACTIVE'   => 'Active',
                                 'INACTIVE' => 'Inactive',
@@ -155,9 +155,9 @@ class ReportsPage extends Page implements HasForms, HasTable
                             ->placeholder('All')
                             ->visible(fn($get) => $get('reportType') === 'clinics'),
 
-                        Forms\Components\Select::make('hip')
+                        Forms\Components\Select::make('hip_id')
                             ->label('Select HIP')
-                            ->options(Hip::pluck('name', 'name'))
+                            ->options(Hip::pluck('name', 'id'))
                             ->searchable()
                             ->reactive()
                             ->placeholder('All')
@@ -432,7 +432,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                     'to_date'       => $this->reportFilters['toDate'] ?? '-',
                     'member_status' => $this->reportFilters['status'] ?? 'All',
                     'member_type'   => $this->reportFilters['memberType'] ?? 'All',
-                    'source'        => match($this->reportFilters['import_source'] ?? null) {
+                    'source'        => match ($this->reportFilters['import_source'] ?? null) {
                         'import_inactive' => 'Imported (Inactive)',
                         'import_active'   => 'Imported (Active)',
                         'manual'          => 'Manual',
@@ -489,7 +489,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                 return [
                     'from_date'      => $this->reportFilters['fromDate'] ?? '-',
                     'to_date'        => $this->reportFilters['toDate'] ?? '-',
-                    'hip' => $this->reportFilters['hip'] ?? 'All',
+                    'hip' => Hip::find($this->reportFilters['hip_id'] ?? null)?->name ?? 'All',
                     'plan_type' => $this->reportFilters['plan_type'] ?? 'All',
                     'coverage_period_type' => $this->reportFilters['coverage_period_type'] ?? 'All',
                     'endorsement_type' => $this->reportFilters['endorsement_type'] ?? 'All',
@@ -525,12 +525,12 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->when($f['import_source'] ?? null, fn($q, $v) => $q->where('import_source', $v))
             ->when($f['account_id'] ?? null, fn($q, $v) => $q->where('account_id', $v))
             ->when(
-                $f['hip'] ?? null,
+                $f['hip_id'] ?? null,
                 fn($q, $v) =>
                 $q->whereHas(
                     'account',
                     fn($q) =>
-                    $q->where('hip', $v)
+                    $q->where('hip_id', $v)
                 )
             )
 
@@ -631,9 +631,9 @@ class ReportsPage extends Page implements HasForms, HasTable
             ->with(['member.account', 'clinic', 'service', 'units.unitType'])
             ->when($f['procedure_status'] ?? null, fn($q, $v) => $q->where('status', $v))
             ->when($f['clinic_id'] ?? null, fn($q, $v) => $q->where('clinic_id', $v))
-            ->when($f['hip'] ?? null, function ($query, $hip) {
-                $query->whereHas('member.account', function ($q) use ($hip) {
-                    $q->where('hip', $hip);
+            ->when($f['hip_id'] ?? null, function ($query, $hipId) {
+                $query->whereHas('member.account', function ($q) use ($hipId) {
+                    $q->where('hip_id', $hipId);
                 });
             })
             ->when($f['account_id'] ?? null, function ($query, $account_id) {
@@ -654,7 +654,8 @@ class ReportsPage extends Page implements HasForms, HasTable
         $f = $this->reportFilters;
 
         return Account::query()
-            ->when($f['hip'] ?? null, fn($q, $v) => $q->where('hip', $v))
+            ->with('hip')
+            ->when($f['hip_id'] ?? null, fn($q, $v) => $q->where('hip_id', $v))
             ->when($f['status'] ?? null, fn($q, $v) => $q->where('account_status', $v))
             ->when($f['plan_type'] ?? null, fn($q, $v) => $q->where('plan_type', $v))
             ->when($f['coverage_period_type'] ?? null, fn($q, $v) => $q->where('coverage_period_type', $v))
@@ -679,7 +680,7 @@ class ReportsPage extends Page implements HasForms, HasTable
             'members' => [
                 Tables\Columns\TextColumn::make('account.company_name') // use the relationship
                     ->label('Account'),
-                Tables\Columns\TextColumn::make('account.hip')
+                Tables\Columns\TextColumn::make('account.hip.name')
                     ->label('HIP'),
                 Tables\Columns\TextColumn::make('full_name')->label('Member'),
                 Tables\Columns\TextColumn::make('member_type')->label('Member Type'),
@@ -689,12 +690,12 @@ class ReportsPage extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('import_source')
                     ->label('Source')
                     ->badge()
-                    ->color(fn($state) => match($state) {
+                    ->color(fn($state) => match ($state) {
                         'import_inactive' => 'danger',
                         'import_active'   => 'success',
                         default           => 'gray',
                     })
-                    ->formatStateUsing(fn($state) => match($state) {
+                    ->formatStateUsing(fn($state) => match ($state) {
                         'import_inactive' => 'Imported (Inactive)',
                         'import_active'   => 'Imported (Active)',
                         default           => 'Manual',
@@ -754,7 +755,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('member.account.company_name')
                     ->label('Account')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('member.account.hip')
+                Tables\Columns\TextColumn::make('member.account.hip.name')
                     ->label('HIP'),
                 Tables\Columns\TextColumn::make('clinic.clinic_name')
                     ->label('Clinic Name')
@@ -793,7 +794,7 @@ class ReportsPage extends Page implements HasForms, HasTable
             'accounts' => [
                 Tables\Columns\TextColumn::make('company_name')->label('Account Name'),
                 Tables\Columns\TextColumn::make('policy_code')->label('Policy Code'),
-                Tables\Columns\TextColumn::make('hip')->label('HIP'),
+                Tables\Columns\TextColumn::make('hip.name')->label('HIP'),
                 Tables\Columns\TextColumn::make('effective_date')->date()->label('Effective Date'),
                 Tables\Columns\TextColumn::make('expiration_date')->date()->label('Expiration Date'),
                 Tables\Columns\TextColumn::make('plan_type')->label('Plan Type'),

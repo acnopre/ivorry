@@ -65,10 +65,41 @@ class HipResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->before(function (\App\Models\Hip $record, Tables\Actions\DeleteAction $action) {
+                        $usedInAccounts = \App\Models\Account::where('hip_id', $record->id)->exists();
+                        $usedInAmendments = \App\Models\AccountAmendment::where('hip_id', $record->id)->exists();
+
+                        if ($usedInAccounts || $usedInAmendments) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Cannot Delete HIP')
+                                ->body("'{$record->name}' is currently used by existing accounts or amendments and cannot be deleted.")
+                                ->danger()
+                                ->send();
+
+                            $action->cancel();
+                        }
+                    }),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->before(function (\Illuminate\Database\Eloquent\Collection $records, Tables\Actions\DeleteBulkAction $action) {
+                        $usedIds = \App\Models\Account::whereIn('hip_id', $records->pluck('id'))->pluck('hip_id')
+                            ->merge(\App\Models\AccountAmendment::whereIn('hip_id', $records->pluck('id'))->pluck('hip_id'))
+                            ->unique();
+
+                        if ($usedIds->isNotEmpty()) {
+                            $usedNames = $records->whereIn('id', $usedIds)->pluck('name')->join(', ');
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Cannot Delete Some HIPs')
+                                ->body("The following HIPs are in use and were not deleted: {$usedNames}.")
+                                ->danger()
+                                ->send();
+
+                            $action->cancel();
+                        }
+                    }),
             ]);
     }
 

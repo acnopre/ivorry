@@ -40,7 +40,9 @@ use Filament\Forms\Components\{
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TrashedFilter;
+use Illuminate\Database\Eloquent\Builder;
 
 class AccountResource extends Resource
 {
@@ -725,6 +727,19 @@ class AccountResource extends Resource
                         'INDIVIDUAL' => 'Individual',
                         'SHARED' => 'Shared',
                     ]),
+
+                Filter::make('expiring_soon')
+                    ->label('Expiring Soon (30 days)')
+                    ->query(fn(Builder $query) => $query
+                        ->where('account_status', 'active')
+                        ->whereBetween('expiration_date', [now(), now()->addDays(30)])
+                    )
+                    ->toggle(),
+
+                Filter::make('created_today')
+                    ->label('Created Today')
+                    ->query(fn(Builder $query) => $query->whereDate('created_at', today()))
+                    ->toggle(),
 
                 TrashedFilter::make(),
             ])

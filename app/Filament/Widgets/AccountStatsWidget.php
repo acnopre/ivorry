@@ -18,26 +18,35 @@ class AccountStatsWidget extends BaseWidget
                 ->icon('heroicon-o-sparkles')
                 ->color('success')
                 ->description('Created today')
-                ->url(AccountResource::getUrl('index')),
-
+                ->url(AccountResource::getUrl('index') . '?' . http_build_query([
+                    'tableFilters[created_today][isActive]' => true,
+                ])),
 
             Stat::make('Pending Renewals', $q->clone()->where('endorsement_type', 'RENEWAL')->where('endorsement_status', 'PENDING')->count())
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
                 ->description('Awaiting renewal approval')
-                ->url(AccountResource::getUrl('index', ['tableFilter' => 'endorsement_status:PENDING,endorsement_type:RENEWAL'])),
+                ->url(AccountResource::getUrl('index') . '?' . http_build_query([
+                    'tableFilters[endorsement_type][values][0]' => 'RENEWAL',
+                    'tableFilters[endorsement_status][values][0]' => 'PENDING',
+                ])),
 
             Stat::make('Pending Amendments', $q->clone()->where('endorsement_type', 'AMENDMENT')->where('endorsement_status', 'PENDING')->count())
                 ->icon('heroicon-o-pencil-square')
                 ->color('warning')
                 ->description('Awaiting amendment approval')
-                ->url(AccountResource::getUrl('index', ['tableFilter' => 'endorsement_status:PENDING,endorsement_type:AMENDMENT'])),
+                ->url(AccountResource::getUrl('index') . '?' . http_build_query([
+                    'tableFilters[endorsement_type][values][0]' => 'AMENDMENT',
+                    'tableFilters[endorsement_status][values][0]' => 'PENDING',
+                ])),
 
             Stat::make('Expiring Soon', $q->clone()->where('account_status', 'active')->whereBetween('expiration_date', [now(), now()->addDays(30)])->count())
                 ->icon('heroicon-o-exclamation-triangle')
                 ->color('danger')
                 ->description('Expiring within 30 days')
-                ->url(AccountResource::getUrl('index', ['tableFilter' => 'account_status:active'])),
+                ->url(AccountResource::getUrl('index') . '?' . http_build_query([
+                    'tableFilters[expiring_soon][isActive]' => true,
+                ])),
 
 
         ];

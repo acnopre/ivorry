@@ -38,7 +38,21 @@ class Member extends Model
     protected $casts = [
         'effective_date' => 'date',
         'expiration_date' => 'date',
+        'inactive_date' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Member $member) {
+            if ($member->isDirty('inactive_date')) {
+                if ($member->inactive_date && $member->inactive_date->lte(now())) {
+                    $member->status = 'INACTIVE';
+                } elseif (is_null($member->inactive_date)) {
+                    $member->status = 'ACTIVE';
+                }
+            }
+        });
+    }
 
     public static function generateCocNumber(): string
     {

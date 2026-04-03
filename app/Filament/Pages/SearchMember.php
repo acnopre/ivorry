@@ -527,12 +527,18 @@ class SearchMember extends Page implements HasActions
     }
 
 
+    public function openAddProcedure(int $memberId): void
+    {
+        $this->selectedMemberId = $memberId;
+        $this->mountAction('addProcedure');
+    }
+
     public function addProcedureAction(): Action
     {
         return Action::make('addProcedure')
             ->label('Add Procedure')
             ->icon('heroicon-o-document-plus')
-            ->disabled(fn() => !$this->canAddProcedure($this->members->first()))
+            ->disabled(fn() => !$this->selectedMemberId || !$this->canAddProcedure(Member::find($this->selectedMemberId)))
             ->modalHeading('Add Procedure')
             ->modalWidth('lg')
             ->fillForm(fn() => [
@@ -701,7 +707,7 @@ class SearchMember extends Page implements HasActions
         return Forms\Components\Select::make('service_id')
             ->label('Service')
             ->options(function () use ($isDentist) {
-                $accountId = $this->members->first()->account_id ?? null;
+                $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
                 if (!$accountId) return collect();
 
                 return AccountService::where('account_id', $accountId)
@@ -715,7 +721,7 @@ class SearchMember extends Page implements HasActions
             })
             ->helperText(function () use ($isDentist) {
                 if (!$isDentist) return null;
-                $accountId = $this->members->first()->account_id ?? null;
+                $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
                 if (!$accountId) return null;
                 $hasSpecial = AccountService::where('account_id', $accountId)
                     ->whereHas('service', fn($q) => $q->where('type', 'special'))
@@ -876,7 +882,7 @@ class SearchMember extends Page implements HasActions
 
     protected function shouldShowQuantityField(callable $get): bool
     {
-        $accountId = $this->members->first()->account_id ?? null;
+        $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
         $serviceId = $get('service_id');
         if (!$accountId || !$serviceId) return false;
 
@@ -896,7 +902,7 @@ class SearchMember extends Page implements HasActions
         $service = Service::find($serviceId);
         $maxPerDate = $service?->max_per_date ?? 3;
 
-        $accountId = $this->members->first()->account_id ?? null;
+        $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
         if (!$accountId) return $maxPerDate;
 
         $accountService = AccountService::where('account_id', $accountId)
@@ -916,7 +922,7 @@ class SearchMember extends Page implements HasActions
         $service = Service::find($serviceId);
         $maxPerDate = $service?->max_per_date ?? 3;
 
-        $accountId = $this->members->first()->account_id ?? null;
+        $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
         if (!$accountId) return "Max per date: {$maxPerDate}";
 
         $accountService = AccountService::where('account_id', $accountId)

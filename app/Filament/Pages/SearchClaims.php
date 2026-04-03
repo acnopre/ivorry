@@ -40,6 +40,7 @@ class SearchClaims extends Page implements HasForms, HasTable
     public bool $hasSearched = false;
     public bool $isResultHasValid = false;
     public ?array $previewData = null;
+    public ?string $selectedPrinter = null;
 
     public function mount(): void
     {
@@ -359,13 +360,37 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->label('Print ADC')
                     ->color('success')
                     ->icon('heroicon-o-printer')
-                    ->requiresConfirmation()
                     ->visible(auth()->user()->can('claims.generate'))
                     ->modalHeading('Print Dentist Claims')
-                    ->modalDescription('Once confirmed, all displayed procedures will be marked as PROCESSED and sent to printer.')
-                    ->modalSubmitActionLabel('Yes, Print Claims')
+                    ->modalSubmitActionLabel('Print Now')
                     ->disabled(fn() => $this->isResultHasValid)
-                    ->action(function () {
+                    ->form(function () {
+                        $printers = \App\Services\PrinterService::getAvailablePrinters();
+                        $default = \App\Services\PrinterService::getPrinter();
+
+                        if (empty($printers)) {
+                            return [
+                                Forms\Components\Placeholder::make('no_printer')
+                                    ->label('')
+                                    ->content('⚠️ No available printers found on the network. Please check your printer connection and try again.'),
+                            ];
+                        }
+
+                        return [
+                            Forms\Components\Select::make('printer')
+                                ->label('Select Printer')
+                                ->options(array_combine($printers, $printers))
+                                ->default($default)
+                                ->required()
+                                ->helperText('Choose the network printer to send this ADC to.'),
+                        ];
+                    })
+                    ->action(function (array $data) {
+                        if (empty($data['printer'])) {
+                            Notification::make()->warning()->title('No printer selected.')->send();
+                            return;
+                        }
+                        $this->selectedPrinter = $data['printer'];
                         $this->dispatch('start-printing');
                         $this->generateClaims(Procedure::STATUS_VALID);
                     }),
@@ -373,12 +398,8 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->label('Generate Return')
                     ->color('warning')
                     ->icon('heroicon-o-check-badge')
-                    ->visible(auth()->user()->can('claims.return'))
-                    ->requiresConfirmation()
-                    ->modalHeading('Generate Return')
-                    ->modalDescription('Are you sure you want to generate return claims?')
-
-                    ->modalSubmitActionLabel('Yes, Generate')
+                    ->modalHeading('Generate Return Claims')
+                    ->modalSubmitActionLabel('Print Now')
                     ->visible(function () {
                         if (! $this->hasSearched) {
                             return false;
@@ -386,7 +407,7 @@ class SearchClaims extends Page implements HasForms, HasTable
 
                         $searchData = $this->data;
 
-                        $query =  Procedure::query()
+                        $query = Procedure::query()
                             ->when(
                                 $searchData['member_name'] ?? null,
                                 fn(Builder $q, $name) =>
@@ -398,7 +419,6 @@ class SearchClaims extends Page implements HasForms, HasTable
                                     });
                                 })
                             )
-
                             ->when(
                                 $searchData['approval_code'] ?? null,
                                 fn(Builder $q, $code) =>
@@ -423,10 +443,37 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ])
                             );
 
-                        // ✅ Show button if at least 1 RETURN exists
                         return $query->where('status', Procedure::STATUS_RETURN)->exists();
                     })
-                    ->action(fn() => $this->generateClaims(Procedure::STATUS_RETURN)),
+                    ->form(function () {
+                        $printers = \App\Services\PrinterService::getAvailablePrinters();
+                        $default = \App\Services\PrinterService::getPrinter();
+
+                        if (empty($printers)) {
+                            return [
+                                Forms\Components\Placeholder::make('no_printer')
+                                    ->label('')
+                                    ->content('⚠️ No available printers found on the network. Please check your printer connection and try again.'),
+                            ];
+                        }
+
+                        return [
+                            Forms\Components\Select::make('printer')
+                                ->label('Select Printer')
+                                ->options(array_combine($printers, $printers))
+                                ->default($default)
+                                ->required()
+                                ->helperText('Choose the network printer to send this return claim to.'),
+                        ];
+                    })
+                    ->action(function (array $data) {
+                        if (empty($data['printer'])) {
+                            Notification::make()->warning()->title('No printer selected.')->send();
+                            return;
+                        }
+                        $this->selectedPrinter = $data['printer'];
+                        $this->generateClaims(Procedure::STATUS_RETURN);
+                    }),
             ])
             ->defaultSort('availment_date', 'desc');
     }
@@ -782,67 +829,78 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         $this->dispatch('update-progress', status: 'Sending to printer...', progress: 95);
 
-        // Print Original if printer exists
         $clinicPrinter = $clinicDetails->printer_name ?? null;
-        $printerName = \App\Services\PrinterService::getPrinter($clinicPrinter);
+        $printerName = $this->selectedPrinter ?? \App\Services\PrinterService::getPrinter($clinicPrinter);
 
-        if ($printerName) {
-            $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
-            exec(
-                'lp -o landscape -d ' . escapeshellarg($printerName) . ' ' . escapeshellarg($absoluteOriginalPath),
-                $output,
-                $statusCode
-            );
-
-            if ($statusCode === 0) {
-                $this->dispatch('update-progress', status: 'Updating claim status...', progress: 97);
-
-                // Attach procedures to SOA after successful print
-                foreach ($claims as $procedure) {
-                    $soa->procedures()->attach($procedure->id, [
-                        'amount' => $procedure->clinic_service_fee,
-                    ]);
-                }
-
-                // Printing succeeded → mark procedures as processed
-                Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
-
-                Notification::make()
-                    ->title('ADC Sent to Printer')
-                    ->body('Document has been queued for printing on ' . $printerName)
-                    ->success()
-                    ->send();
-            } else {
-                $soa->delete(); // Remove SOA record since printing failed
-                $this->dispatch('close-printing');
-
-                Notification::make()
-                    ->title('ADC Printing Failed')
-                    ->body('Please try to print again')
-                    ->warning()
-                    ->send();
-
-                Log::error('ADC printing failed', [
-                    'soa_id' => $soa->id,
-                    'printer' => $printerName,
-                    'output' => $output,
-                ]);
-            }
-        } else {
-            $soa->delete(); // Remove SOA record since no printer was found
+        if (!$printerName) {
+            $soa->delete();
             $this->dispatch('close-printing');
-
-            Notification::make()
-                ->title('ADC Printing Failed')
-                ->body('No available printer for ADC ID ' . $soa->id)
-                ->warning()
-                ->send();
-
-            Log::error('No available printer for ADC ID ' . $soa->id);
+            Notification::make()->warning()->title('No Printer Found')->body('No available printer was found. Claims were not processed.')->send();
+            Log::error('No available printer for ADC', ['clinic_id' => $data['clinic_id']]);
+            return;
         }
 
+        if (!\App\Services\PrinterService::isPrinterOnline($printerName)) {
+            $soa->delete();
+            $this->dispatch('close-printing');
+            Notification::make()->danger()->title('Printer Offline')->body("'{$printerName}' is currently offline. Please check the printer and try again. Claims were not processed.")->send();
+            Log::warning('Printer is offline', ['printer' => $printerName]);
+            return;
+        }
 
-        // ----------------- Save Duplicate for Download -----------------
+        $absoluteOriginalPath = storage_path('app/public/' . $originalPath);
+        $lpOutput = [];
+        exec(
+            'lp -o landscape -d ' . escapeshellarg($printerName) . ' ' . escapeshellarg($absoluteOriginalPath) . ' 2>&1',
+            $lpOutput,
+            $statusCode
+        );
+
+        if ($statusCode !== 0) {
+            $soa->delete();
+            $this->dispatch('close-printing');
+            Notification::make()->warning()->title('Print Failed')->body('The print job was rejected by the printer. Claims were not processed.')->send();
+            Log::error('ADC printing failed', ['printer' => $printerName, 'output' => $lpOutput]);
+            return;
+        }
+
+        // Extract job ID from lp output e.g. "request id is PRINTER-123 (1 file(s))"
+        $jobId = null;
+        foreach ($lpOutput as $line) {
+            if (preg_match('/request id is (\S+)/i', $line, $matches)) {
+                $jobId = $matches[1];
+                break;
+            }
+        }
+
+        // Wait briefly then verify job is not stuck
+        if ($jobId) {
+            sleep(3);
+            $jobStatus = [];
+            exec('lpstat -l -j ' . escapeshellarg($jobId) . ' 2>&1', $jobStatus);
+            $statusText = implode(' ', $jobStatus);
+
+            foreach (['looking for printer', 'offline', 'stopped', 'unable', 'error'] as $indicator) {
+                if (stripos($statusText, $indicator) !== false) {
+                    exec('cancel ' . escapeshellarg($jobId) . ' 2>&1');
+                    $soa->delete();
+                    $this->dispatch('close-printing');
+                    Notification::make()->danger()->title('Printer Not Reachable')->body("'{$printerName}' could not be reached. Claims were not processed.")->send();
+                    Log::warning('Print job failed after submission', ['printer' => $printerName, 'job' => $jobId, 'status' => $statusText]);
+                    return;
+                }
+            }
+        }
+
+        // ✅ Print succeeded — now mark claims, save files, log
+        $this->dispatch('update-progress', status: 'Updating claim status...', progress: 97);
+
+        foreach ($claims as $procedure) {
+            $soa->procedures()->attach($procedure->id, ['amount' => $procedure->clinic_service_fee]);
+        }
+
+        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
+
         $this->dispatch('update-progress', status: 'Creating duplicate copy...', progress: 96);
 
         $duplicatePdf = $generatePdf('DUPLICATE');
@@ -852,21 +910,22 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         $this->dispatch('update-progress', status: 'Logging print activity...', progress: 98);
 
-        // ----------------- Log print & duplicate -----------------
-        $soa?->increment('print_count');
+        $soa->increment('print_count');
 
         DB::table('print_logs')->insert([
             'user_id'     => auth()->id(),
-            'document_id' => $soa?->id,
+            'document_id' => $soa->id,
             'copy_type'   => 'ORIGINAL',
-            'printer'     => $printerName ?? 'NO_PRINTER_AVAILABLE',
+            'printer'     => $printerName,
             'created_at'  => now(),
         ]);
 
-        $soa?->update([
+        $soa->update([
             'file_path'           => $originalPath,
             'duplicate_file_path' => $duplicatePath,
         ]);
+
+        Notification::make()->success()->title('ADC Sent to Printer')->body('Document queued on ' . $printerName)->send();
 
         $this->dispatch('update-progress', status: 'Complete!', progress: 100);
         $this->dispatch('close-printing');

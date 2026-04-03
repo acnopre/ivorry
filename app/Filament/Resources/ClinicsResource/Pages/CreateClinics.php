@@ -35,6 +35,14 @@ class CreateClinics extends CreateRecord
                     ->send();
                 throw new Halt();
             }
+
+            if (\App\Models\Clinic::where('clinic_email', $data['clinic_email'])->exists()) {
+                Notification::make()
+                    ->title('This email is already assigned to another clinic.')
+                    ->danger()
+                    ->send();
+                throw new Halt();
+            }
         }
 
         return $data;

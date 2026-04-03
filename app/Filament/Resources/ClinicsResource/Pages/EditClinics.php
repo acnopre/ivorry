@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Notifications\SendGeneratedPassword;
 
 class EditClinics extends EditRecord
 {
@@ -21,6 +22,36 @@ class EditClinics extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('resendCredentials')
+                ->label('Resend Credentials')
+                ->icon('heroicon-o-envelope')
+                ->color('info')
+                ->requiresConfirmation()
+                ->modalHeading('Resend Login Credentials')
+                ->modalDescription('This will generate a new password and send it to the clinic email.')
+                ->visible(fn() => !empty($this->record->clinic_email) && !empty($this->record->user_id) && auth()->user()->can('clinic.update'))
+                ->action(function () {
+                    $user = $this->record->user;
+
+                    if (!$user) {
+                        Notification::make()->danger()->title('No user account linked to this clinic.')->send();
+                        return;
+                    }
+
+                    try {
+                        $plainPassword = Str::random(12);
+                        $user->update([
+                            'password' => Hash::make($plainPassword),
+                            'must_change_password' => true,
+                        ]);
+
+                        $user->notify(new SendGeneratedPassword($plainPassword));
+
+                        Notification::make()->success()->title('Credentials sent successfully.')->send();
+                    } catch (\Throwable $e) {
+                        Notification::make()->danger()->title('Failed to send email.')->body($e->getMessage())->send();
+                    }
+                }),
             Actions\DeleteAction::make(),
         ];
     }
@@ -38,6 +69,21 @@ class EditClinics extends EditRecord
                     ->danger()
                     ->title('Email Already Exists')
                     ->body('A user with the email ' . $data['clinic_email'] . ' already exists.')
+                    ->persistent()
+                    ->send();
+
+                $this->halt();
+            }
+
+            $clinicEmailTaken = \App\Models\Clinic::where('clinic_email', $data['clinic_email'])
+                ->where('id', '!=', $this->record->id)
+                ->exists();
+
+            if ($clinicEmailTaken) {
+                Notification::make()
+                    ->danger()
+                    ->title('Email Already Exists')
+                    ->body('The email ' . $data['clinic_email'] . ' is already assigned to another clinic.')
                     ->persistent()
                     ->send();
 
@@ -95,11 +141,27 @@ class EditClinics extends EditRecord
 
                 $clinic->update(['user_id' => $user->id]);
             } else {
-                // Update existing user
+                $oldEmail = $clinic->user->email;
+                $newEmail = $clinic->clinic_email;
+
                 $clinic->user->update([
-                    'name' => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
-                    'email' => $clinic->clinic_email,
+                    'name'  => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
+                    'email' => $newEmail,
                 ]);
+
+                // Send new credentials if email changed
+                if ($oldEmail !== $newEmail) {
+                    try {
+                        $plainPassword = Str::random(12);
+                        $clinic->user->update([
+                            'password' => Hash::make($plainPassword),
+                            'must_change_password' => true,
+                        ]);
+                        $clinic->user->notify(new SendGeneratedPassword($plainPassword));
+                    } catch (\Throwable $e) {
+                        Notification::make()->danger()->title('Email updated but failed to send credentials.')->body($e->getMessage())->send();
+                    }
+                }
             }
         }
 

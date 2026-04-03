@@ -467,11 +467,18 @@ class ClinicsResource extends Resource
                             'disk' => 'public',
                             'status' => 'processing',
                             'user_id' => auth()->id(),
+                            'import_type' => 'clinic',
                         ]);
 
                         Excel::import(new ClinicImport($log), $absolutePath);
 
                         $message = "Import completed! {$log->success_rows} clinics imported.";
+                        if ($log->updated_rows > 0) {
+                            $message .= " {$log->updated_rows} updated.";
+                        }
+                        if ($log->duplicate_rows > 0) {
+                            $message .= " {$log->duplicate_rows} duplicates.";
+                        }
                         if ($log->error_rows > 0) {
                             $message .= " {$log->error_rows} rows failed.";
                         }

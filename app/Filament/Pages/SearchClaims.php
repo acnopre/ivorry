@@ -202,13 +202,14 @@ class SearchClaims extends Page implements HasForms, HasTable
                     }),
                 Tables\Columns\TextColumn::make('approval_code')->label('Approval Code')->limit(30),
                 Tables\Columns\TextColumn::make('service.name')->label('Service Claimed')->limit(30),
+                Tables\Columns\TextColumn::make('applied_fee')->label('Applied Fee')->money('PHP')->sortable(),
                 Tables\Columns\TextColumn::make('availment_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn($state) => ucfirst($state))
                     ->color(fn(string $state): string => match ($state) {
                         'pending' => 'warning',
-                        'sign' => 'info',
+                        'signed' => 'info',
                         'valid' => 'success',
                         'invalid' => 'danger',
                         'returned' => 'warning',
@@ -217,6 +218,31 @@ class SearchClaims extends Page implements HasForms, HasTable
                     }),
             ])
             ->actions([
+                Tables\Actions\Action::make('edit_fee')
+                    ->label('Edit Fee')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->visible(auth()->user()->can('claims.valid'))
+                    ->fillForm(fn(Procedure $record) => ['applied_fee' => $record->applied_fee])
+                    ->form([
+                        Forms\Components\TextInput::make('applied_fee')
+                            ->label('Applied Fee')
+                            ->numeric()
+                            ->prefix('₱')
+                            ->required()
+                            ->minValue(0),
+                    ])
+                    ->action(function (Procedure $record, array $data) {
+                        $record->update([
+                            'applied_fee' => $data['applied_fee'],
+                            'is_fee_adjusted' => true,
+                        ]);
+
+                        Notification::make()
+                            ->title('Applied Fee Updated')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\ViewAction::make()
                     ->modalHeading('Claim Details')
                     ->modalContent(function (?Procedure $record) {

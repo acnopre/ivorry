@@ -115,7 +115,7 @@ class MemberResource extends Resource
 
                         DatePicker::make('inactive_date')
                             ->label('Inactive Date')
-                            ->visible(fn(callable $get) => $get('status') === 'inactive'),
+                            ->visible(fn(callable $get) => $get('status') === 'INACTIVE'),
 
                         DatePicker::make('birthdate'),
 

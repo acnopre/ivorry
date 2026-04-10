@@ -36,7 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->brandLogo(asset('images/ivorry-logo-login.svg'))
             ->brandLogoHeight('80px')
-            ->login()
+            ->login(\App\Filament\Pages\Login::class)
             ->profile()
             ->colors([
                 'primary' => '#8B1C52',

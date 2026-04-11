@@ -122,7 +122,27 @@ class SearchMember extends Page implements HasActions
             $query->where('account_id', $clinic->account_id);
         }
 
-        $this->members = Auth::user()->hasRole('Dentist') ? $query->limit(1)->get() : $query->get();
+        $results = Auth::user()->hasRole('Dentist') ? $query->limit(1)->get() : $query->get();
+
+        // For SHARED plans, include all members with the same card number
+        if ($results->isNotEmpty()) {
+            $sharedCardNumbers = $results
+                ->filter(fn($m) => $m->account?->plan_type === 'SHARED' && $m->card_number)
+                ->pluck('card_number')
+                ->unique();
+
+            if ($sharedCardNumbers->isNotEmpty()) {
+                $associatedMembers = Member::with('account')
+                    ->whereIn('card_number', $sharedCardNumbers)
+                    ->whereNotIn('id', $results->pluck('id'))
+                    ->get();
+
+                $results = $results->concat($associatedMembers)
+                    ->sortBy(fn($m) => [$m->card_number, $m->is_principal ? 0 : 1]);
+            }
+        }
+
+        $this->members = $results;
         $this->hasSearched = true;
     }
 

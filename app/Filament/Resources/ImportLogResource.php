@@ -19,6 +19,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\ImportLogResource\RelationManagers\ImportLogItemsRelationManager;
+use Illuminate\Support\Facades\Auth;
 
 class ImportLogResource extends Resource
 {
@@ -27,17 +28,27 @@ class ImportLogResource extends Resource
     protected static ?string $navigationLabel = 'Import Logs';
     protected static ?string $navigationGroup = 'Imports';
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        // If user has the base permission but not all type permissions, filter
+        $allowedTypes = collect([
+            'account' => 'import-logs.view.account',
+            'member' => 'import-logs.view.member',
+            'clinic' => 'import-logs.view.clinic',
+            'procedure' => 'import-logs.view.procedure',
+        ])->filter(fn($perm) => $user->can($perm))->keys()->toArray();
+
+        return $query->whereIn('import_type', $allowedTypes);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
                 TextColumn::make('filename')->searchable(),
-                BadgeColumn::make('import_type')
-                    ->colors([
-                        'primary' => 'account',
-                        'success' => 'member',
-                        'info' => 'procedure',
-                    ]),
                 BadgeColumn::make('batch_status')
                     ->colors([
                         'success' => 'active',
@@ -146,6 +157,6 @@ class ImportLogResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()->can('import-logs.view');
+        return auth()->user()?->can('import-logs.view') ?? false;
     }
 }

@@ -95,16 +95,28 @@ class Account extends Model
         static::saving(function ($account) {
             $account->autoExpire();
         });
+
+        static::updated(function ($account) {
+            if ($account->wasChanged('account_status') && in_array($account->account_status, ['expired', 'inactive'])) {
+                $account->members()
+                    ->where('status', 'ACTIVE')
+                    ->update(['status' => 'INACTIVE']);
+            }
+        });
     }
 
     public function autoExpire()
     {
         if ($this->expiration_date && now()->greaterThan($this->expiration_date)) {
 
+            // Always deactivate any active members on an expired account
+            $this->members()
+                ->where('status', 'ACTIVE')
+                ->update(['status' => 'INACTIVE']);
+
             if ($this->account_status !== 'expired') {
                 $this->account_status = 'expired';
 
-                // Prevent recursion (only save if not already saving)
                 if ($this->isDirty('account_status')) {
                     $this->saveQuietly();
                 }

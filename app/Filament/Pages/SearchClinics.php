@@ -149,7 +149,8 @@ class SearchClinics extends Page
         // }
 
         $query = Clinic::query()
-            ->with(['dentists.specializations', 'dentists', 'account']);
+            ->with(['dentists.specializations', 'dentists', 'account'])
+            ->where('accreditation_status', '!=', 'SILENT');
         if ($this->region) {
             $query->where('region_id', $this->region);
         }

@@ -491,6 +491,7 @@ class ClinicsResource extends Resource
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             ])
+                            ->storeFileNamesIn('original_filename')
                             ->required(),
                     ])
                     ->action(function (array $data): void {
@@ -502,7 +503,7 @@ class ClinicsResource extends Resource
                             throw new \Exception("File not found at: {$absolutePath}");
                         }
 
-                        $filename = basename($relativePath);
+                        $filename = $data['original_filename'] ?? basename($relativePath);
                         $log = ImportLog::create([
                             'filename' => $filename,
                             'disk' => 'public',

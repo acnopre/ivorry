@@ -164,7 +164,7 @@ class ClinicsResource extends Resource
 
 
                         Forms\Components\Select::make('update_info_1903')
-                            ->label('Update Information (BIR Form 1903)')
+                            ->label('Update Information (BIR Form 2303)')
                             ->options(UpdateInfo1903Types::pluck('name', 'name'))
                             ->placeholder('Select update type'),
 

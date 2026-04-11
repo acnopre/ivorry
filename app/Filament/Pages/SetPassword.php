@@ -36,11 +36,13 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
                 Forms\Components\TextInput::make('current_password')
                     ->label('Temporary Password')
                     ->password()
+                    ->revealable()
                     ->required(),
 
                 Forms\Components\TextInput::make('password')
                     ->label('New Password')
                     ->password()
+                    ->revealable()
                     ->required()
                     ->minLength(8)
                     ->confirmed(),
@@ -48,6 +50,7 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
                 Forms\Components\TextInput::make('password_confirmation')
                     ->label('Confirm New Password')
                     ->password()
+                    ->revealable()
                     ->required(),
             ])
             ->statePath('data');

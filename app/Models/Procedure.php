@@ -24,6 +24,7 @@ class Procedure extends Model
         'is_fee_adjusted',
         'adc_number_from',
         'is_migrated',
+        'last_updated_by',
     ];
 
     protected $casts = [
@@ -115,6 +116,21 @@ class Procedure extends Model
         return '—';
     }
 
+
+    public function lastUpdatedBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'last_updated_by');
+    }
+
+    public function feeAdjustmentRequests()
+    {
+        return $this->hasMany(FeeAdjustmentRequest::class);
+    }
+
+    public function hasPendingFeeAdjustment(): bool
+    {
+        return $this->feeAdjustmentRequests()->where('status', 'pending')->exists();
+    }
 
     public function generatedSoas()
     {

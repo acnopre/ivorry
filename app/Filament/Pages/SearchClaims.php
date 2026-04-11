@@ -219,27 +219,39 @@ class SearchClaims extends Page implements HasForms, HasTable
             ])
             ->actions([
                 Tables\Actions\Action::make('edit_fee')
-                    ->label('Edit Fee')
+                    ->label('Request Fee Edit')
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
-                    ->visible(auth()->user()->can('claims.valid'))
-                    ->fillForm(fn(Procedure $record) => ['applied_fee' => $record->applied_fee])
+                    ->visible(fn(Procedure $record) => auth()->user()->can('claims.valid') && $record->status === Procedure::STATUS_SIGN && !$record->hasPendingFeeAdjustment())
+                    ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
                     ->form([
-                        Forms\Components\TextInput::make('applied_fee')
-                            ->label('Applied Fee')
+                        Forms\Components\TextInput::make('current_fee')
+                            ->label('Current Fee')
+                            ->prefix('₱')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('proposed_fee')
+                            ->label('Proposed Fee')
                             ->numeric()
                             ->prefix('₱')
                             ->required()
                             ->minValue(0),
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Reason / Justification')
+                            ->required()
+                            ->rows(3),
                     ])
                     ->action(function (Procedure $record, array $data) {
-                        $record->update([
-                            'applied_fee' => $data['applied_fee'],
-                            'is_fee_adjusted' => true,
+                        \App\Models\FeeAdjustmentRequest::create([
+                            'procedure_id' => $record->id,
+                            'current_fee' => $record->applied_fee,
+                            'proposed_fee' => $data['proposed_fee'],
+                            'reason' => $data['reason'],
+                            'requested_by' => auth()->id(),
                         ]);
 
                         Notification::make()
-                            ->title('Applied Fee Updated')
+                            ->title('Fee Adjustment Requested')
+                            ->body('Your request has been submitted for approval.')
                             ->success()
                             ->send();
                     }),

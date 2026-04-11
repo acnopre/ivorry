@@ -138,6 +138,16 @@ class ProcedureResource extends Resource
                         default     => 'gray',
                     }),
 
+                Tables\Columns\TextColumn::make('applied_fee')
+                    ->label('Applied Fee')
+                    ->money('PHP')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('lastUpdatedBy.name')
+                    ->label('Last Updated By')
+                    ->placeholder('—')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('approval_code')
                     ->label('Approval Code')
                     ->copyable()
@@ -179,6 +189,45 @@ class ProcedureResource extends Resource
                         ]);
 
                         Notification::make()->title('Procedure Cancelled')->success()->send();
+                    }),
+
+                // ✏️ EDIT FEE
+                Tables\Actions\Action::make('edit_fee')
+                    ->label('Request Fee Edit')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->color('warning')
+                    ->visible(fn($record) => $record->status === Procedure::STATUS_SIGN && !$record->hasPendingFeeAdjustment())
+                    ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
+                    ->form([
+                        Forms\Components\TextInput::make('current_fee')
+                            ->label('Current Fee')
+                            ->prefix('₱')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('proposed_fee')
+                            ->label('Proposed Fee')
+                            ->numeric()
+                            ->prefix('₱')
+                            ->required()
+                            ->minValue(0),
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Reason / Justification')
+                            ->required()
+                            ->rows(3),
+                    ])
+                    ->action(function (Procedure $record, array $data) {
+                        \App\Models\FeeAdjustmentRequest::create([
+                            'procedure_id' => $record->id,
+                            'current_fee' => $record->applied_fee,
+                            'proposed_fee' => $data['proposed_fee'],
+                            'reason' => $data['reason'],
+                            'requested_by' => auth()->id(),
+                        ]);
+
+                        Notification::make()
+                            ->title('Fee Adjustment Requested')
+                            ->body('Your request has been submitted for approval.')
+                            ->success()
+                            ->send();
                     }),
 
                 // ✅ SIGN PROCEDURE

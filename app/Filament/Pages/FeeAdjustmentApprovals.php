@@ -7,6 +7,7 @@ use App\Models\Procedure;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -109,15 +110,21 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                                 ->title('Fee Adjustment Approved')
                                 ->body("Your fee adjustment request for approval code {$approvalCode} has been approved. New fee: {$newFee}")
                                 ->success()
+                                ->actions([NotificationAction::make('view')->label('View Approvals')->url(FeeAdjustmentApprovals::getUrl())])
                                 ->sendToDatabase($record->requestedBy);
                         }
 
                         $clinicUser = $record->procedure->clinic?->user;
                         if ($clinicUser && $clinicUser->id !== ($record->requestedBy?->id)) {
+                            $clinicUrl = $clinicUser->hasRole('Dentist')
+                                ? ClinicProfile::getUrl()
+                                : \App\Filament\Resources\ClinicsResource::getUrl('edit', ['record' => $record->procedure->clinic]);
+
                             Notification::make()
                                 ->title('Service Fee Adjusted')
                                 ->body("The applied fee for approval code {$approvalCode} at your clinic has been adjusted to {$newFee}.")
                                 ->success()
+                                ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicUrl)])
                                 ->sendToDatabase($clinicUser);
                         }
 
@@ -156,15 +163,21 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                                 ->title('Fee Adjustment Rejected')
                                 ->body("Your fee adjustment request for approval code {$approvalCode} was rejected. Reason: {$data['review_remarks']}")
                                 ->danger()
+                                ->actions([NotificationAction::make('view')->label('View Approvals')->url(FeeAdjustmentApprovals::getUrl())])
                                 ->sendToDatabase($record->requestedBy);
                         }
 
                         $clinicUser = $record->procedure->clinic?->user;
                         if ($clinicUser && $clinicUser->id !== ($record->requestedBy?->id)) {
+                            $clinicUrl = $clinicUser->hasRole('Dentist')
+                                ? ClinicProfile::getUrl()
+                                : \App\Filament\Resources\ClinicsResource::getUrl('edit', ['record' => $record->procedure->clinic]);
+
                             Notification::make()
                                 ->title('Fee Adjustment Rejected')
                                 ->body("A fee adjustment request for approval code {$approvalCode} at your clinic was rejected. Reason: {$data['review_remarks']}")
                                 ->danger()
+                                ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicUrl)])
                                 ->sendToDatabase($clinicUser);
                         }
 

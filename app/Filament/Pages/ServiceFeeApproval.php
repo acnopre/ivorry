@@ -10,7 +10,9 @@ use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\DB;
 use App\Models\Clinic;
 use App\Models\Procedure;
+use App\Models\User;
 use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 
 class ServiceFeeApproval extends Page implements HasTable
@@ -171,12 +173,33 @@ class ServiceFeeApproval extends Page implements HasTable
                 ->action(function (Clinic $record, array $data, Action $action) {
                     $this->approveClinicFees($record);
 
-                    if ($record->user) {
+                    $clinicEditUrl = \App\Filament\Resources\ClinicsResource::getUrl('edit', ['record' => $record]);
+                    $clinicProfileUrl = ClinicProfile::getUrl();
+
+                    // Notify dentist (clinic user) → Clinic Profile
+                    if ($record->user && $record->user->id) {
+                        $clinicUser = $record->user;
+                        $url = $clinicUser->hasRole('Dentist') ? $clinicProfileUrl : $clinicEditUrl;
+
                         Notification::make()
                             ->title('Service Fees Approved')
                             ->body('The service fee update for ' . $record->clinic_name . ' has been approved.')
                             ->success()
-                            ->sendToDatabase($record->user);
+                            ->actions([NotificationAction::make('view')->label('View Clinic')->url($url)])
+                            ->sendToDatabase($clinicUser);
+                    }
+
+                    // Notify accreditation team → Clinic Edit
+                    $accreditationUsers = User::permission('clinic.update')
+                        ->where('id', '!=', auth()->id())
+                        ->get();
+                    foreach ($accreditationUsers as $user) {
+                        Notification::make()
+                            ->title('Service Fees Approved')
+                            ->body('The service fee update for ' . $record->clinic_name . ' has been approved.')
+                            ->success()
+                            ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicEditUrl)])
+                            ->sendToDatabase($user);
                     }
 
                     Notification::make()

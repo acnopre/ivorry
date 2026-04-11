@@ -308,6 +308,22 @@ class ClinicsResource extends Resource
                                             ->value('fee');
                                     }),
 
+                                // New Fee
+                                TextInput::make("services.basic_new_fee.{$service->id}")
+                                    ->label('New Fee')
+                                    ->numeric()
+                                    ->columnSpan(4)
+                                    ->visible(fn($record) => $record !== null)
+                                    ->formatStateUsing(function ($state, $record) use ($service) {
+                                        if (! $record) {
+                                            return $state;
+                                        }
+
+                                        return $record->services()
+                                            ->where('service_id', $service->id)
+                                            ->value('new_fee');
+                                    }),
+
                                 // Last Updated
                                 // Placeholder::make("updated_at_basic_{$service->id}")
                                 //     ->label('Last Updated')
@@ -371,25 +387,50 @@ class ClinicsResource extends Resource
                                             ->where('service_id', $enhancement->id)
                                             ->value('new_fee');
                                     }),
+                            ]);
+                        })->toArray();
+                    }),
 
+                Section::make('Special Procedures')
+                    ->schema(function (Forms\Get $get, $operation, $record) {
+                        $specials = Service::where('type', 'special')->get();
 
-                                // Placeholder::make("updated_at_enhancement_{$enhancement->id}")
-                                //     ->label('Last Updated')
-                                //     ->content(function () use ($record, $enhancement) {
-                                //         if (! $record) {
-                                //             return '—';
-                                //         }
+                        return $specials->map(function ($special) use ($record) {
+                            return Grid::make(12)->schema([
+                                Placeholder::make("label_{$special->id}")
+                                    ->label('')
+                                    ->content($special->name)
+                                    ->columnSpan(4),
 
-                                //         $pivot = $record->services()
-                                //             ->where('service_id', $enhancement->id)
-                                //             ->first()?->pivot;
+                                TextInput::make("services.special.{$special->id}")
+                                    ->label('Fee')
+                                    ->numeric()
+                                    ->disabled(fn($record) => $record !== null)
+                                    ->columnSpan(4)
+                                    ->formatStateUsing(function ($state, $record) use ($special) {
+                                        if (! $record) {
+                                            return $state;
+                                        }
 
-                                //         return $pivot?->updated_at
-                                //             ? $pivot->updated_at->format('M d, Y h:i A')
-                                //             : '—';
-                                //     })
-                                //     ->columnSpan(4)
-                                //     ->extraAttributes(['class' => 'text-sm text-gray-500']),
+                                        return $record->services()
+                                            ->where('service_id', $special->id)
+                                            ->value('fee');
+                                    }),
+
+                                TextInput::make("services.special_new_fee.{$special->id}")
+                                    ->label('New Fee')
+                                    ->numeric()
+                                    ->columnSpan(4)
+                                    ->visible(fn($record) => $record !== null)
+                                    ->formatStateUsing(function ($state, $record) use ($special) {
+                                        if (! $record) {
+                                            return $state;
+                                        }
+
+                                        return $record->services()
+                                            ->where('service_id', $special->id)
+                                            ->value('new_fee');
+                                    }),
                             ]);
                         })->toArray();
                     }),

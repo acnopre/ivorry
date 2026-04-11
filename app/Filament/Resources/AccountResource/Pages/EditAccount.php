@@ -6,8 +6,10 @@ use App\Filament\Resources\AccountResource;
 use App\Models\AccountAmendment;
 use App\Models\AccountRenewal;
 use App\Services\AccountEndorsementService;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +109,17 @@ class EditAccount extends EditRecord
                 AccountEndorsementService::attachServicesToRenewalFromForm($renewal, $servicesByType);
             });
 
+            $accountUrl = AccountResource::getUrl('view', ['record' => $record]);
+            $approvers = User::permission('account.renew')->get();
+            foreach ($approvers as $approver) {
+                Notification::make()
+                    ->title('Account Renewal Request')
+                    ->body('A renewal request for ' . $record->company_name . ' has been submitted by ' . auth()->user()->name . '.')
+                    ->warning()
+                    ->actions([NotificationAction::make('view')->label('Review Account')->url($accountUrl)])
+                    ->sendToDatabase($approver);
+            }
+
             Notification::make()
                 ->success()
                 ->title('Renewal Submitted')
@@ -150,6 +163,17 @@ class EditAccount extends EditRecord
                 $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
                 AccountEndorsementService::attachServicesToAmendmentFromForm($amendment, $servicesByType);
             });
+
+            $accountUrl = AccountResource::getUrl('view', ['record' => $record]);
+            $approvers = User::permission('account.amend')->get();
+            foreach ($approvers as $approver) {
+                Notification::make()
+                    ->title('Account Amendment Request')
+                    ->body('An amendment request for ' . $record->company_name . ' has been submitted by ' . auth()->user()->name . '.')
+                    ->warning()
+                    ->actions([NotificationAction::make('view')->label('Review Account')->url($accountUrl)])
+                    ->sendToDatabase($approver);
+            }
 
             Notification::make()
                 ->success()

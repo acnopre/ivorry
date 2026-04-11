@@ -14,7 +14,11 @@ class ClinicProfile extends Page
 
     public function getClinic()
     {
-        return auth()->user()->clinic;
+        $clinic = auth()->user()->clinic;
+        if ($clinic) {
+            $clinic->load(['services', 'dentists.specializations', 'hip']);
+        }
+        return $clinic;
     }
 
     public static function shouldRegisterNavigation(): bool

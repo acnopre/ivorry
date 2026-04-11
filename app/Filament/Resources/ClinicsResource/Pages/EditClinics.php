@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Filament\Actions;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -165,21 +166,60 @@ class EditClinics extends EditRecord
             }
         }
 
-        // Sync enhancement new fees
+        // Sync new fees (basic, enhancement, special)
+        $basicFees = $this->data['services']['basic_new_fee'] ?? [];
         $enhancementFees = $this->data['services']['enhancement_new_fee'] ?? [];
+        $specialFees = $this->data['services']['special_new_fee'] ?? [];
 
-        if (!empty($enhancementFees)) {
-            $syncData = collect($enhancementFees)
-                ->filter(fn($fee) => !is_null($fee) && $fee !== '')
-                ->mapWithKeys(fn($fee, $serviceId) => [$serviceId => ['new_fee' => $fee]])
-                ->toArray();
+        $allNewFees = collect($basicFees)->union($enhancementFees)->union($specialFees)
+            ->filter(fn($fee) => !is_null($fee) && $fee !== '')
+            ->mapWithKeys(fn($fee, $serviceId) => [$serviceId => ['new_fee' => $fee]])
+            ->toArray();
 
-            foreach ($syncData as $serviceId => $pivotData) {
+        if (!empty($allNewFees)) {
+            foreach ($allNewFees as $serviceId => $pivotData) {
                 $clinic->services()->updateExistingPivot($serviceId, $pivotData);
             }
 
-            if (!empty($syncData)) {
-                $clinic->update(['fee_approval' => 'pending']);
+            $clinic->update(['fee_approval' => 'pending']);
+
+            $approvalUrl = \App\Filament\Pages\ServiceFeeApproval::getUrl();
+            $clinicEditUrl = ClinicsResource::getUrl('edit', ['record' => $clinic]);
+            $clinicProfileUrl = \App\Filament\Pages\ClinicProfile::getUrl();
+
+            // Notify fee approvers (upper management) → Service Fee Approval
+            $approvers = User::permission('fee.approval')->get();
+            foreach ($approvers as $approver) {
+                Notification::make()
+                    ->title('Service Fee Update Pending')
+                    ->body('Service fees for ' . $clinic->clinic_name . ' have been updated and require approval.')
+                    ->warning()
+                    ->actions([NotificationAction::make('view')->label('Review Fees')->url($approvalUrl)])
+                    ->sendToDatabase($approver);
+            }
+
+            // Notify accreditation team → Clinic Edit
+            $accreditationUsers = User::permission('clinic.update')
+                ->where('id', '!=', auth()->id())
+                ->get();
+            foreach ($accreditationUsers as $user) {
+                Notification::make()
+                    ->title('Clinic Fee Update Submitted')
+                    ->body('Service fees for ' . $clinic->clinic_name . ' have been submitted for approval.')
+                    ->info()
+                    ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicEditUrl)])
+                    ->sendToDatabase($user);
+            }
+
+            // Notify dentist (clinic user) → Clinic Profile
+            $clinicUser = $clinic->user;
+            if ($clinicUser && $clinicUser->id !== auth()->id()) {
+                Notification::make()
+                    ->title('Service Fee Update Submitted')
+                    ->body('Service fees for ' . $clinic->clinic_name . ' have been submitted for approval.')
+                    ->info()
+                    ->actions([NotificationAction::make('view')->label('View Profile')->url($clinicProfileUrl)])
+                    ->sendToDatabase($clinicUser);
             }
         }
     }

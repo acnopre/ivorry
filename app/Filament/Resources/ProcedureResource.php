@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
 use App\Models\User;
@@ -225,11 +226,13 @@ class ProcedureResource extends Resource
                         ]);
 
                         $approvers = User::permission('claims.approve-fee')->get();
+                        $feeApprovalsUrl = \App\Filament\Pages\FeeAdjustmentApprovals::getUrl();
                         foreach ($approvers as $approver) {
                             Notification::make()
                                 ->title('New Fee Adjustment Request')
                                 ->body('A fee adjustment was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
                                 ->warning()
+                                ->actions([NotificationAction::make('view')->label('Review Request')->url($feeApprovalsUrl)])
                                 ->sendToDatabase($approver);
                         }
 

@@ -22,9 +22,11 @@ use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\Placeholder;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\TextEntry\TextEntrySize;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 
 class ViewAccount extends ViewRecord
@@ -45,6 +47,15 @@ class ViewAccount extends ViewRecord
                         'account_status' => 'active',
                         'endorsement_status' => 'APPROVED'
                     ]);
+
+                    if ($record->createdBy) {
+                        Notification::make()
+                            ->title('Account Approved')
+                            ->body('The account ' . $record->company_name . ' has been approved.')
+                            ->success()
+                            ->actions([NotificationAction::make('view')->label('View Account')->url(AccountResource::getUrl('view', ['record' => $record]))])
+                            ->sendToDatabase($record->createdBy);
+                    }
 
                     Notification::make()
                         ->title('The account has been approved successfully.')
@@ -86,6 +97,15 @@ class ViewAccount extends ViewRecord
                         'endorsement_status' => 'REJECTED',
                         'remarks' => $data['remarks'],
                     ]);
+
+                    if ($record->createdBy) {
+                        Notification::make()
+                            ->title('Account Rejected')
+                            ->body('The account ' . $record->company_name . ' has been rejected. Reason: ' . $data['remarks'])
+                            ->danger()
+                            ->actions([NotificationAction::make('view')->label('View Account')->url(AccountResource::getUrl('view', ['record' => $record]))])
+                            ->sendToDatabase($record->createdBy);
+                    }
 
                     Notification::make()
                         ->title('Account rejected.')
@@ -132,7 +152,6 @@ class ViewAccount extends ViewRecord
                         'remarks' => $data['remarks'],
                     ]);
 
-                    // Revert account to previous approved state
                     $lastApprovedEndorsement = $record->endorsement_type === 'RENEWAL'
                         ? ($record->renewals()->where('status', 'APPROVED')->exists() ? 'RENEWED' : 'NEW')
                         : $record->endorsement_type;
@@ -142,6 +161,16 @@ class ViewAccount extends ViewRecord
                         'endorsement_status' => 'APPROVED',
                         'remarks' => $data['remarks'],
                     ]);
+
+                    $requester = $renewal->requestedBy;
+                    if ($requester) {
+                        Notification::make()
+                            ->title('Account Renewal Rejected')
+                            ->body('The renewal for ' . $record->company_name . ' has been rejected. Reason: ' . $data['remarks'])
+                            ->danger()
+                            ->actions([NotificationAction::make('view')->label('View Account')->url(AccountResource::getUrl('view', ['record' => $record]))])
+                            ->sendToDatabase($requester);
+                    }
 
                     Notification::make()
                         ->title('Account renewal rejected.')
@@ -222,6 +251,16 @@ class ViewAccount extends ViewRecord
                         ->success()
                         ->send();
 
+                    $requester = $renewal->requestedBy;
+                    if ($requester) {
+                        Notification::make()
+                            ->title('Account Renewal Approved')
+                            ->body('The renewal for ' . $record->company_name . ' has been approved.')
+                            ->success()
+                            ->actions([NotificationAction::make('view')->label('View Account')->url(AccountResource::getUrl('view', ['record' => $record]))])
+                            ->sendToDatabase($requester);
+                    }
+
                     $createdByEmail = $record->createdBy?->email;
                     if ($createdByEmail) {
                         Mail::raw("The account {$record->company_name} has been renewed and approved.", function ($message) use ($createdByEmail) {
@@ -262,7 +301,6 @@ class ViewAccount extends ViewRecord
                         'remarks' => $data['remarks'],
                     ]);
 
-                    // Revert account to previous approved state
                     $lastApprovedEndorsement = 'NEW';
                     if ($record->renewals()->where('status', 'APPROVED')->exists()) {
                         $lastApprovedEndorsement = 'RENEWED';
@@ -279,6 +317,16 @@ class ViewAccount extends ViewRecord
                         'endorsement_status' => 'APPROVED',
                         'remarks' => $data['remarks'],
                     ]);
+
+                    $requester = $amendment->requestedBy;
+                    if ($requester) {
+                        Notification::make()
+                            ->title('Account Amendment Rejected')
+                            ->body('The amendment for ' . $record->company_name . ' has been rejected. Reason: ' . $data['remarks'])
+                            ->danger()
+                            ->actions([NotificationAction::make('view')->label('View Account')->url(AccountResource::getUrl('view', ['record' => $record]))])
+                            ->sendToDatabase($requester);
+                    }
 
                     Notification::make()
                         ->title('Account amendment rejected.')
@@ -375,6 +423,16 @@ class ViewAccount extends ViewRecord
                         ->title('Account amendment approved successfully.')
                         ->success()
                         ->send();
+
+                    $requester = $amendment->requestedBy;
+                    if ($requester) {
+                        Notification::make()
+                            ->title('Account Amendment Approved')
+                            ->body('The amendment for ' . $record->company_name . ' has been approved.')
+                            ->success()
+                            ->actions([NotificationAction::make('view')->label('View Account')->url(AccountResource::getUrl('view', ['record' => $record]))])
+                            ->sendToDatabase($requester);
+                    }
 
                     $createdByEmail = $record->createdBy?->email;
                     if ($createdByEmail) {

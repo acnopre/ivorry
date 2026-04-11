@@ -378,6 +378,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 ->modalDescription('Are you sure you want to return this claim?')
                                 ->action(function (Procedure $record, array $data) {
                                     $record->update([
+                                        'previous_status' => $record->status,
                                         'status' => Procedure::STATUS_RETURN,
                                         'remarks' => $data['remarks'],
                                     ]);

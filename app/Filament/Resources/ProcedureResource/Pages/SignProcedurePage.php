@@ -6,7 +6,9 @@ use App\Filament\Resources\ProcedureResource;
 use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureSignature;
+use App\Models\User;
 use Filament\Resources\Pages\Page;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -157,6 +159,23 @@ class SignProcedurePage extends Page
             ->body('All required documentation has been saved. This procedure is now marked as signed.')
             ->success()
             ->send();
+
+        // Notify approvers (CSR) about new pending procedure
+        $approvers = User::permission('member.approve_procedure')
+            ->where('id', '!=', auth()->id())
+            ->get();
+        $pendingUrl = \App\Filament\Pages\PendingProcedures::getUrl();
+        $approvalCode = $this->record->approval_code ?? '—';
+        $memberName = trim(($this->record->member?->first_name ?? '') . ' ' . ($this->record->member?->last_name ?? ''));
+
+        foreach ($approvers as $approver) {
+            Notification::make()
+                ->title('New Procedure Pending Approval')
+                ->body("Procedure {$approvalCode} for {$memberName} has been signed and is awaiting approval.")
+                ->warning()
+                ->actions([NotificationAction::make('view')->label('Review')->url($pendingUrl)])
+                ->sendToDatabase($approver);
+        }
 
         $this->redirect(ProcedureResource::getUrl('index'));
     }

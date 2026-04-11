@@ -16,6 +16,7 @@ class Procedure extends Model
         'clinic_id',
         'availment_date',
         'status',
+        'previous_status',
         'approval_code',
         'remarks',
         'quantity',

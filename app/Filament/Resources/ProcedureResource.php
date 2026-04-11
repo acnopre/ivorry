@@ -262,13 +262,34 @@ class ProcedureResource extends Resource
                     ->modalSubheading('Are you sure you want to resubmit this procedure?')
                     ->visible(fn($record) => $record->status === 'returned')
                     ->action(function (Procedure $record) {
-                        $record->status = 'signed';
-                        $record->save();
+                        $restoreStatus = $record->previous_status ?? Procedure::STATUS_PENDING;
+                        $record->update([
+                            'status' => $restoreStatus,
+                            'previous_status' => null,
+                            'remarks' => null,
+                        ]);
 
                         \Filament\Notifications\Notification::make()
                             ->title('Procedure resubmitted successfully.')
                             ->success()
                             ->send();
+
+                        // Notify approvers
+                        $approvers = User::permission('member.approve_procedure')
+                            ->where('id', '!=', auth()->id())
+                            ->get();
+                        $pendingUrl = \App\Filament\Pages\PendingProcedures::getUrl();
+                        $approvalCode = $record->approval_code ?? '—';
+                        $memberName = trim(($record->member?->first_name ?? '') . ' ' . ($record->member?->last_name ?? ''));
+
+                        foreach ($approvers as $approver) {
+                            Notification::make()
+                                ->title('Procedure Resubmitted')
+                                ->body("Procedure {$approvalCode} for {$memberName} has been resubmitted for approval.")
+                                ->warning()
+                                ->actions([NotificationAction::make('view')->label('Review')->url($pendingUrl)])
+                                ->sendToDatabase($approver);
+                        }
 
                         $dentistEmail = $record->clinic?->user?->email;
                         if ($dentistEmail) {

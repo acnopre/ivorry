@@ -16,6 +16,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -248,6 +249,15 @@ class SearchClaims extends Page implements HasForms, HasTable
                             'reason' => $data['reason'],
                             'requested_by' => auth()->id(),
                         ]);
+
+                        $approvers = User::permission('claims.approve-fee')->get();
+                        foreach ($approvers as $approver) {
+                            Notification::make()
+                                ->title('New Fee Adjustment Request')
+                                ->body('A fee adjustment was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
+                                ->warning()
+                                ->sendToDatabase($approver);
+                        }
 
                         Notification::make()
                             ->title('Fee Adjustment Requested')

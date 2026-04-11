@@ -102,6 +102,8 @@ class AdminPanelProvider extends PanelProvider
                 \App\Http\Middleware\MustSetPassword::class,
                 'web',
             ])
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->authMiddleware([
                 Authenticate::class,
             ]);

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
+use App\Models\User;
 
 class ProcedureResource extends Resource
 {
@@ -222,6 +223,15 @@ class ProcedureResource extends Resource
                             'reason' => $data['reason'],
                             'requested_by' => auth()->id(),
                         ]);
+
+                        $approvers = User::permission('claims.approve-fee')->get();
+                        foreach ($approvers as $approver) {
+                            Notification::make()
+                                ->title('New Fee Adjustment Request')
+                                ->body('A fee adjustment was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
+                                ->warning()
+                                ->sendToDatabase($approver);
+                        }
 
                         Notification::make()
                             ->title('Fee Adjustment Requested')

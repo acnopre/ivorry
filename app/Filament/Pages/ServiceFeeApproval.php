@@ -171,7 +171,14 @@ class ServiceFeeApproval extends Page implements HasTable
                 ->action(function (Clinic $record, array $data, Action $action) {
                     $this->approveClinicFees($record);
 
-                    // Show success notification
+                    if ($record->user) {
+                        Notification::make()
+                            ->title('Service Fees Approved')
+                            ->body('The service fee update for ' . $record->clinic_name . ' has been approved.')
+                            ->success()
+                            ->sendToDatabase($record->user);
+                    }
+
                     Notification::make()
                         ->success()
                         ->title('Service fees approved successfully!')

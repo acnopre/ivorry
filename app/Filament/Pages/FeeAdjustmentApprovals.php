@@ -101,9 +101,29 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                             'last_updated_by' => auth()->id(),
                         ]);
 
+                        $approvalCode = $record->procedure->approval_code ?? '—';
+                        $newFee = '₱' . number_format($record->proposed_fee, 2);
+
+                        if ($record->requestedBy) {
+                            Notification::make()
+                                ->title('Fee Adjustment Approved')
+                                ->body("Your fee adjustment request for approval code {$approvalCode} has been approved. New fee: {$newFee}")
+                                ->success()
+                                ->sendToDatabase($record->requestedBy);
+                        }
+
+                        $clinicUser = $record->procedure->clinic?->user;
+                        if ($clinicUser && $clinicUser->id !== ($record->requestedBy?->id)) {
+                            Notification::make()
+                                ->title('Service Fee Adjusted')
+                                ->body("The applied fee for approval code {$approvalCode} at your clinic has been adjusted to {$newFee}.")
+                                ->success()
+                                ->sendToDatabase($clinicUser);
+                        }
+
                         Notification::make()
                             ->title('Fee Adjustment Approved')
-                            ->body('Applied fee has been updated to ₱' . number_format($record->proposed_fee, 2))
+                            ->body("Applied fee has been updated to {$newFee}")
                             ->success()
                             ->send();
                     }),
@@ -128,6 +148,25 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                             'review_remarks' => $data['review_remarks'],
                             'reviewed_at' => now(),
                         ]);
+
+                        $approvalCode = $record->procedure->approval_code ?? '—';
+
+                        if ($record->requestedBy) {
+                            Notification::make()
+                                ->title('Fee Adjustment Rejected')
+                                ->body("Your fee adjustment request for approval code {$approvalCode} was rejected. Reason: {$data['review_remarks']}")
+                                ->danger()
+                                ->sendToDatabase($record->requestedBy);
+                        }
+
+                        $clinicUser = $record->procedure->clinic?->user;
+                        if ($clinicUser && $clinicUser->id !== ($record->requestedBy?->id)) {
+                            Notification::make()
+                                ->title('Fee Adjustment Rejected')
+                                ->body("A fee adjustment request for approval code {$approvalCode} at your clinic was rejected. Reason: {$data['review_remarks']}")
+                                ->danger()
+                                ->sendToDatabase($clinicUser);
+                        }
 
                         Notification::make()
                             ->title('Fee Adjustment Rejected')

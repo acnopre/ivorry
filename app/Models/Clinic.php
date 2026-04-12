@@ -55,7 +55,8 @@ class Clinic extends Model
         'associate_dentists',
         'fee_approval',
         'account_id',
-        'hip_id'
+        'hip_id',
+        'welcome_email_status',
     ];
 
     // protected $with = ['specializations', 'basicDentalServices', 'planEnhancements'];

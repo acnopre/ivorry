@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Clinic;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Pages\Page;
@@ -94,6 +95,8 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
             'password' => Hash::make($this->data['password']),
             'must_change_password' => false,
         ]);
+
+        Clinic::where('user_id', $user->id)->update(['welcome_email_status' => 'password_set']);
 
         Password::broker()->deleteToken($user);
         Auth::login($user);

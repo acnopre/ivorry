@@ -111,6 +111,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'lookup_tables.edit',
             'lookup_tables.delete',
 
+            // Communications
+            'communication.welcome-email',
+
         ];
 
         // Seed permissions
@@ -172,6 +175,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'import-logs.view',
                     'import-logs.view.clinic',
                     'import-logs.details.view',
+                    'communication.welcome-email',
                 ],
                 'users' => [
                     [

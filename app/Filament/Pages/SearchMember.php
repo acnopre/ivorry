@@ -403,8 +403,32 @@ class SearchMember extends Page implements HasActions
             return true;
         }
 
+        // Check max_per_date limit
+        $maxPerDate = $service->max_per_date;
+        if ($maxPerDate) {
+            $existingCount = Procedure::where('member_id', $memberId)
+                ->where('service_id', $data['service_id'])
+                ->where('availment_date', $availmentDate)
+                ->whereNotIn('status', [Procedure::STATUS_CANCELLED])
+                ->count();
+
+            // Count how many new procedures this request will create
+            $newCount = 0;
+            foreach ($unitInputs as $input) {
+                if (isset($data[$input]) && !empty($data[$input])) {
+                    $newCount += count($data[$input]);
+                }
+            }
+            $newCount = max($newCount, 1);
+
+            if (($existingCount + $newCount) > $maxPerDate) {
+                $remaining = max($maxPerDate - $existingCount, 0);
+                return $this->showError('Max Per Date Exceeded', "{$serviceName} is limited to {$maxPerDate} per date. Already used: {$existingCount}, remaining: {$remaining}.");
+            }
+        }
+
         // Exclusive services (cannot be done with any other service on same date)
-        $exclusiveServices = ['Consultation', 'Simple tooth extraction'];
+        $exclusiveServices = ['Consultation'];
         if (in_array($serviceName, $exclusiveServices)) {
             // If current service has units, only check for other procedures on same units
             if ($hasUnits) {

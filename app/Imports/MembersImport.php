@@ -77,10 +77,33 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         DB::beginTransaction();
         try {
             $restored = false;
-            $member = Member::withTrashed()->where('account_id', $account->id)
-                ->where('first_name', $row['first_name'])
-                ->where('last_name', $row['last_name'])
-                ->first();
+
+            // If old_card_number is provided, find member by it (for card number updates)
+            if (!empty($row['old_card_number'])) {
+                $row['old_card_number'] = preg_replace('/[^a-zA-Z0-9]/', '', $row['old_card_number']);
+                $member = Member::withTrashed()
+                    ->where('account_id', $account->id)
+                    ->where('card_number', $row['old_card_number'])
+                    ->first();
+
+                if (!$member) {
+                    DB::rollBack();
+                    $this->logError($row, "No member found with old_card_number '{$row['old_card_number']}' in this account");
+                    return null;
+                }
+
+                if ($member->first_name !== $row['first_name'] || $member->last_name !== $row['last_name']) {
+                    DB::rollBack();
+                    $this->logError($row, "Name mismatch: old_card_number '{$row['old_card_number']}' belongs to {$member->first_name} {$member->last_name}, not {$row['first_name']} {$row['last_name']}");
+                    return null;
+                }
+            } else {
+                // Match by card_number — different card means different member
+                $member = Member::withTrashed()
+                    ->where('account_id', $account->id)
+                    ->where('card_number', $row['card_number'])
+                    ->first();
+            }
 
             if ($member) {
                 if ($member->trashed()) {
@@ -145,16 +168,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                         'phone'       => $row['phone'] ?? null,
                         'birthdate'   => !empty($row['birthdate']) && is_numeric($row['birthdate']) && $row['birthdate'] > 0 ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : ((!empty($row['birthdate']) && !is_numeric($row['birthdate'])) ? $row['birthdate'] : null),
                     ];
-                    if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
-                        $cardTaken = Member::withTrashed()
-                            ->where('card_number', $row['card_number'])
-                            ->where('id', '!=', $member->id)
-                            ->exists();
-                        if ($cardTaken) {
-                            DB::rollBack();
-                            $this->logError($row, 'Card number already assigned to another member in this account');
-                            return null;
-                        }
+
+                    // Update card_number only when old_card_number is explicitly provided
+                    if (!empty($row['old_card_number'])) {
                         $updateData['card_number'] = $row['card_number'];
                     }
 
@@ -270,19 +286,31 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
         }
 
-        if (strtoupper($account->plan_type) === 'INDIVIDUAL') {
-            $existingMember = Member::withTrashed()->where('card_number', $row['card_number'])->first();
-            if ($existingMember && ($existingMember->first_name !== $row['first_name'] || $existingMember->last_name !== $row['last_name'])) {
-                return 'Card number already exists in the system';
+        // When old_card_number is provided, validate the new card_number isn't taken by someone else
+        if (!empty($row['old_card_number'])) {
+            $cleanOld = preg_replace('/[^a-zA-Z0-9]/', '', $row['old_card_number']);
+            $targetMember = Member::withTrashed()
+                ->where('account_id', $account->id)
+                ->where('card_number', $cleanOld)
+                ->first();
+
+            if (!$targetMember) {
+                return "No member found with old_card_number '{$cleanOld}' in this account";
             }
-        } elseif (strtoupper($account->plan_type) === 'SHARED') {
-            if (Member::withTrashed()
+
+            $cardTaken = Member::withTrashed()
                 ->where('card_number', $row['card_number'])
-                ->where('first_name', $row['first_name'])
-                ->where('last_name', $row['last_name'])
-                ->exists()
-            ) {
-                return 'Card number already assigned to this member';
+                ->where('id', '!=', $targetMember->id)
+                ->exists();
+
+            if ($cardTaken) {
+                return "New card_number '{$row['card_number']}' is already assigned to another member";
+            }
+        } else {
+            // Block if card_number belongs to a different account
+            $existingMember = Member::withTrashed()->where('card_number', $row['card_number'])->first();
+            if ($existingMember && $existingMember->account_id !== $account->id) {
+                return 'Card number already exists in a different account';
             }
         }
 

@@ -409,7 +409,7 @@ class SearchMember extends Page implements HasActions
             $existingCount = Procedure::where('member_id', $memberId)
                 ->where('service_id', $data['service_id'])
                 ->where('availment_date', $availmentDate)
-                ->whereNotIn('status', [Procedure::STATUS_CANCELLED])
+                ->whereIn('status', [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN])
                 ->count();
 
             // Count how many new procedures this request will create

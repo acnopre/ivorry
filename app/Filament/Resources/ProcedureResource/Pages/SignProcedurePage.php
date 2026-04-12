@@ -7,6 +7,7 @@ use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureSignature;
 use App\Models\User;
+use App\Services\ServiceQuantityService;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
@@ -122,35 +123,15 @@ class SignProcedurePage extends Page
 
             // Check MBL type
             if ($account->mbl_type === 'Fixed') {
-                // Deduct from MBL balance and quantity
+                // Deduct from MBL balance
                 $newBalance = max(0, $member->mbl_balance - $this->record->applied_fee);
                 $member->update(['mbl_balance' => $newBalance]);
 
-                // Also deduct quantity for Fixed type
-                $pivot = $account->services()
-                    ->where('service_id', $serviceId)
-                    ->whereNull('account_service.deleted_at')
-                    ->first()
-                    ?->pivot;
-
-                if ($pivot && !$pivot->is_unlimited) {
-                    $newQuantity = max(0, $pivot->quantity - 1);
-                    $pivot->quantity = $newQuantity;
-                    $pivot->save();
-                }
+                // Also deduct quantity for Fixed type (family-aware for SHARED)
+                ServiceQuantityService::deduct($member, $serviceId);
             } else {
-                // Procedural: check unlimited and deduct quantity
-                $pivot = $account->services()
-                    ->where('service_id', $serviceId)
-                    ->whereNull('account_service.deleted_at')
-                    ->first()
-                    ?->pivot;
-
-                if ($pivot && !$pivot->is_unlimited) {
-                    $newQuantity = max(0, $pivot->quantity - 1);
-                    $pivot->quantity = $newQuantity;
-                    $pivot->save();
-                }
+                // Procedural: deduct quantity (family-aware for SHARED)
+                ServiceQuantityService::deduct($member, $serviceId);
             }
         }
 

@@ -11,10 +11,19 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Filament\Notifications\Notification;
 use Filament\Support\Exceptions\Halt;
+use App\Models\MemberService;
 
 class CreateDependentMember extends CreateRecord
 {
     protected static string $resource = DependentMemberResource::class;
+
+    protected function afterCreate(): void
+    {
+        $member = $this->record;
+        if ($member->card_number && $member->account_id) {
+            MemberService::initializeForFamily($member->card_number, $member->account_id);
+        }
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {

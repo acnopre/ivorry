@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\AccountService;
 use App\Models\Clinic;
+use App\Services\ServiceQuantityService;
 use App\Models\ClinicService;
 use App\Models\Member;
 use App\Models\Procedure;
@@ -238,11 +239,8 @@ class SearchMember extends Page implements HasActions
                 return;
             }
         } else {
-            // Procedural type - check service quantity/unlimited
-            $isServiceUnlimited = $account->services->find($data['service_id'])->pivot->is_unlimited;
-            $serviceQuantity = $account->services->find($data['service_id'])->pivot->quantity;
-
-            if (!$isServiceUnlimited && $serviceQuantity <= 0) {
+            // Procedural type - check service quantity (family-aware for SHARED)
+            if (!ServiceQuantityService::hasAvailableQuantity($member, $data['service_id'])) {
                 Notification::make()
                     ->title('Service Unavailable')
                     ->body('This service has no remaining quantity.')
@@ -653,11 +651,8 @@ class SearchMember extends Page implements HasActions
                 return;
             }
         } else {
-            $isServiceUnlimited = $account->services->find($data['service_id'])->pivot->is_unlimited;
-            $serviceQuantity = $account->services->find($data['service_id'])->pivot->quantity;
-
-            if (!$isServiceUnlimited && $serviceQuantity <= 0) {
-                Notification::make()->title('Service Unavailable')->danger()->send();
+            if (!ServiceQuantityService::hasAvailableQuantity($member, $data['service_id'])) {
+                Notification::make()->title('Service Unavailable')->body('This service has no remaining quantity.')->danger()->send();
                 return;
             }
         }
@@ -721,11 +716,8 @@ class SearchMember extends Page implements HasActions
                 $member->mbl_balance -= $appliedFee;
                 $member->save();
             } else {
-                // Deduct service quantity for Procedural type
-                $accountService = $account->services()->where('service_id', $data['service_id'])->first();
-                if ($accountService && !$accountService->pivot->is_unlimited) {
-                    $accountService->pivot->decrement('quantity', 1);
-                }
+                // Deduct service quantity (family-aware for SHARED)
+                ServiceQuantityService::deduct($member, $data['service_id']);
             }
         }
 
@@ -753,6 +745,24 @@ class SearchMember extends Page implements HasActions
             ->options(function () use ($isDentist) {
                 $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
                 if (!$accountId) return collect();
+
+                $member = Member::find($this->selectedMemberId);
+                $account = $member?->account;
+                if (!$account) return collect();
+
+                // For SHARED accounts, use family-level quantities
+                if (strtoupper($account->plan_type) === 'SHARED') {
+                    \App\Models\MemberService::initializeForFamily($member->card_number, $account->id);
+                    return \App\Models\MemberService::where('card_number', $member->card_number)
+                        ->where('account_id', $account->id)
+                        ->where(fn($q) => $q->where('quantity', '>', 0)->orWhere('is_unlimited', true))
+                        ->with('service')
+                        ->get()
+                        ->when($isDentist, fn($col) => $col->filter(fn($ms) => $ms->service?->type !== 'special'))
+                        ->groupBy('service.type')
+                        ->map(fn($group) => $group->pluck('service.name', 'service_id'))
+                        ->toArray();
+                }
 
                 return AccountService::where('account_id', $accountId)
                     ->where(fn($q) => $q->where('quantity', '>', 0)->orWhere('is_unlimited', true))
@@ -926,15 +936,13 @@ class SearchMember extends Page implements HasActions
 
     protected function shouldShowQuantityField(callable $get): bool
     {
-        $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
+        $member = Member::find($this->selectedMemberId);
         $serviceId = $get('service_id');
-        if (!$accountId || !$serviceId) return false;
+        if (!$member || !$serviceId) return false;
 
-        $accountService = AccountService::where('account_id', $accountId)
-            ->where('service_id', $serviceId)
-            ->first();
+        $info = ServiceQuantityService::getQuantityInfo($member, $serviceId);
 
-        return ($accountService && !$accountService->is_unlimited) ||
+        return !$info['is_unlimited'] ||
             Service::find($serviceId)?->unitType?->units?->isNotEmpty();
     }
 
@@ -946,16 +954,12 @@ class SearchMember extends Page implements HasActions
         $service = Service::find($serviceId);
         $maxPerDate = $service?->max_per_date ?? 3;
 
-        $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
-        if (!$accountId) return $maxPerDate;
+        $member = Member::find($this->selectedMemberId);
+        if (!$member) return $maxPerDate;
 
-        $accountService = AccountService::where('account_id', $accountId)
-            ->where('service_id', $serviceId)
-            ->first();
+        $info = ServiceQuantityService::getQuantityInfo($member, $serviceId);
 
-        return $accountService && !$accountService->is_unlimited
-            ? min($accountService->quantity, $maxPerDate)
-            : $maxPerDate;
+        return $info['is_unlimited'] ? $maxPerDate : min($info['quantity'], $maxPerDate);
     }
 
     protected function getQuantityHelperText(callable $get): string
@@ -966,16 +970,14 @@ class SearchMember extends Page implements HasActions
         $service = Service::find($serviceId);
         $maxPerDate = $service?->max_per_date ?? 3;
 
-        $accountId = Member::find($this->selectedMemberId)?->account_id ?? null;
-        if (!$accountId) return "Max per date: {$maxPerDate}";
+        $member = Member::find($this->selectedMemberId);
+        if (!$member) return "Max per date: {$maxPerDate}";
 
-        $accountService = AccountService::where('account_id', $accountId)
-            ->where('service_id', $serviceId)
-            ->first();
+        $info = ServiceQuantityService::getQuantityInfo($member, $serviceId);
 
-        if ($accountService && !$accountService->is_unlimited) {
-            $max = min($accountService->quantity, $maxPerDate);
-            return "Max: {$max} | Balance: {$accountService->quantity} | Max per date: {$maxPerDate}";
+        if (!$info['is_unlimited']) {
+            $max = min($info['quantity'], $maxPerDate);
+            return "Max: {$max} | Balance: {$info['quantity']} | Max per date: {$maxPerDate}";
         }
 
         return "Max per date: {$maxPerDate}";

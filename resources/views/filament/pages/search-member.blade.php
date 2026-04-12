@@ -29,10 +29,20 @@
         ->when(auth()->user()->hasRole('Dentist'), fn($q) => $q->whereHas('service', fn($s) => $s->where('type', '!=', 'special')))
         ->orderByDesc('availment_date')
         ->get();
-        $filteredServices = $member->account?->services->filter(fn($s) =>
-        ($s->pivot->is_unlimited || $s->pivot->quantity > 0) &&
-        !(auth()->user()->hasRole('Dentist') && $s->type === 'special')
-        ) ?? collect();
+        $isShared = strtoupper($member->account?->plan_type ?? '') === 'SHARED';
+        if ($isShared && $member->card_number) {
+            \App\Models\MemberService::initializeForFamily($member->card_number, $member->account->id);
+            $filteredServices = \App\Models\MemberService::where('card_number', $member->card_number)
+                ->where('account_id', $member->account->id)
+                ->with('service')
+                ->get()
+                ->filter(fn($ms) => ($ms->is_unlimited || $ms->quantity > 0) && !(auth()->user()->hasRole('Dentist') && $ms->service?->type === 'special'));
+        } else {
+            $filteredServices = $member->account?->services->filter(fn($s) =>
+                ($s->pivot->is_unlimited || $s->pivot->quantity > 0) &&
+                !(auth()->user()->hasRole('Dentist') && $s->type === 'special')
+            ) ?? collect();
+        }
         $isCsr = auth()->user()->hasRole('CSR');
         $userClinicId = auth()->user()->clinic?->id;
         $defaultOpen = !$isCsr || $loop->first;
@@ -212,6 +222,9 @@
                         <div class="flex items-center gap-x-2 px-4 py-3 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
                             <x-heroicon-o-list-bullet class="w-4 h-4 text-primary-500" />
                             <span class="text-sm font-semibold text-gray-950 dark:text-white">Covered Services</span>
+                            @if($isShared)
+                            <x-filament::badge color="info" size="sm">Family</x-filament::badge>
+                            @endif
                             <span class="ml-auto text-xs text-gray-500 dark:text-gray-400">{{ $filteredServices->count() }} service(s)</span>
                         </div>
                         <div class="overflow-x-auto">
@@ -222,33 +235,42 @@
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Type</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Qty</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Unlimited</th>
+                                        @if(!$isShared)
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Remarks</th>
+                                        @endif
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
-                                    @foreach($filteredServices as $service)
+                                    @foreach($filteredServices as $item)
+                                    @php
+                                        $svc = $isShared ? $item->service : $item;
+                                        $qty = $isShared ? $item->quantity : $item->pivot->quantity;
+                                        $unlimited = $isShared ? $item->is_unlimited : $item->pivot->is_unlimited;
+                                    @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                        <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{{ $service->name }}</td>
+                                        <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{{ $svc->name ?? '—' }}</td>
                                         <td class="px-4 py-2">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold {{ $service->type === 'special' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' : 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400' }}">
-                                                {{ ucfirst($service->type) }}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold {{ ($svc->type ?? '') === 'special' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' : 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400' }}">
+                                                {{ ucfirst($svc->type ?? '') }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-2 font-mono font-semibold text-gray-700 dark:text-gray-300">{{ $service->pivot->quantity ?? '—' }}</td>
+                                        <td class="px-4 py-2 font-mono font-semibold text-gray-700 dark:text-gray-300">{{ $qty ?? '—' }}</td>
                                         <td class="px-4 py-2">
-                                            @if($service->pivot->is_unlimited)
+                                            @if($unlimited)
                                             <x-filament::badge color="success" size="sm">Yes</x-filament::badge>
                                             @else
                                             <x-filament::badge color="gray" size="sm">No</x-filament::badge>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2 text-gray-400 italic">{{ $service->pivot->remarks ?? '—' }}</td>
+                                        @if(!$isShared)
+                                        <td class="px-4 py-2 text-gray-400 italic">{{ $item->pivot->remarks ?? '—' }}</td>
+                                        @endif
                                     </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
-                        @if(auth()->user()->hasRole('Dentist') && $member->account?->services->contains(fn($s) => $s->type === 'special'))
+                        @if(auth()->user()->hasRole('Dentist') && $member->account?->services?->contains(fn($s) => $s->type === 'special'))
                         <div class="px-4 py-2 border-t border-amber-100 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 flex items-center gap-2">
                             <x-heroicon-o-phone class="w-3.5 h-3.5 text-amber-500 shrink-0" />
                             <span class="text-xs text-amber-600 dark:text-amber-400">Special services included. Call HPDAI for details.</span>

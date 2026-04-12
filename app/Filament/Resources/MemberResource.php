@@ -6,8 +6,6 @@ use App\Filament\Resources\MemberResource\Pages;
 use App\Imports\MembersImport;
 use App\Models\Account;
 use App\Models\Member;
-use App\Models\Role;
-use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,7 +20,6 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 
 class MemberResource extends Resource
 {
@@ -42,13 +39,15 @@ class MemberResource extends Resource
                             ->label('Account')
                             ->relationship(
                                 name: 'account',
-                                titleAttribute: 'company_name',
                                 modifyQueryUsing: fn($query) => $query->where('account_status', 'active')
                             )
+                            ->getOptionLabelFromRecordUsing(fn(Account $record) => "{$record->company_name} ({$record->policy_code})")
                             ->required()
-                            ->searchable()
-                            ->reactive(),
+                            ->searchable(['company_name', 'policy_code'])
+                            ->reactive()
+                            ->afterStateUpdated(fn(callable $set) => $set('dependents', [])),
 
+                        // === INDIVIDUAL FIELDS ===
                         Grid::make(2)
                             ->schema([
                                 TextInput::make('card_number')
@@ -83,26 +82,32 @@ class MemberResource extends Resource
                                     ->dehydrated(false)
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                         if ($state && empty($get('coc_number'))) {
-                                            $set('coc_number', \App\Models\Member::generateCocNumber());
+                                            $set('coc_number', Member::generateCocNumber());
                                         }
                                         if ($state) $set('card_number', null);
                                     })
                                     ->columnStart(2)
                                     ->inline(false),
                             ])
-                            ->columnSpan(1),
+                            ->columnSpan(1)
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
-                        TextInput::make('first_name')->required()->maxLength(255),
-                        TextInput::make('last_name')->required()->maxLength(255),
-                        TextInput::make('middle_name')->maxLength(255),
-                        TextInput::make('suffix')->maxLength(255),
+                        TextInput::make('first_name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED')->maxLength(255)
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
+                        TextInput::make('last_name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED')->maxLength(255)
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
+                        TextInput::make('middle_name')->maxLength(255)
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
+                        TextInput::make('suffix')->maxLength(255)
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
                         Select::make('member_type')
                             ->options([
                                 'PRINCIPAL' => 'Principal',
                                 'DEPENDENT' => 'Dependent',
                             ])
-                            ->required(),
+                            ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED')
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
                         Select::make('status')
                             ->options([
@@ -110,30 +115,79 @@ class MemberResource extends Resource
                                 'INACTIVE' => 'Inactive',
                             ])
                             ->default('ACTIVE')
-                            ->required()
-                            ->reactive(),
+                            ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED')
+                            ->reactive()
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
                         DatePicker::make('inactive_date')
                             ->label('Inactive Date')
-                            ->visible(fn(callable $get) => $get('status') === 'INACTIVE'),
+                            ->visible(fn(callable $get) => $get('status') === 'INACTIVE' && static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
-                        DatePicker::make('birthdate'),
+                        DatePicker::make('birthdate')
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
                         Select::make('gender')
                             ->options([
                                 'male' => 'Male',
                                 'female' => 'Female',
                             ])
-                            ->native(false),
+                            ->native(false)
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
                     ])->columns(2),
 
+                // === SHARED: Principal Section ===
+                Section::make('Principal Member')
+                    ->schema([
+                        TextInput::make('shared_card_number')
+                            ->label('Card Number')
+                            ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+                        Grid::make(2)->schema([
+                            TextInput::make('principal_first_name')->label('First Name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+                            TextInput::make('principal_last_name')->label('Last Name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+                            TextInput::make('principal_middle_name')->label('Middle Name'),
+                            TextInput::make('principal_suffix')->label('Suffix'),
+                            DatePicker::make('principal_birthdate')->label('Birthdate')->native(false),
+                            Select::make('principal_gender')->label('Gender')
+                                ->options(['male' => 'Male', 'female' => 'Female'])->native(false),
+                            TextInput::make('principal_email')->label('Email')->email(),
+                            TextInput::make('principal_phone')->label('Phone')->tel(),
+                        ]),
+                    ])
+                    ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+
+                // === SHARED: Dependents Section ===
+                Section::make('Dependents')
+                    ->schema([
+                        Forms\Components\Repeater::make('dependents')
+                            ->label('')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    TextInput::make('first_name')->label('First Name')->required(),
+                                    TextInput::make('last_name')->label('Last Name')->required(),
+                                    TextInput::make('middle_name')->label('Middle Name'),
+                                    TextInput::make('suffix')->label('Suffix'),
+                                    DatePicker::make('birthdate')->label('Birthdate')->native(false),
+                                    Select::make('gender')->label('Gender')
+                                        ->options(['male' => 'Male', 'female' => 'Female'])->native(false),
+                                    TextInput::make('email')->label('Email')->email(),
+                                    TextInput::make('phone')->label('Phone')->tel(),
+                                ]),
+                            ])
+                            ->collapsible()
+                            ->itemLabel(fn(array $state) => ($state['first_name'] ?? '') . ' ' . ($state['last_name'] ?? '') ?: 'New Dependent')
+                            ->addActionLabel('Add Dependent'),
+                    ])
+                    ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+
+                // === Contact Details (INDIVIDUAL only) ===
                 Section::make('Contact Details')
                     ->schema([
                         TextInput::make('email')->email(),
                         TextInput::make('phone')->tel(),
-                        // Textarea::make('address')->rows(2),
-                    ])->columns(2),
+                    ])->columns(2)
+                    ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
+                // === Contract Information (MEMBER coverage period, INDIVIDUAL only) ===
                 Section::make('Contract Information')
                     ->schema([
                         DatePicker::make('effective_date')
@@ -144,7 +198,7 @@ class MemberResource extends Resource
                                 if ($state) {
                                     $set(
                                         'expiration_date',
-                                        Carbon::parse($state)->addYear()->subDay()->format('Y-m-d')
+                                        \Carbon\Carbon::parse($state)->addYear()->subDay()->format('Y-m-d')
                                     );
                                 }
                             }),
@@ -156,10 +210,17 @@ class MemberResource extends Resource
                     ->columns(2)
                     ->visible(
                         fn(callable $get) =>
-                        filled($get('account_id')) &&
-                            optional(Account::find($get('account_id')))->coverage_period_type === 'MEMBER'
+                        static::getAccountPlanType($get('account_id')) !== 'SHARED'
+                            && filled($get('account_id'))
+                            && optional(Account::find($get('account_id')))->coverage_period_type === 'MEMBER'
                     ),
             ]);
+    }
+
+    public static function getAccountPlanType(?string $accountId): ?string
+    {
+        if (! $accountId) return null;
+        return Account::where('id', $accountId)->value('plan_type');
     }
 
     public static function table(Table $table): Table
@@ -250,8 +311,6 @@ class MemberResource extends Resource
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
 
-
-
                         $import = new MembersImport($originalFileName);
                         Excel::import($import, $absolutePath);
 
@@ -267,10 +326,7 @@ class MemberResource extends Resource
                             ->title($message)
                             ->success()
                             ->send();
-                    })
-
-
-
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -286,8 +342,6 @@ class MemberResource extends Resource
                 ]),
             ]);
     }
-
-
 
     public static function canViewAny(): bool
     {
@@ -314,7 +368,6 @@ class MemberResource extends Resource
         return auth()->check()
             && auth()->user()->can('member.view');
     }
-
 
     public static function getRelations(): array
     {

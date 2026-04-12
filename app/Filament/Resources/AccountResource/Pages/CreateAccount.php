@@ -3,53 +3,55 @@
 namespace App\Filament\Resources\AccountResource\Pages;
 
 use App\Filament\Resources\AccountResource;
+use App\Models\Role;
+use App\Models\User;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Password;
 
 class CreateAccount extends CreateRecord
 {
     protected static string $resource = AccountResource::class;
 
     protected array $servicesData = [];
-    protected array $membersData = [];
 
-    /**
-     * Prepare data before creating the account record.
-     */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Store services (basic + enhancement) temporarily
         $this->servicesData = $data['services'] ?? [];
 
-        // Store members temporarily
-        $this->membersData = $data['members'] ?? [];
-
-        // Set mbl_balance = mbl_amount for fixed type
         if (isset($data['mbl_type']) && $data['mbl_type'] === 'Fixed' && isset($data['mbl_amount'])) {
             $data['mbl_balance'] = $data['mbl_amount'];
         }
 
-        // Remove non-account columns
         unset($data['services'], $data['members']);
+
+        $data['created_by'] = auth()->id();
 
         return $data;
     }
 
-    /**
-     * Handle services + members after account creation.
-     */
     protected function afterCreate(): void
     {
         $this->saveServices();
-        $this->saveMembers();
+        $this->notifyApprovers();
     }
 
-    /**
-     * Save services pivot data.
-     */
+    protected function notifyApprovers(): void
+    {
+        $approvers = User::role([Role::UPPER_MANAGEMENT, Role::MIDDLE_MANAGEMENT])->get();
+
+        Notification::make()
+            ->title('New Account Pending Approval')
+            ->body('Account ' . $this->record->company_name . ' (' . $this->record->policy_code . ') needs approval.')
+            ->warning()
+            ->actions([
+                NotificationAction::make('view')
+                    ->label('View Account')
+                    ->url(AccountResource::getUrl('view', ['record' => $this->record])),
+            ])
+            ->sendToDatabase($approvers);
+    }
+
     protected function saveServices(): void
     {
         $basic = $this->servicesData['basic'] ?? [];
@@ -90,63 +92,6 @@ class CreateAccount extends CreateRecord
         }
     }
 
-    /**
-     * Save members (SHARED plans only).
-     */
-    protected function saveMembers(): void
-    {
-        if ($this->record->plan_type !== 'SHARED') {
-            return;
-        }
-
-        if (empty($this->membersData)) {
-            return;
-        }
-
-        foreach ($this->membersData as $memberData) {
-            // Skip empty rows
-            if (empty($memberData['first_name']) || empty($memberData['last_name'])) {
-                continue;
-            }
-
-            $userId = null;
-            $plainPassword = Str::random(12);
-            // if (!empty($memberData['email'])) {
-            $user = \App\Models\User::create([
-                'name' => $memberData['first_name'] . ' ' . ($memberData['middle_name'] ?? '') . ' ' . $memberData['last_name'],
-                'email' => $memberData['email'],
-                'password' => $plainPassword, // temporary random password
-            ]);
-            $userId = $user->id;
-            // }
-
-            if (!empty($memberData['email'])) {
-                $token = Password::broker()->createToken($user);
-                $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
-            }
-
-            // ✅ Create member with the new user_id
-            $this->record->members()->create([
-                'first_name'   => $memberData['first_name'],
-                'middle_name'  => $memberData['middle_name'] ?? null,
-                'last_name'    => $memberData['last_name'],
-                'suffix'       => $memberData['suffix'] ?? null,
-                'member_type' => !empty($memberData['is_principal']) ? 'PRINCIPAL' : 'DEPENDENT',
-                'birthdate'    => $memberData['birthdate'] ?? null,
-                'card_number'  => $this->record->card_used,
-                'gender'       => $memberData['gender'] ?? null,
-                'email'        => $memberData['email'] ?? null,
-                'phone'        => $memberData['phone'] ?? null,
-                'address'      => $memberData['address'] ?? null,
-                'user_id'      => $userId, // link created user
-            ]);
-        }
-    }
-
-
-    /**
-     * Redirect after creation.
-     */
     protected function getRedirectUrl(): string
     {
         return static::getResource()::getUrl('index');

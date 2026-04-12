@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Procedure;
 use App\Models\User;
+use App\Services\ServiceQuantityService;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -116,18 +117,10 @@ class PendingProcedures extends Page implements HasForms, HasTable
                             'last_updated_by' => auth()->id(),
                         ]);
 
-                        // Return service quantity
+                        // Return service quantity (family-aware for SHARED)
                         $member = $record->member;
                         if ($member && $member->account) {
-                            $pivot = $member->account->services()
-                                ->where('service_id', $record->service_id)
-                                ->first()?->pivot;
-
-                            if ($pivot && !$pivot->is_unlimited) {
-                                $member->account->services()->updateExistingPivot($record->service_id, [
-                                    'quantity' => $pivot->quantity + 1,
-                                ]);
-                            }
+                            ServiceQuantityService::returnQuantity($member, $record->service_id);
                         }
 
                         $this->notifyOnAction($record, 'rejected', $data['remarks']);

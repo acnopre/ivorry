@@ -10,6 +10,7 @@ use App\Models\AccountRenewalService;
 use App\Models\AccountService;
 use App\Models\AccountServiceHistory;
 use App\Models\Role;
+use App\Models\MemberService;
 use App\Services\MblBalanceService;
 use Filament\Infolists;
 use Filament\Infolists\Components\Section;
@@ -246,6 +247,14 @@ class ViewAccount extends ViewRecord
                     $record->expiration_date = $renewal->expiration_date;
                     $record->save();
 
+                    // Reset family service quantities for SHARED accounts
+                    if (strtoupper($record->plan_type) === 'SHARED') {
+                        MemberService::where('account_id', $record->id)->delete();
+                        $record->members->pluck('card_number')->unique()->filter()->each(
+                            fn($cardNumber) => MemberService::initializeForFamily($cardNumber, $record->id)
+                        );
+                    }
+
                     Notification::make()
                         ->title('Account renewal approved successfully.')
                         ->success()
@@ -418,6 +427,14 @@ class ViewAccount extends ViewRecord
                     ]);
                     $amendment->services()->delete();
                     $amendment->delete();
+
+                    // Reset family service quantities for SHARED accounts
+                    if (strtoupper($record->plan_type) === 'SHARED') {
+                        MemberService::where('account_id', $record->id)->delete();
+                        $record->members->pluck('card_number')->unique()->filter()->each(
+                            fn($cardNumber) => MemberService::initializeForFamily($cardNumber, $record->id)
+                        );
+                    }
 
                     Notification::make()
                         ->title('Account amendment approved successfully.')

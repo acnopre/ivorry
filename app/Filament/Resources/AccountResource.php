@@ -106,11 +106,6 @@ class AccountResource extends Resource
                                     'SHARED' => 'Shared',
                                 ])
                                 ->reactive()
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                    if ($state !== 'SHARED') {
-                                        $set('members', []);
-                                    }
-                                })
                                 ->required()
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
@@ -147,83 +142,6 @@ class AccountResource extends Resource
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
                         ])->columns(2),
 
-
-
-                    Section::make('Members')
-                        ->visible(fn(Forms\Get $get) => $get('plan_type') === 'SHARED')
-                        ->schema([
-                            Forms\Components\Repeater::make('members')
-                                ->label('Members')
-                                ->relationship('members')
-                                ->schema([
-                                    Forms\Components\TextInput::make('first_name')
-                                        ->label('First Name')
-                                        ->required()
-                                        ->maxLength(255),
-
-                                    Forms\Components\TextInput::make('middle_name')
-                                        ->label('Middle Name')
-                                        ->maxLength(255),
-
-                                    Forms\Components\TextInput::make('last_name')
-                                        ->label('Last Name')
-                                        ->required()
-                                        ->maxLength(255),
-
-                                    Forms\Components\TextInput::make('suffix')
-                                        ->label('Suffix')
-                                        ->maxLength(50),
-                                    Forms\Components\DatePicker::make('birthdate')
-                                        ->label('Birthdate')
-                                        ->native(false),
-
-                                    Forms\Components\Select::make('gender')
-                                        ->label('Gender')
-                                        ->options([
-                                            'male' => 'Male',
-                                            'female' => 'Female',
-                                        ])
-                                        ->native(false),
-
-                                    Forms\Components\TextInput::make('email')
-                                        ->label('Email')
-                                        ->maxLength(255),
-
-                                    Forms\Components\Toggle::make('is_principal')
-                                        ->label('Principal')
-                                        ->reactive()
-                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            if ($state) {
-                                                $members = $get('../../members') ?? [];
-
-                                                // Find the current item's data
-                                                $currentItem = $get(); // gets this member data
-                                                $currentIndex = collect($members)
-                                                    ->search(
-                                                        fn($member) =>
-                                                        $member['last_name'] === $currentItem['last_name'] &&
-                                                            $member['first_name'] === $currentItem['first_name']
-                                                    );
-
-                                                if ($currentIndex !== false) {
-                                                    foreach ($members as $index => $member) {
-                                                        if ($index !== $currentIndex) {
-                                                            $set("../../members.{$index}.is_principal", false);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }),
-
-                                ])
-                                ->columns(2)
-                                ->collapsible()
-                                ->createItemButtonLabel('Add Member')
-                                ->disabled(
-                                    fn(Forms\Get $get) =>
-                                    ! ($isAmendment($get) || $get('endorsement_type') === 'RENEWAL')
-                                ),
-                        ]),
 
 
                     Section::make('Contract Information')
@@ -633,9 +551,10 @@ class AccountResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('company_name')
-                    ->label('Company Name')
+                    ->label('Account')
+                    ->formatStateUsing(fn($record) => "{$record->company_name} ({$record->policy_code})")
                     ->sortable()
-                    ->searchable(),
+                    ->searchable(['company_name', 'policy_code']),
 
                 TextColumn::make('endorsement_type')
                     ->label('Endorsement Type')

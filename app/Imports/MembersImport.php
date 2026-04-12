@@ -7,6 +7,7 @@ use App\Models\Member;
 use App\Models\User;
 use App\Models\ImportLog;
 use App\Models\ImportLogItem;
+use App\Models\MemberService;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
@@ -216,6 +217,11 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     'import_id'     => $this->importLog->id,
                 ]);
                 $member->save();
+
+                // Initialize family service quantities for SHARED accounts
+                if (strtoupper($account->plan_type) === 'SHARED') {
+                    MemberService::initializeForFamily($member->card_number, $account->id);
+                }
 
                 if (strtoupper($row['status'] ?? 'ACTIVE') === 'ACTIVE') {
                     $user = User::create([

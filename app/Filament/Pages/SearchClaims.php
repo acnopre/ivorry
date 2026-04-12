@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use App\Models\User;
+use App\Services\ServiceQuantityService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -337,19 +338,10 @@ class SearchClaims extends Page implements HasForms, HasTable
                                         'remarks' => $data['remarks'],
                                     ]);
 
-                                    // Return deducted quantity
+                                    // Return deducted quantity (family-aware for SHARED)
                                     $member = \App\Models\Member::find($record->member_id);
                                     if ($member && $member->account) {
-                                        $pivot = $member->account->services()
-                                            ->where('service_id', $record->service_id)
-                                            ->first()
-                                            ?->pivot;
-
-                                        if ($pivot && !$pivot->is_unlimited) {
-                                            $member->account->services()->updateExistingPivot($record->service_id, [
-                                                'quantity' => $pivot->quantity + 1,
-                                            ]);
-                                        }
+                                        ServiceQuantityService::returnQuantity($member, $record->service_id);
                                     }
 
                                     Notification::make()

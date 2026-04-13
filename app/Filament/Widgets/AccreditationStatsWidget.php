@@ -2,57 +2,67 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Account;
 use App\Models\Clinic;
 use App\Models\Dentist;
+use App\Filament\Resources\ClinicsResource;
+use App\Filament\Resources\DentistResource;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Database\Eloquent\Builder;
 
 class AccreditationStatsWidget extends BaseWidget
 {
     protected function getStats(): array
     {
-        $clinicQuery = Clinic::query();
-        $todayClinics = Clinic::whereDate('created_at', today());
-        $pendingClinics = $clinicQuery->clone()->where('accreditation_status', 'PENDING');
+        $clinicUrl = ClinicsResource::getUrl('index');
 
         $stats = [
-            Stat::make('Active Clinics', $clinicQuery->clone()->where('accreditation_status', 'ACTIVE')->count())
+            Stat::make('Active Clinics', Clinic::where('accreditation_status', 'ACTIVE')->count())
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->description('Currently accredited')
-                ->chart([20, 25, 23, 28, 26, 30, $clinicQuery->clone()->where('accreditation_status', 'ACTIVE')->count()]),
+                ->url($clinicUrl . '?' . http_build_query([
+                    'tableFilters[accreditation_status][value]' => 'ACTIVE',
+                ])),
 
-            Stat::make('New Today', $todayClinics->count())
+            Stat::make('New Today', Clinic::whereDate('created_at', today())->count())
                 ->icon('heroicon-o-sparkles')
                 ->color('info')
-                ->description('Registered today'),
+                ->description('Registered today')
+                ->url($clinicUrl),
 
-            Stat::make('Inactive Clinics', $clinicQuery->clone()->where('accreditation_status', 'INACTIVE')->count())
+            Stat::make('Inactive Clinics', Clinic::where('accreditation_status', 'INACTIVE')->count())
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->description('Currently inactive'),
+                ->description('Currently inactive')
+                ->url($clinicUrl . '?' . http_build_query([
+                    'tableFilters[accreditation_status][value]' => 'INACTIVE',
+                ])),
 
-            Stat::make('Silent Status', $clinicQuery->clone()->where('accreditation_status', 'SILENT')->count())
+            Stat::make('Silent Status', Clinic::where('accreditation_status', 'SILENT')->count())
                 ->icon('heroicon-o-eye-slash')
                 ->color('warning')
-                ->description('Under silent status'),
-
+                ->description('Under silent status')
+                ->url($clinicUrl . '?' . http_build_query([
+                    'tableFilters[accreditation_status][value]' => 'SILENT',
+                ])),
 
             Stat::make('Total Dentists', Dentist::count())
                 ->icon('heroicon-o-user-group')
                 ->color('info')
-                ->description('Registered practitioners'),
+                ->description('Registered practitioners')
+                ->url(DentistResource::getUrl('index')),
         ];
 
-        if ($pendingClinics->count() > 0) {
-            array_unshift(
-                $stats,
-                Stat::make('Pending Approval', $pendingClinics->count())
+        $pendingCount = Clinic::where('accreditation_status', 'PENDING')->count();
+        if ($pendingCount > 0) {
+            array_unshift($stats,
+                Stat::make('Pending Approval', $pendingCount)
                     ->icon('heroicon-o-clock')
                     ->color('warning')
                     ->description('Awaiting accreditation')
+                    ->url($clinicUrl . '?' . http_build_query([
+                        'tableFilters[accreditation_status][value]' => 'PENDING',
+                    ]))
             );
         }
 

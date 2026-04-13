@@ -478,6 +478,17 @@ class ClinicsResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')->dateTime(),
 
             ])
+            ->filters([
+                SelectFilter::make('accreditation_status')
+                    ->label('Accreditation Status')
+                    ->options([
+                        'ACTIVE' => 'Active',
+                        'INACTIVE' => 'Inactive',
+                        'SILENT' => 'Silent',
+                        'SPECIFIC ACCOUNT' => 'Specific Account',
+                        'SPECIFIC HIP' => 'Specific HIP',
+                    ]),
+            ])
             ->headerActions([
                 Action::make('importXls')
                     ->label('Import XLS')

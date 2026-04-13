@@ -33,8 +33,6 @@ class Dashboard extends BaseDashboard
         if (auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)) {
             return [
                 DashboardStats::class,
-                AccountStatsWidget::class,
-                PendingAdcRequestsWidget::class,
                 RecentClaimsTable::class,
                 ActivityTimeline::class,
             ];

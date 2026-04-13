@@ -75,6 +75,16 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return null;
         }
 
+        // If inactive_date is in the future, treat as ACTIVE for now
+        if (!empty($row['inactive_date']) && strtoupper($row['status'] ?? '') === 'INACTIVE') {
+            $inactiveDate = is_numeric($row['inactive_date'])
+                ? Date::excelToDateTimeObject($row['inactive_date'])
+                : new \DateTime($row['inactive_date']);
+            if ($inactiveDate > new \DateTime()) {
+                $row['status'] = 'ACTIVE';
+            }
+        }
+
         DB::beginTransaction();
         try {
             $restored = false;

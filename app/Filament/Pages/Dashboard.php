@@ -33,12 +33,15 @@ class Dashboard extends BaseDashboard
         if (auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT)) {
             return [
                 DashboardStats::class,
+                PendingAdcRequestsWidget::class,
                 RecentClaimsTable::class,
                 ActivityTimeline::class,
             ];
         } else if (auth()->user()?->hasAnyRole(Role::MIDDLE_MANAGEMENT)) {
             return [
-                PendingAdcRequestsWidget::class,
+                DashboardStats::class,
+                RecentClaimsTable::class,
+                ActivityTimeline::class,
             ];
         } else if (auth()->user()?->hasAnyRole(Role::ACCOUNT_MANAGER)) {
             return [

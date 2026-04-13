@@ -15,7 +15,7 @@ class ActivityTimeline extends Widget
     public static function canView(): bool
     {
         return auth()->check()
-            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT]);
+            && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::MIDDLE_MANAGEMENT]);
     }
 
     public function getActivities()

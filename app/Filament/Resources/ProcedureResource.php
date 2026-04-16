@@ -129,7 +129,7 @@ class ProcedureResource extends Resource
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn($state) => ucfirst($state))
-                    ->color(fn($state) => match($state) {
+                    ->color(fn($state) => match ($state) {
                         'pending'   => 'warning',
                         'signed'    => 'info',
                         'valid'     => 'success',
@@ -198,7 +198,7 @@ class ProcedureResource extends Resource
                     ->label('Request Fee Edit')
                     ->icon('heroicon-o-currency-dollar')
                     ->color('warning')
-                    ->visible(fn($record) => $record->status === Procedure::STATUS_SIGN && !$record->hasPendingFeeAdjustment())
+                    ->visible(fn($record) => $record->status === Procedure::STATUS_SIGN || $record->status === Procedure::STATUS_PENDING  && !$record->hasPendingFeeAdjustment())
                     ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
                     ->form([
                         Forms\Components\TextInput::make('current_fee')

@@ -293,9 +293,9 @@ class SearchClaims extends Page implements HasForms, HasTable
                             return [];
                         }
 
-                        if ($record->status !== Procedure::STATUS_SIGN) {
-                            return [];
-                        }
+                        // if ($record->status !== Procedure::STATUS_SIGN) {
+                        //     return [];
+                        // }
 
                         return [
                             // 🟢 VALID

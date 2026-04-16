@@ -27,6 +27,7 @@ class SearchClinics extends Page
     public ?int $region = null;
     public ?int $province = null;
     public ?int $city = null;
+    public ?string $clinic_name = null;
     public ?string $dentist_last_name = null;
     public array $specialization = [];
     public ?string $accreditation_status = null;
@@ -39,6 +40,13 @@ class SearchClinics extends Page
     public function mount(): void
     {
         $this->clinics = collect();
+
+        // Auto-resolve member's account and HIP for filtering
+        $member = \App\Models\Member::where('user_id', auth()->id())->first();
+        if ($member) {
+            $this->account_id = $member->account_id;
+            $this->hip = $member->account?->hip_id;
+        }
     }
 
     protected function getFormSchema(): array
@@ -79,6 +87,10 @@ class SearchClinics extends Page
                             )
                             ->searchable(),
 
+                        Forms\Components\TextInput::make('clinic_name')
+                            ->label('Clinic Name')
+                            ->placeholder('Enter Clinic Name'),
+
                         // DENTIST LAST NAME
                         Forms\Components\TextInput::make('dentist_last_name')
                             ->label('Dentist Last Name')
@@ -110,16 +122,22 @@ class SearchClinics extends Page
                             ->placeholder('All')
                             ->visible(
                                 fn($get) => trim(strtoupper($get('accreditation_status'))) === 'SPECIFIC HIP'
+                                    && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::CSR])
                             ),
 
                         Forms\Components\Select::make('account_id')
                             ->label('Select Account')
                             ->options(function () {
-                                return \App\Models\Account::pluck('company_name', 'id');
+                                return \App\Models\Account::where('account_status', 'active')
+                                    ->get()
+                                    ->mapWithKeys(fn($a) => [$a->id => "{$a->company_name} ({$a->policy_code})"]);
                             })
                             ->searchable()
                             ->placeholder('All Accounts')
-                            ->visible(fn($get) => $get('accreditation_status') === 'SPECIFIC ACCOUNT'),
+                            ->visible(
+                                fn($get) => $get('accreditation_status') === 'SPECIFIC ACCOUNT'
+                                    && auth()->user()->hasAnyRole([Role::SUPER_ADMIN, Role::CSR])
+                            ),
 
 
                     ]),
@@ -160,6 +178,10 @@ class SearchClinics extends Page
         if ($this->city) {
             $query->where('municipality_id', $this->city);
         }
+        if ($this->clinic_name) {
+            $query->where('clinic_name', 'like', "%{$this->clinic_name}%");
+        }
+
         if ($this->dentist_last_name) {
             $query->whereHas(
                 'dentists',
@@ -177,14 +199,33 @@ class SearchClinics extends Page
 
         if ($this->accreditation_status) {
             $query->where('accreditation_status', $this->accreditation_status);
-        }
 
-        if ($this->hip) {
-            $query->where('hip_id', $this->hip);
-        }
+            if ($this->accreditation_status === 'SPECIFIC ACCOUNT' && $this->account_id) {
+                $query->where('account_id', $this->account_id);
+            }
 
-        if ($this->account_id) {
-            $query->where('account_id', $this->account_id);
+            if ($this->accreditation_status === 'SPECIFIC HIP' && $this->hip) {
+                $query->where('hip_id', $this->hip);
+            }
+        } elseif ($this->account_id || $this->hip) {
+            // Member context: show ACTIVE clinics + SPECIFIC ACCOUNT for their account + SPECIFIC HIP for their HIP
+            $query->where(function ($q) {
+                $q->where('accreditation_status', 'ACTIVE');
+
+                if ($this->account_id) {
+                    $q->orWhere(function ($q2) {
+                        $q2->where('accreditation_status', 'SPECIFIC ACCOUNT')
+                           ->where('account_id', $this->account_id);
+                    });
+                }
+
+                if ($this->hip) {
+                    $q->orWhere(function ($q2) {
+                        $q2->where('accreditation_status', 'SPECIFIC HIP')
+                           ->where('hip_id', $this->hip);
+                    });
+                }
+            });
         }
 
         $this->clinics = $query->get();

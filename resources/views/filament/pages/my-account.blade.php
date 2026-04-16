@@ -15,7 +15,7 @@
 
             <div>
                 <p class="font-semibold text-gray-700 dark:text-gray-300">HIP</p>
-                <p class="text-gray-900 dark:text-white">{{ $account->hip ?? 'N/A' }}</p>
+                <p class="text-gray-900 dark:text-white">{{ $account->hip->name ?? 'N/A' }}</p>
             </div>
 
             <div>
@@ -108,8 +108,16 @@
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
                             {{ $service->name }}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
-                            {{ $service->type }}
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            @php
+                                $typeColor = match(strtolower($service->type ?? '')) {
+                                    'basic' => 'success',
+                                    'enhancement' => 'info',
+                                    'special' => 'warning',
+                                    default => 'gray',
+                                };
+                            @endphp
+                            <x-filament::badge :color="$typeColor" size="sm">{{ ucfirst($service->type) }}</x-filament::badge>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
                             {{ $service->unit_type }}

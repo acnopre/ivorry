@@ -51,6 +51,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'fee.approval',
             'claims.approve-fee',
             'claims.request-fee',
+            'claims.request-validation',
 
             // Accounts
             'account.view',
@@ -205,6 +206,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'generated_adc.request',
                     'generated_adc.print_original',
                     'claims.request-fee',
+                    'claims.request-validation',
                 ],
                 'users' => [
                     [

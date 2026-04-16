@@ -27,6 +27,13 @@ class PendingProcedures extends Page implements HasForms, HasTable
     protected static ?string $navigationGroup = 'Claims Management';
     protected static ?int $navigationSort = 1;
 
+    public function mount(): void
+    {
+        if (request()->boolean('validation')) {
+            $this->tableFilters['validation_requested']['isActive'] = true;
+        }
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -60,6 +67,12 @@ class PendingProcedures extends Page implements HasForms, HasTable
                     ->label('Availment Date')
                     ->date('M d, Y')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('validation_requested')
+                    ->label('Validation')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state ? 'Requested' : '—')
+                    ->colors(['info' => true])
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Submitted')
                     ->since()
@@ -75,11 +88,40 @@ class PendingProcedures extends Page implements HasForms, HasTable
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
 
+                Tables\Actions\Action::make('approve_validation')
+                    ->label('Approve Validation')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->visible(fn(Procedure $record) =>
+                        $record->validation_requested
+                        && auth()->user()->hasAnyRole([\App\Models\Role::UPPER_MANAGEMENT, \App\Models\Role::MIDDLE_MANAGEMENT, \App\Models\Role::SUPER_ADMIN])
+                    )
+                    ->requiresConfirmation()
+                    ->modalHeading('Approve Validation')
+                    ->modalDescription('This will mark the procedure as Valid.')
+                    ->action(function (Procedure $record) {
+                        $record->update([
+                            'status' => Procedure::STATUS_VALID,
+                            'validation_requested' => false,
+                            'last_updated_by' => auth()->id(),
+                        ]);
+
+                        $this->notifyOnAction($record, 'approved');
+
+                        Notification::make()
+                            ->title('Procedure Validated')
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn() => auth()->user()->can('member.approve_procedure'))
+                    ->visible(fn(Procedure $record) =>
+                        auth()->user()->can('member.approve_procedure')
+                        && ! $record->validation_requested
+                    )
                     ->requiresConfirmation()
                     ->modalHeading('Approve Procedure')
                     ->modalDescription('This will mark the procedure as Valid.')
@@ -168,7 +210,12 @@ class PendingProcedures extends Page implements HasForms, HasTable
                             ->send();
                     }),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort(fn($query) => $query->orderByDesc('validation_requested')->orderByDesc('updated_at'))
+            ->filters([
+                Tables\Filters\Filter::make('validation_requested')
+                    ->label('Validation Requested')
+                    ->query(fn($query) => $query->where('validation_requested', true)),
+            ]);
     }
 
     protected function notifyOnAction(Procedure $record, string $action, ?string $remarks = null): void

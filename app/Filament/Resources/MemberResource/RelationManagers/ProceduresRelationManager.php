@@ -32,15 +32,28 @@ class ProceduresRelationManager extends RelationManager
                     ->label('Approval Code')
                     ->searchable(),
 
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'info' => 'signed',
-                        'success' => 'valid',
-                        'danger' => 'invalid',
-                        'secondary' => 'returned',
-                        'primary' => 'processed',
-                    ]),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => match($state) {
+                        'pending'   => 'Pending',
+                        'signed'    => 'Signed',
+                        'valid'     => 'Valid',
+                        'invalid'   => 'Rejected',
+                        'returned'  => 'Returned',
+                        'processed' => 'Processed',
+                        'cancelled' => 'Cancelled',
+                        default     => ucfirst($state),
+                    })
+                    ->color(fn($state) => match ($state) {
+                        'pending'   => 'warning',
+                        'signed'    => 'info',
+                        'valid'     => 'success',
+                        'invalid'   => 'danger',
+                        'returned'  => 'gray',
+                        'processed' => 'primary',
+                        'cancelled' => 'danger',
+                        default     => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('applied_fee')
                     ->label('Fee')

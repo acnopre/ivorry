@@ -104,11 +104,12 @@ class SearchClaims extends Page implements HasForms, HasTable
                         Forms\Components\Select::make('status')
                             ->options([
                                 'pending' => 'Pending',
-                                'sign' => 'Signed',
+                                'signed' => 'Signed',
                                 'valid' => 'Valid',
                                 'invalid' => 'Rejected',
                                 'returned' => 'Returned',
                                 'processed' => 'Processed',
+                                'cancelled' => 'Cancelled',
                             ])
                             ->label('Claim Status')
                             ->placeholder('Any Status'),
@@ -178,7 +179,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                         $q->where('status', $status)
                     )
                     ->when(
-                        isset($searchData['availment_from'], $searchData['availment_to']),
+                        !empty($searchData['availment_from']) && !empty($searchData['availment_to']),
                         fn(Builder $q) =>
                         $q->whereBetween('availment_date', [
                             $searchData['availment_from'],
@@ -209,15 +210,25 @@ class SearchClaims extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('availment_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->formatStateUsing(fn($state) => match($state) {
+                        'pending'   => 'Pending',
+                        'signed'    => 'Signed',
+                        'valid'     => 'Valid',
+                        'invalid'   => 'Rejected',
+                        'returned'  => 'Returned',
+                        'processed' => 'Processed',
+                        'cancelled' => 'Cancelled',
+                        default     => ucfirst($state),
+                    })
                     ->color(fn(string $state): string => match ($state) {
-                        'pending' => 'warning',
-                        'signed' => 'info',
-                        'valid' => 'success',
-                        'invalid' => 'danger',
-                        'returned' => 'warning',
+                        'pending'   => 'warning',
+                        'signed'    => 'info',
+                        'valid'     => 'success',
+                        'invalid'   => 'danger',
+                        'returned'  => 'gray',
                         'processed' => 'primary',
-                        default => 'secondary',
+                        'cancelled' => 'danger',
+                        default     => 'gray',
                     }),
             ])
             ->actions([
@@ -269,6 +280,35 @@ class SearchClaims extends Page implements HasForms, HasTable
                             ->success()
                             ->send();
                     }),
+                Tables\Actions\Action::make('request_validation')
+                    ->label('Request Validation')
+                    ->icon('heroicon-o-arrow-up-circle')
+                    ->color('info')
+                    ->visible(fn(Procedure $record) =>
+                        auth()->user()->can('claims.request-validation')
+                        && $record->status === Procedure::STATUS_PENDING
+                        && ! $record->validation_requested
+                    )
+                    ->requiresConfirmation()
+                    ->modalHeading('Request Validation')
+                    ->modalDescription('This will send the procedure for validation by management.')
+                    ->action(function (Procedure $record) {
+                        $record->update(['validation_requested' => true]);
+
+                        $approvers = User::role([\App\Models\Role::UPPER_MANAGEMENT, \App\Models\Role::MIDDLE_MANAGEMENT])->get();
+                        Notification::make()
+                            ->title('Procedure Validation Request')
+                            ->body("Procedure {$record->approval_code} for " . trim($record->member?->first_name . ' ' . $record->member?->last_name) . ' is requesting validation.')
+                            ->warning()
+                            ->actions([NotificationAction::make('view')->label('Review')->url(\App\Filament\Pages\PendingProcedures::getUrl() . '?validation=1')])
+                            ->sendToDatabase($approvers);
+
+                        Notification::make()
+                            ->title('Validation Requested')
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\ViewAction::make()
                     ->modalHeading('Claim Details')
                     ->modalContent(function (?Procedure $record) {

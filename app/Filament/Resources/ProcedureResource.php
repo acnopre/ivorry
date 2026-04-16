@@ -130,17 +130,36 @@ class ProcedureResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->formatStateUsing(fn($state) => match($state) {
+                        'pending'   => 'Pending',
+                        'signed'    => 'Signed',
+                        'valid'     => 'Valid',
+                        'invalid'   => 'Rejected',
+                        'returned'  => 'Returned',
+                        'processed' => 'Processed',
+                        'cancelled' => 'Cancelled',
+                        default     => ucfirst($state),
+                    })
                     ->color(fn($state) => match ($state) {
                         'pending'   => 'warning',
                         'signed'    => 'info',
                         'valid'     => 'success',
                         'invalid'   => 'danger',
-                        'returned'  => 'warning',
-                        'processed' => 'success',
+                        'returned'  => 'gray',
+                        'processed' => 'primary',
                         'cancelled' => 'danger',
                         default     => 'gray',
-                    }),
+                    })
+                    ->sortable(),
+
+                Tables\Columns\IconColumn::make('validation_requested')
+                    ->label('Validation')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-arrow-up-circle')
+                    ->falseIcon('')
+                    ->trueColor('info')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('applied_fee')
                     ->label('Applied Fee')
@@ -322,7 +341,7 @@ class ProcedureResource extends Resource
                     }),
             ])
             ->bulkActions([])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort(fn($query) => $query->orderByDesc('validation_requested')->orderByDesc('updated_at'));
     }
 
     public static function getPages(): array

@@ -26,6 +26,7 @@ class Procedure extends Model
         'adc_number_from',
         'is_migrated',
         'last_updated_by',
+        'validation_requested',
     ];
 
     protected $casts = [

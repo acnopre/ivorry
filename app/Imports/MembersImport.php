@@ -85,6 +85,11 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
         }
 
+        // If account effective_date is in the future, force member INACTIVE
+        if ($account->effective_date && $account->effective_date->isFuture()) {
+            $row['status'] = 'INACTIVE';
+        }
+
         DB::beginTransaction();
         try {
             $restored = false;

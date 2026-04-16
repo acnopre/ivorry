@@ -27,7 +27,7 @@
         $procedures = \App\Models\Procedure::with(['units.unitType', 'service', 'clinic'])
         ->where('member_id', $member->id)
         ->when(auth()->user()->hasRole('Dentist'), fn($q) => $q->whereHas('service', fn($s) => $s->where('type', '!=', 'special')))
-        ->orderByDesc('availment_date')
+        ->orderByDesc('updated_at')
         ->get();
         $isShared = strtoupper($member->account?->plan_type ?? '') === 'SHARED';
         if ($isShared && $member->card_number) {
@@ -320,7 +320,9 @@
                                     default => 'warning',
                                     };
                                     $isOwnProcedure = $userClinicId && $userClinicId === $procedure->clinic_id;
-                                    $showCancel = $procedure->status === 'pending' && ($isCsr || $isOwnProcedure);
+                                    $showCancel = $isCsr
+                                        ? in_array($procedure->status, ['pending', 'signed'])
+                                        : ($procedure->status === 'pending' && $isOwnProcedure);
                                     $rows = $procedure->units->isEmpty() ? [null] : $procedure->units;
                                     @endphp
                                     @foreach($rows as $unit)

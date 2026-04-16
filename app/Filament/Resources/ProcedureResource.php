@@ -3,7 +3,9 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProcedureResource\Pages;
+use App\Models\Member;
 use App\Models\Procedure;
+use App\Services\ServiceQuantityService;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Resources\Resource;
@@ -174,7 +176,10 @@ class ProcedureResource extends Resource
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn($record) => $record->status === Procedure::STATUS_PENDING)
+                    ->visible(fn($record) => auth()->user()->hasRole('CSR')
+                        ? in_array($record->status, [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN])
+                        : $record->status === Procedure::STATUS_PENDING
+                    )
                     ->modalHeading('Cancel Procedure')
                     ->modalDescription('Please provide a reason for cancelling this procedure.')
                     ->modalWidth('md')
@@ -185,10 +190,26 @@ class ProcedureResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function (Procedure $record, array $data) {
+                        $wasDeducted = in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_VALID]);
+
                         $record->update([
                             'status'  => Procedure::STATUS_CANCELLED,
                             'remarks' => $data['cancel_reason'],
                         ]);
+
+                        // Return if deduction already happened (signed by CSR or approved)
+                        if ($wasDeducted) {
+                            $member = Member::find($record->member_id);
+                            if ($member && $member->account) {
+                                ServiceQuantityService::returnQuantity($member, $record->service_id);
+
+                                if ($member->account->mbl_type === 'Fixed') {
+                                    $member->update([
+                                        'mbl_balance' => $member->mbl_balance + $record->applied_fee,
+                                    ]);
+                                }
+                            }
+                        }
 
                         Notification::make()->title('Procedure Cancelled')->success()->send();
                     }),

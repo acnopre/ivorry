@@ -7,7 +7,6 @@ use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureSignature;
 use App\Models\User;
-use App\Services\ServiceQuantityService;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
@@ -113,27 +112,6 @@ class SignProcedurePage extends Page
         }
         // --- 4. Finalize Procedure ---
         $this->record->update(['status' => 'signed']);
-
-        // 🧮 Deduct from account based on MBL type
-        $member = Member::find($this->record->member_id);
-
-        if ($member && $member->account) {
-            $account = $member->account;
-            $serviceId = $this->record->service_id;
-
-            // Check MBL type
-            if ($account->mbl_type === 'Fixed') {
-                // Deduct from MBL balance
-                $newBalance = max(0, $member->mbl_balance - $this->record->applied_fee);
-                $member->update(['mbl_balance' => $newBalance]);
-
-                // Also deduct quantity for Fixed type (family-aware for SHARED)
-                ServiceQuantityService::deduct($member, $serviceId);
-            } else {
-                // Procedural: deduct quantity (family-aware for SHARED)
-                ServiceQuantityService::deduct($member, $serviceId);
-            }
-        }
 
         Notification::make()
             ->title('Procedure Signed Successfully! 🎉')

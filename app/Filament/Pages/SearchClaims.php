@@ -342,6 +342,12 @@ class SearchClaims extends Page implements HasForms, HasTable
                                     $member = \App\Models\Member::find($record->member_id);
                                     if ($member && $member->account) {
                                         ServiceQuantityService::returnQuantity($member, $record->service_id);
+
+                                        if ($member->account->mbl_type === 'Fixed') {
+                                            $member->update([
+                                                'mbl_balance' => $member->mbl_balance + $record->applied_fee,
+                                            ]);
+                                        }
                                     }
 
                                     Notification::make()

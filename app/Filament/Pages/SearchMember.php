@@ -709,17 +709,13 @@ class SearchMember extends Page implements HasActions
 
         $this->approvalCode = $approvalCode;
 
-        // Deduct balance/quantity if CSR
-        if (Auth::user()->hasRole('CSR')) {
-            if ($account->mbl_type === 'Fixed') {
-                // Deduct MBL balance for Fixed type
-                $member->mbl_balance -= $appliedFee;
-                $member->save();
-            } else {
-                // Deduct service quantity (family-aware for SHARED)
-                ServiceQuantityService::deduct($member, $data['service_id']);
-            }
+        // Deduct immediately on procedure creation for all roles
+        if ($account->mbl_type === 'Fixed') {
+            $member->update([
+                'mbl_balance' => max(0, $member->mbl_balance - $appliedFee),
+            ]);
         }
+        ServiceQuantityService::deduct($member, $data['service_id']);
 
         $this->showApprovalModal = true;
         $this->search();
@@ -995,8 +991,13 @@ class SearchMember extends Page implements HasActions
     {
         $procedure = Procedure::find($this->cancelProcedureId);
 
-        if (!$procedure || $procedure->status !== Procedure::STATUS_PENDING) {
-            Notification::make()->title('Cannot Cancel')->body('Only pending procedures can be cancelled.')->danger()->send();
+        $isCsr = Auth::user()->hasRole('CSR');
+        $allowedStatuses = $isCsr
+            ? [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN]
+            : [Procedure::STATUS_PENDING];
+
+        if (!$procedure || !in_array($procedure->status, $allowedStatuses)) {
+            Notification::make()->title('Cannot Cancel')->body('You cannot cancel this procedure.')->danger()->send();
             $this->showCancelModal = false;
             return;
         }
@@ -1005,6 +1006,18 @@ class SearchMember extends Page implements HasActions
             'status'  => Procedure::STATUS_CANCELLED,
             'remarks' => $this->cancelReason,
         ]);
+
+        // Return quantity and MBL balance
+        $member = $procedure->member;
+        if ($member && $member->account) {
+            ServiceQuantityService::returnQuantity($member, $procedure->service_id);
+
+            if ($member->account->mbl_type === 'Fixed') {
+                $member->update([
+                    'mbl_balance' => $member->mbl_balance + $procedure->applied_fee,
+                ]);
+            }
+        }
 
         $this->showCancelModal = false;
         $this->cancelProcedureId = null;

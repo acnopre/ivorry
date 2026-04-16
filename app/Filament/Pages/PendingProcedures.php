@@ -117,17 +117,24 @@ class PendingProcedures extends Page implements HasForms, HasTable
                             'last_updated_by' => auth()->id(),
                         ]);
 
-                        // Return service quantity (family-aware for SHARED)
+                        // Return quantity and MBL balance on rejection
                         $member = $record->member;
                         if ($member && $member->account) {
+                            $account = $member->account;
                             ServiceQuantityService::returnQuantity($member, $record->service_id);
+
+                            if ($account->mbl_type === 'Fixed') {
+                                $member->update([
+                                    'mbl_balance' => $member->mbl_balance + $record->applied_fee,
+                                ]);
+                            }
                         }
 
                         $this->notifyOnAction($record, 'rejected', $data['remarks']);
 
                         Notification::make()
                             ->title('Procedure Rejected')
-                            ->body('Service quantity has been returned.')
+                            ->body('Service quantity and MBL balance have been returned.')
                             ->danger()
                             ->send();
                     }),

@@ -204,6 +204,9 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 DB::beginTransaction();
                 try {
                     $existing->restore();
+                    $effectiveDate = $this->transformDate($row['effective_date']);
+                    $isFutureEffective = $effectiveDate && $effectiveDate > now()->format('Y-m-d');
+
                     $existing->update([
                         'company_name'         => $row['company_name'],
                         'hip_id'               => $this->requireHipId($row['hip'] ?? null),
@@ -212,7 +215,7 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                         'coverage_period_type' => $row['coverage_type'],
                         'mbl_type'             => $row['mbl_type'] ?? $existing->mbl_type,
                         'mbl_amount'           => $row['mbl_amount'] ?? $existing->mbl_amount,
-                        'account_status'       => $this->migrationMode ? 'active' : 'inactive',
+                        'account_status'       => ($this->migrationMode && ! $isFutureEffective) ? 'active' : 'inactive',
                         'endorsement_status'   => $this->migrationMode ? 'APPROVED' : 'PENDING',
                         'import_id'            => $this->log->id,
                     ]);
@@ -234,18 +237,21 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
         DB::beginTransaction();
         try {
+            $effectiveDate = $this->transformDate($row['effective_date']);
+            $isFutureEffective = $effectiveDate && $effectiveDate > now()->format('Y-m-d');
+
             $account = Account::create([
                 'company_name'         => $row['company_name'],
                 'policy_code'          => $row['policy_code'],
                 'hip_id'               => $this->requireHipId($row['hip'] ?? null),
                 'card_used'            => $row['card_used'],
-                'effective_date'       => $this->transformDate($row['effective_date']),
+                'effective_date'       => $effectiveDate,
                 'expiration_date'      => $this->transformDate($row['expiration_date']),
                 'plan_type'            => $row['plan_type'],
                 'coverage_period_type' => $row['coverage_type'],
                 'mbl_type'             => $row['mbl_type'] ?? 'Procedural',
                 'mbl_amount'           => $row['mbl_amount'] ?? null,
-                'account_status'       => $this->migrationMode ? 'active' : 'inactive',
+                'account_status'       => ($this->migrationMode && ! $isFutureEffective) ? 'active' : 'inactive',
                 'endorsement_status'   => $this->migrationMode ? 'APPROVED' : 'PENDING',
                 'created_by'           => $this->userId,
                 'import_id'            => $this->log->id,

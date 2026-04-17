@@ -49,6 +49,28 @@ class TestDataGenerator extends Page implements HasForms
                             ->required()
                             ->default(3)
                             ->helperText('Each account gets 1 principal + N-1 dependents'),
+
+                        Forms\Components\Radio::make('plan_type')
+                            ->label('Plan Type')
+                            ->options([
+                                'RANDOM'     => 'Random (mix of Individual & Shared)',
+                                'INDIVIDUAL' => 'Individual only',
+                                'SHARED'     => 'Shared only',
+                            ])
+                            ->default('RANDOM')
+                            ->required()
+                            ->inline(),
+
+                        Forms\Components\Radio::make('coverage_type')
+                            ->label('Coverage Type')
+                            ->options([
+                                'RANDOM'  => 'Random (mix of Account & Member)',
+                                'ACCOUNT' => 'Account only',
+                                'MEMBER'  => 'Member only',
+                            ])
+                            ->default('RANDOM')
+                            ->required()
+                            ->inline(),
                     ])->columns(2),
             ])
             ->statePath('data');
@@ -66,8 +88,10 @@ class TestDataGenerator extends Page implements HasForms
             'MM ROYAL CARE',
         ];
 
-        $planTypes     = ['INDIVIDUAL', 'SHARED'];
-        $coverageTypes = ['ACCOUNT', 'MEMBER'];
+        $planTypes      = ['INDIVIDUAL', 'SHARED'];
+        $selectedPlan   = $this->data['plan_type'] ?? 'RANDOM';
+        $coverageTypes  = ['ACCOUNT', 'MEMBER'];
+        $selectedCoverage = $this->data['coverage_type'] ?? 'RANDOM';
         $mblTypes      = ['Procedural', 'Fixed'];
         $cardUsed      = ['IVORRY', 'HMO'];
         $effectiveDate  = Carbon::today()->format('Y-m-d');
@@ -75,7 +99,9 @@ class TestDataGenerator extends Page implements HasForms
 
         $rows = [];
         for ($i = 0; $i < $count; $i++) {
-            $mblType = $mblTypes[array_rand($mblTypes)];
+            $mblType      = $mblTypes[array_rand($mblTypes)];
+            $planType     = $selectedPlan === 'RANDOM' ? $planTypes[array_rand($planTypes)] : $selectedPlan;
+            $coverageType = $selectedCoverage === 'RANDOM' ? $coverageTypes[array_rand($coverageTypes)] : $selectedCoverage;
             $rows[] = [
                 'company_name'    => 'Test Company ' . strtoupper(Str::random(6)),
                 'policy_code'     => 'POL-' . strtoupper(Str::random(8)),
@@ -83,8 +109,8 @@ class TestDataGenerator extends Page implements HasForms
                 'card_used'       => $cardUsed[array_rand($cardUsed)],
                 'effective_date'  => $effectiveDate,
                 'expiration_date' => $expirationDate,
-                'plan_type'       => $planTypes[array_rand($planTypes)],
-                'coverage_type'   => $coverageTypes[array_rand($coverageTypes)],
+                'plan_type'       => $planType,
+                'coverage_type'   => $coverageType,
                 'endorsement_type' => 'NEW',
                 'mbl_type'        => $mblType,
                 'mbl_amount'      => $mblType === 'Fixed' ? rand(5000, 50000) : '',
@@ -128,8 +154,12 @@ class TestDataGenerator extends Page implements HasForms
 
         $rows = [];
         foreach ($accounts as $account) {
-            $accountName = is_array($account) ? $account['company_name'] : $account;
-            $planType    = is_array($account) ? strtoupper($account['plan_type'] ?? 'INDIVIDUAL') : 'INDIVIDUAL';
+            $accountName  = is_array($account) ? $account['company_name'] : $account;
+            $planType     = is_array($account) ? strtoupper($account['plan_type'] ?? 'INDIVIDUAL') : 'INDIVIDUAL';
+            $coverageType = is_array($account) ? strtoupper($account['coverage_type'] ?? 'ACCOUNT') : 'ACCOUNT';
+            $isMemberCoverage = $coverageType === 'MEMBER';
+            $memberEffective  = $isMemberCoverage ? Carbon::today()->format('Y-m-d') : '';
+            $memberExpiration = $isMemberCoverage ? Carbon::today()->addYear()->subDay()->format('Y-m-d') : '';
 
             // SHARED: all members share 1 card number
             // INDIVIDUAL: each member gets their own card number
@@ -158,8 +188,8 @@ class TestDataGenerator extends Page implements HasForms
                     'address'         => rand(1, 999) . ' ' . $lastNames[array_rand($lastNames)] . ' St., Manila',
                     'status'          => 'ACTIVE',
                     'inactive_date'   => '',
-                    'effective_date'  => '',
-                    'expiration_date' => '',
+                    'effective_date'  => $memberEffective,
+                    'expiration_date' => $memberExpiration,
                 ];
             }
         }

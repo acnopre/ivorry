@@ -8,7 +8,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('members:deactivate')->daily();
-Schedule::command('accounts:activate')->daily();
+Schedule::command('members:deactivate')->dailyAt('00:05');
+Schedule::command('accounts:activate')->dailyAt('00:05');
 // Schedule::command('members:deactivate')->everyMinute(); // uncomment for local testing
 // Schedule::command('accounts:activate')->everyMinute(); // uncomment for local testing

@@ -45,12 +45,13 @@ class Member extends Model
     protected static function booted(): void
     {
         static::saving(function (Member $member) {
-            if ($member->isDirty('inactive_date')) {
-                if ($member->inactive_date && $member->inactive_date->lte(now())) {
-                    $member->status = 'INACTIVE';
-                } elseif (is_null($member->inactive_date)) {
-                    $member->status = 'ACTIVE';
-                }
+            if (! $member->isDirty('inactive_date')) return;
+
+            if ($member->inactive_date && $member->inactive_date->lte(now())) {
+                $member->status = 'INACTIVE';
+            } elseif (is_null($member->inactive_date) && $member->getOriginal('inactive_date') !== null) {
+                // Only set ACTIVE if inactive_date was explicitly cleared from a previous value
+                $member->status = 'ACTIVE';
             }
         });
     }

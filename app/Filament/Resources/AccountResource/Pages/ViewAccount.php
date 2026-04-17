@@ -824,6 +824,12 @@ class ViewAccount extends ViewRecord
                                                     ->label('MBL Amount')
                                                     ->money('PHP')
                                                     ->visible(fn($record) => $record->mbl_type === 'Fixed'),
+
+                                                TextEntry::make('active_members_count')
+                                                    ->label('Active Members')
+                                                    ->badge()
+                                                    ->color('success')
+                                                    ->getStateUsing(fn($record) => $record->members()->where('status', 'ACTIVE')->count()),
                                             ]),
                                         Grid::make(3)
                                             ->schema([

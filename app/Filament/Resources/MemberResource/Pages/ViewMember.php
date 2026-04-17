@@ -27,10 +27,17 @@ class ViewMember extends ViewRecord
                                     ->badge()
                                     ->formatStateUsing(fn($state) => ucfirst($state ?? 'unknown'))
                                     ->color(fn($state) => match (strtolower($state ?? '')) {
-                                        'active' => 'success',
+                                        'active'   => 'success',
                                         'inactive' => 'danger',
-                                        default => 'gray',
-                                    }),
+                                        default    => 'gray',
+                                    })
+                                    ->helperText(fn($record) =>
+                                        $record->renewal_id
+                                            ? '🔄 Staged for renewal — will activate on ' . \Carbon\Carbon::parse(
+                                                \App\Models\AccountRenewal::find($record->renewal_id)?->effective_date
+                                              )->format('M d, Y')
+                                            : null
+                                    ),
                             ]),
                         Grid::make(3)
                             ->schema([
@@ -60,11 +67,24 @@ class ViewMember extends ViewRecord
                                 TextEntry::make('account.account_status')
                                     ->label('Account Status')
                                     ->badge()
+                                    ->formatStateUsing(fn($state) => ucfirst($state))
                                     ->color(fn($state) => match ($state) {
-                                        'active' => 'success',
-                                        'expired' => 'danger',
-                                        default => 'warning',
-                                    }),
+                                        'active'   => 'success',
+                                        'expired'  => 'danger',
+                                        'inactive' => 'warning',
+                                        default    => 'gray',
+                                    })
+                                    ->helperText(fn($record) =>
+                                        $record->account?->renewals()
+                                            ->where('status', 'APPROVED_PENDING_EFFECTIVE')
+                                            ->exists()
+                                            ? '🔄 Renewal effective ' . \Carbon\Carbon::parse(
+                                                $record->account->renewals()
+                                                    ->where('status', 'APPROVED_PENDING_EFFECTIVE')
+                                                    ->value('effective_date')
+                                              )->format('M d, Y')
+                                            : null
+                                    ),
                             ]),
                         Grid::make(3)
                             ->schema([

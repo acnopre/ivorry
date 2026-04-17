@@ -187,7 +187,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     }
 
                     $updateData = [
-                        'status'      => $pendingRenewal ? $member->status : $row['status'],
+                        'status'      => $pendingRenewal ? 'INACTIVE' : $row['status'],
                         'middle_name' => $row['middle_name'] ?? null,
                         'suffix'      => $row['suffix'] ?? null,
                         'gender'      => !empty($row['gender']) ? strtolower($row['gender']) : null,
@@ -251,7 +251,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     MemberService::initializeForFamily($member->card_number, $account->id);
                 }
 
-                if (strtoupper($row['status'] ?? 'ACTIVE') === 'ACTIVE') {
+                if (strtoupper($row['status'] ?? 'ACTIVE') === 'ACTIVE' || $pendingRenewal) {
                     $user = User::create([
                         'name'     => $row['first_name'] . ' ' . $row['last_name'],
                         'email'    => $row['email'] ?? null,
@@ -265,11 +265,17 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
             DB::commit();
             if ($member->wasRecentlyCreated) {
-                $this->logSuccess($row, 'Created');
+                $msg = $pendingRenewal
+                    ? 'Created (staged for renewal on ' . \Carbon\Carbon::parse($pendingRenewal->effective_date)->format('M d, Y') . ')'
+                    : 'Created';
+                $this->logSuccess($row, $msg);
             } elseif (isset($restored) && $restored) {
                 $this->logSuccess($row, 'Restored');
             } else {
-                $this->logUpdated($row, $oldData);
+                $msg = $pendingRenewal
+                    ? 'Updated (staged for renewal on ' . \Carbon\Carbon::parse($pendingRenewal->effective_date)->format('M d, Y') . ')'
+                    : null;
+                $this->logUpdated($row, $oldData, $msg);
             }
             $this->imported++;
             return null; // we handle save() manually, prevent Maatwebsite from calling save() again
@@ -428,14 +434,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         $this->duplicateRows++;
     }
 
-    private function logUpdated($row, array $oldData = [])
+    private function logUpdated($row, array $oldData = [], ?string $messageOverride = null)
     {
         ImportLogItem::create([
             'import_log_id' => $this->importLog->id,
             'row_number'    => $this->getRowNumber(),
             'raw_data'      => $this->cleanRow($row),
             'status'        => 'updated',
-            'message'       => 'Updated: ' . $this->diffSummary($oldData, $this->cleanRow($row)),
+            'message'       => $messageOverride ?? ('Updated: ' . $this->diffSummary($oldData, $this->cleanRow($row))),
         ]);
         $this->updatedRows++;
     }

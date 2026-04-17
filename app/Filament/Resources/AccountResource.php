@@ -554,7 +554,11 @@ class AccountResource extends Resource
                     ->label('Account')
                     ->formatStateUsing(fn($record) => "{$record->company_name} ({$record->policy_code})")
                     ->sortable()
-                    ->searchable(['company_name', 'policy_code']),
+                    ->searchable(['company_name', 'policy_code'])
+                    ->description(fn($record) => $record->renewals()->where('status', 'APPROVED_PENDING_EFFECTIVE')->exists()
+                        ? '🔄 Renewal approved — awaiting effective date'
+                        : null
+                    ),
 
                 TextColumn::make('endorsement_type')
                     ->label('Endorsement Type')

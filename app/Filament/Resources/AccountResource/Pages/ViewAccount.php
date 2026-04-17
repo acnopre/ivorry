@@ -236,27 +236,21 @@ class ViewAccount extends ViewRecord
                     }
 
                     $renewal->update([
-                        'status' => 'APPROVED',
+                        'status' => 'APPROVED_PENDING_EFFECTIVE',
                         'approved_by' => auth()->id(),
                     ]);
 
-                    $record->endorsement_type = 'RENEWED';
+                    $record->endorsement_type = 'RENEWAL';
                     $record->endorsement_status = 'APPROVED';
-                    $record->account_status = 'active';
-                    $record->effective_date = $renewal->effective_date;
-                    $record->expiration_date = $renewal->expiration_date;
                     $record->save();
 
-                    // Reset family service quantities for SHARED accounts
-                    if (strtoupper($record->plan_type) === 'SHARED') {
-                        MemberService::where('account_id', $record->id)->delete();
-                        $record->members->pluck('card_number')->unique()->filter()->each(
-                            fn($cardNumber) => MemberService::initializeForFamily($cardNumber, $record->id)
-                        );
-                    }
+                    // DO NOT update effective/expiration dates yet
+                    // DO NOT reset MemberService yet
+                    // Scheduler will handle this when new effective_date arrives
 
                     Notification::make()
-                        ->title('Account renewal approved successfully.')
+                        ->title('Account renewal approved.')
+                        ->body('Renewal is pending effective date ' . \Carbon\Carbon::parse($renewal->effective_date)->format('M d, Y') . '. Members can be uploaded now.')
                         ->success()
                         ->send();
 
@@ -472,8 +466,22 @@ class ViewAccount extends ViewRecord
     {
         $renewalRecord = $this->record->renewals->first();
         $amendmentAccount = AccountAmendment::where('account_id', $this->record->id)->first();
+        $pendingRenewal = $this->record->renewals()->where('status', 'APPROVED_PENDING_EFFECTIVE')->first();
         return $infolist
             ->schema([
+                \Filament\Infolists\Components\Section::make()
+                    ->schema([
+                        \Filament\Infolists\Components\TextEntry::make('renewal_notice')
+                            ->label('')
+                            ->default(fn() => '🔄 This account has an approved renewal effective ' .
+                                \Carbon\Carbon::parse($pendingRenewal->effective_date)->format('M d, Y') .
+                                '. Please upload the new members for this renewal cycle. Old members will be automatically deactivated on the effective date.')
+                            ->columnSpanFull()
+                            ->color('warning'),
+                    ])
+                    ->visible(fn() => $pendingRenewal !== null)
+                    ->columnSpanFull(),
+
                 Tabs::make('AccountTabs')
                     ->columnSpanFull()
                     ->tabs([

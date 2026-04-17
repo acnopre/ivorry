@@ -94,7 +94,11 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         try {
             $restored = false;
 
-            // If old_card_number is provided, find member by it (for card number updates)
+            // Check if account has an approved pending renewal
+            $pendingRenewal = \App\Models\AccountRenewal::where('account_id', $account->id)
+                ->where('status', 'APPROVED_PENDING_EFFECTIVE')
+                ->first();
+
             if (!empty($row['old_card_number'])) {
                 $row['old_card_number'] = preg_replace('/[^a-zA-Z0-9]/', '', $row['old_card_number']);
                 $member = Member::withTrashed()
@@ -183,13 +187,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     }
 
                     $updateData = [
-                        'status'      => $row['status'],
+                        'status'      => $pendingRenewal ? $member->status : $row['status'],
                         'middle_name' => $row['middle_name'] ?? null,
                         'suffix'      => $row['suffix'] ?? null,
                         'gender'      => !empty($row['gender']) ? strtolower($row['gender']) : null,
                         'email'       => $row['email'] ?? null,
                         'phone'       => $row['phone'] ?? null,
                         'birthdate'   => !empty($row['birthdate']) && is_numeric($row['birthdate']) && $row['birthdate'] > 0 ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : ((!empty($row['birthdate']) && !is_numeric($row['birthdate'])) ? $row['birthdate'] : null),
+                        'renewal_id'  => $pendingRenewal?->id ?? $member->renewal_id,
                     ];
 
                     // Update card_number only when old_card_number is explicitly provided
@@ -230,13 +235,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     'email'         => $row['email'],
                     'phone'         => $row['phone'],
                     'address'       => $row['address'] ?? null,
-                    'status'        => $row['status'] ?? 'active',
+                    'status'        => $pendingRenewal ? 'INACTIVE' : ($row['status'] ?? 'active'),
                     'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
                     'import_source' => strtoupper($row['status'] ?? 'ACTIVE') === 'INACTIVE' ? 'import_inactive' : 'import_active',
                     'effective_date' => is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null,
                     'expiration_date' => is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null,
                     'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
                     'import_id'     => $this->importLog->id,
+                    'renewal_id'    => $pendingRenewal?->id,
                 ]);
                 $member->save();
 

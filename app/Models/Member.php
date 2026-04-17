@@ -30,6 +30,7 @@ class Member extends Model
         'import_source',
         'mbl_balance',
         'import_id',
+        'renewal_id',
     ];
 
 
@@ -69,6 +70,11 @@ class Member extends Model
     public function account()
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function renewal()
+    {
+        return $this->belongsTo(\App\Models\AccountRenewal::class, 'renewal_id');
     }
 
     public function claims()

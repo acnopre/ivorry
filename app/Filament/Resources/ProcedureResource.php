@@ -238,7 +238,10 @@ class ProcedureResource extends Resource
                     ->label('Request Fee Edit')
                     ->icon('heroicon-o-currency-dollar')
                     ->color('warning')
-                    ->visible(fn($record) => $record->status === Procedure::STATUS_SIGN || $record->status === Procedure::STATUS_PENDING  && !$record->hasPendingFeeAdjustment())
+                    ->visible(fn($record) =>
+                        in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
+                        && ! $record->hasPendingFeeAdjustment()
+                    )
                     ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
                     ->form([
                         Forms\Components\TextInput::make('current_fee')

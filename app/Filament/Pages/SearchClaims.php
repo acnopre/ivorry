@@ -236,7 +236,11 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->label('Request Fee Edit')
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
-                    ->visible(fn(Procedure $record) => auth()->user()->can('claims.valid') && $record->status === Procedure::STATUS_SIGN || $record->status === Procedure::STATUS_PENDING  && !$record->hasPendingFeeAdjustment())
+                    ->visible(fn(Procedure $record) =>
+                        (auth()->user()->can('claims.valid') || auth()->user()->can('claims.request-fee'))
+                        && in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
+                        && ! $record->hasPendingFeeAdjustment()
+                    )
                     ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
                     ->form([
                         Forms\Components\TextInput::make('current_fee')

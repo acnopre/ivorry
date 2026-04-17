@@ -114,11 +114,18 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     return null;
                 }
             } else {
-                // Match by card_number — different card means different member
-                $member = Member::withTrashed()
+                // Match by card_number — for SHARED accounts multiple members share card_number
+                // so also match by name to identify the correct member
+                $memberQuery = Member::withTrashed()
                     ->where('account_id', $account->id)
-                    ->where('card_number', $row['card_number'])
-                    ->first();
+                    ->where('card_number', $row['card_number']);
+
+                if (strtoupper($account->plan_type) === 'SHARED') {
+                    $memberQuery->where('first_name', $row['first_name'])
+                        ->where('last_name', $row['last_name']);
+                }
+
+                $member = $memberQuery->first();
             }
 
             if ($member) {
@@ -141,7 +148,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                         'status'         => $member->status,
                         'inactive_date'  => $member->inactive_date,
                         'effective_date' => $member->effective_date,
-                        'expiration_date'=> $member->expiration_date,
+                        'expiration_date' => $member->expiration_date,
                         'birthdate'      => $member->birthdate,
                         'gender'         => $member->gender,
                         'email'          => $member->email,

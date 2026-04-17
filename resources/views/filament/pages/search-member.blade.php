@@ -44,8 +44,9 @@
             ) ?? collect();
         }
         $isCsr = auth()->user()->hasRole('CSR');
+        $isDentistUser = auth()->user()->hasRole('Dentist');
         $userClinicId = auth()->user()->clinic?->id;
-        $defaultOpen = !$isCsr || $loop->first;
+        $defaultOpen = $isCsr ? $loop->first : $member->member_type === 'PRINCIPAL';
         @endphp
 
         <div x-data="{ open: {{ $defaultOpen ? 'true' : 'false' }} }" class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 overflow-hidden">
@@ -69,7 +70,7 @@
                         </div>
                     </div>
                 </div>
-                @if($isCsr)
+                @if($isCsr || $isDentistUser)
                 <button type="button" x-on:click="open = !open" class="ml-auto p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                     <x-heroicon-o-chevron-down class="w-4 h-4 transition-transform duration-200" ::class="{ 'rotate-180': open }" />
                 </button>

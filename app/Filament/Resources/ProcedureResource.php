@@ -344,6 +344,8 @@ class ProcedureResource extends Resource
                     }),
             ])
             ->bulkActions([])
+            ->deferLoading()
+            ->defaultPaginationPageOption(25)
             ->defaultSort(fn($query) => $query->orderByDesc('validation_requested')->orderByDesc('updated_at'));
     }
 

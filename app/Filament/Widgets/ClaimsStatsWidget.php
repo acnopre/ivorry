@@ -6,48 +6,58 @@ use App\Models\Dentist;
 use App\Models\Procedure;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Cache;
 
 class ClaimsStatsWidget extends BaseWidget
 {
+    protected static ?string $pollingInterval = '30s';
+
     protected function getStats(): array
     {
-        $todayProcedures = Procedure::whereDate('created_at', today());
-        $thisWeekProcedures = Procedure::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+        $stats = Cache::remember('claims_stats', 30, function () {
+            return [
+                'signed'         => Procedure::where('status', 'signed')->count(),
+                'valid_today'    => Procedure::where('status', 'valid')->whereDate('updated_at', today())->count(),
+                'this_week'      => Procedure::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+                'total_valid'    => Procedure::where('status', 'valid')->count(),
+                'returned'       => Procedure::where('status', Procedure::STATUS_RETURN)->count(),
+                'invalid'        => Procedure::where('status', 'invalid')->count(),
+                'pending'        => Procedure::where('status', 'pending')->count(),
+            ];
+        });
 
         return [
-            Stat::make('Ready to Process', Procedure::where('status', 'signed')->count())
+            Stat::make('Ready to Process', $stats['signed'])
                 ->icon('heroicon-o-clipboard-document-check')
                 ->color('warning')
-                ->description('Awaiting validation')
-                ->chart([10, 15, 12, 18, 14, 20, Procedure::where('status', 'signed')->count()]),
+                ->description('Awaiting validation'),
 
-            Stat::make('Validated Today', Procedure::where('status', 'valid')->whereDate('updated_at', today())->count())
+            Stat::make('Validated Today', $stats['valid_today'])
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
                 ->description('Processed today'),
 
-            Stat::make('This Week', $thisWeekProcedures->count())
+            Stat::make('This Week', $stats['this_week'])
                 ->icon('heroicon-o-calendar-days')
                 ->color('info')
-                ->description('Procedures this week')
-                ->chart([50, 60, 55, 70, 65, 80, $thisWeekProcedures->count()]),
+                ->description('Procedures this week'),
 
-            Stat::make('Total Validated', Procedure::where('status', 'valid')->count())
+            Stat::make('Total Validated', $stats['total_valid'])
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->description('All validated claims'),
 
-            Stat::make('Returned', Procedure::where('status', Procedure::STATUS_RETURN)->count())
+            Stat::make('Returned', $stats['returned'])
                 ->icon('heroicon-o-arrow-uturn-left')
                 ->color('danger')
                 ->description('Sent back for review'),
 
-            Stat::make('Invalid', Procedure::where('status', 'invalid')->count())
+            Stat::make('Invalid', $stats['invalid'])
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->description('Marked as invalid'),
 
-            Stat::make('Pending Signature', Procedure::where('status', 'pending')->count())
+            Stat::make('Pending Signature', $stats['pending'])
                 ->icon('heroicon-o-clock')
                 ->color('warning')
                 ->description('Awaiting dentist'),

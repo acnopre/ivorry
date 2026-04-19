@@ -210,6 +210,8 @@ class PendingProcedures extends Page implements HasForms, HasTable
                             ->send();
                     }),
             ])
+            ->deferLoading()
+            ->defaultPaginationPageOption(25)
             ->defaultSort(fn($query) => $query->orderByDesc('validation_requested')->orderByDesc('updated_at'))
             ->filters([
                 Tables\Filters\Filter::make('validation_requested')

@@ -569,7 +569,9 @@ class SearchClaims extends Page implements HasForms, HasTable
                         $this->generateClaims(Procedure::STATUS_RETURN);
                     }),
             ])
-            ->defaultSort('availment_date', 'desc');
+            ->defaultSort('availment_date', 'desc')
+            ->deferLoading()
+            ->defaultPaginationPageOption(25);
     }
 
     #[On('updateClaimStatus')]

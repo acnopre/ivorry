@@ -36,7 +36,20 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
         if ($rows->isEmpty()) return;
 
         $header = $rows->first()->toArray();
-        $serviceColumns = array_slice(array_keys($header), 14);
+        $nonServiceColumns = [
+            'clinic_name', 'registered_name', 'clinic_email', 'password',
+            'clinic_mobile', 'clinic_landline', 'complete_address', 'street',
+            'region_name', 'province_name', 'municipality_name', 'barangay_name',
+            'business_type', 'vat_type', 'withholding_tax', 'tax_identification_no',
+            'sec_registration_no', 'ptr_no', 'ptr_date_issued', 'other_hmo_accreditation',
+            'update_info_1903', 'accreditation_status', 'account_name', 'hip_name',
+            'is_branch', 'bank_name', 'bank_branch', 'bank_account_name',
+            'bank_account_number', 'account_type', 'owner_first_name', 'owner_last_name',
+            'owner_middle_initial', 'owner_prc_license', 'owner_prc_expiration',
+            'clinic_staff_name', 'clinic_staff_mobile', 'clinic_staff_viber',
+            'clinic_staff_email', 'viber_no', 'alt_address', 'remarks', 'fee_approval',
+        ];
+        $serviceColumns = array_values(array_diff(array_keys($header), $nonServiceColumns));
         $services = Service::all()->keyBy('slug');
 
         foreach ($rows as $index => $row) {

@@ -123,7 +123,11 @@
                             {{ $service->unit_type }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
-                            {{ $service->pivot->quantity ?? '—' }}
+                            @if($service->pivot->is_unlimited)
+                                <span class="text-green-600 font-medium">Unlimited</span>
+                            @else
+                                {{ $service->pivot->quantity ?? '0' }}
+                            @endif
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             {{ $service->pivot->is_unlimited ? 'Yes' : 'No' }}

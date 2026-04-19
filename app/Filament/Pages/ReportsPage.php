@@ -682,7 +682,9 @@ class ReportsPage extends Page implements HasForms, HasTable
                     ->label('Account'),
                 Tables\Columns\TextColumn::make('account.hip.name')
                     ->label('HIP'),
-                Tables\Columns\TextColumn::make('full_name')->label('Member'),
+                Tables\Columns\TextColumn::make('first_name')
+                    ->label('Member')
+                    ->getStateUsing(fn($record) => $record->first_name . ' ' . $record->last_name),
                 Tables\Columns\TextColumn::make('member_type')->label('Member Type'),
                 Tables\Columns\TextColumn::make('card_number')->label('Card Number'),
                 Tables\Columns\TextColumn::make('gender'),
@@ -716,7 +718,7 @@ class ReportsPage extends Page implements HasForms, HasTable
             'dentists' => [
                 Tables\Columns\TextColumn::make('clinic.clinic_name') // use the relationship
                     ->label('Clinic Name'),
-                Tables\Columns\TextColumn::make('full_name')
+                Tables\Columns\TextColumn::make('first_name')
                     ->label('Dentist Name')
                     ->getStateUsing(fn($record) => $record->first_name . ' ' . $record->last_name),
 
@@ -748,10 +750,10 @@ class ReportsPage extends Page implements HasForms, HasTable
                     ->label('Availment Date')
                     ->date('M d, Y')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('full_name')
+                Tables\Columns\TextColumn::make('member_name')
                     ->label('Member Name')
                     ->getStateUsing(fn($record) => $record->member->first_name . ' ' . $record->member->last_name)
-                    ->searchable(),
+                    ->searchable(['members.first_name', 'members.last_name']),
                 Tables\Columns\TextColumn::make('member.account.company_name')
                     ->label('Account')
                     ->searchable(),

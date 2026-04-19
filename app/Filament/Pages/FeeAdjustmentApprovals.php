@@ -34,8 +34,9 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('procedure.approval_code')
                     ->label('Approval Code')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('procedure.member.full_name')
+                Tables\Columns\TextColumn::make('procedure.member.first_name')
                     ->label('Member')
+                    ->formatStateUsing(fn($state, $record) => trim(($record->procedure?->member?->first_name ?? '') . ' ' . ($record->procedure?->member?->last_name ?? '')))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('procedure.clinic.clinic_name')
                     ->label('Clinic')

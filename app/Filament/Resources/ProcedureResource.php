@@ -45,10 +45,10 @@ class ProcedureResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('member.full_name')
+                Tables\Columns\TextColumn::make('member.first_name')
                     ->label('Member Name')
-                    ->sortable()
-                    ->searchable(),
+                    ->formatStateUsing(fn($state, $record) => trim(($record->member?->first_name ?? '') . ' ' . ($record->member?->last_name ?? '')))
+                    ->searchable(['members.first_name', 'members.last_name']),
 
                 Tables\Columns\TextColumn::make('service.name')
                     ->label('Service')

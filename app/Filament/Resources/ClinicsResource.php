@@ -516,28 +516,18 @@ class ClinicsResource extends Resource
 
                         $filename = $data['original_filename'] ?? basename($relativePath);
                         $log = ImportLog::create([
-                            'filename' => $filename,
-                            'disk' => 'public',
-                            'status' => 'processing',
-                            'user_id' => auth()->id(),
+                            'filename'    => $filename,
+                            'disk'        => 'public',
+                            'status'      => 'processing',
+                            'user_id'     => auth()->id(),
                             'import_type' => 'clinic',
                         ]);
 
-                        Excel::import(new ClinicImport($log), $absolutePath);
-
-                        $message = "Import completed! {$log->success_rows} clinics imported.";
-                        if ($log->updated_rows > 0) {
-                            $message .= " {$log->updated_rows} updated.";
-                        }
-                        if ($log->duplicate_rows > 0) {
-                            $message .= " {$log->duplicate_rows} duplicates.";
-                        }
-                        if ($log->error_rows > 0) {
-                            $message .= " {$log->error_rows} rows failed.";
-                        }
+                        \App\Jobs\ProcessClinicImport::dispatch($absolutePath, $log->id);
 
                         Notification::make()
-                            ->title($message)
+                            ->title('Import queued!')
+                            ->body('Your clinic import is being processed. Check Import Logs for progress.')
                             ->success()
                             ->send();
                     }),

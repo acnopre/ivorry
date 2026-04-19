@@ -38,8 +38,7 @@ class PendingProcedures extends Page implements HasForms, HasTable
     {
         return $table
             ->query(
-                Procedure::query()
-                    ->where('status', Procedure::STATUS_PENDING)
+                Procedure::pending()
                     ->with(['member', 'clinic', 'service', 'units.unitType'])
             )
             ->columns([
@@ -277,7 +276,7 @@ class PendingProcedures extends Page implements HasForms, HasTable
             return null;
         }
 
-        $count = Procedure::where('status', Procedure::STATUS_PENDING)->count();
+        $count = Procedure::pending()->count();
         return $count > 0 ? (string) $count : null;
     }
 

@@ -16,13 +16,13 @@ class ClaimsStatsWidget extends BaseWidget
     {
         $stats = Cache::remember('claims_stats', 30, function () {
             return [
-                'signed'         => Procedure::where('status', 'signed')->count(),
-                'valid_today'    => Procedure::where('status', 'valid')->whereDate('updated_at', today())->count(),
-                'this_week'      => Procedure::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-                'total_valid'    => Procedure::where('status', 'valid')->count(),
-                'returned'       => Procedure::where('status', Procedure::STATUS_RETURN)->count(),
-                'invalid'        => Procedure::where('status', 'invalid')->count(),
-                'pending'        => Procedure::where('status', 'pending')->count(),
+                'signed'         => Procedure::signed()->count(),
+                'valid_today'    => Procedure::valid()->whereDate('updated_at', today())->count(),
+                'this_week'      => Procedure::thisWeek()->count(),
+                'total_valid'    => Procedure::valid()->count(),
+                'returned'       => Procedure::returned()->count(),
+                'invalid'        => Procedure::invalid()->count(),
+                'pending'        => Procedure::pending()->count(),
             ];
         });
 

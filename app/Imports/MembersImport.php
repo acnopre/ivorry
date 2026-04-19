@@ -30,14 +30,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
     private int $duplicateRows = 0;
     private int $errorRows     = 0;
 
-    public function __construct($filename)
+    public function __construct($filename, ?int $userId = null)
     {
         set_time_limit(0);
 
         $this->importLog = ImportLog::create([
-            'filename' => $filename,
-            'disk' => 'public',
-            'user_id' => auth()->id(),
+            'filename'    => $filename,
+            'disk'        => 'public',
+            'user_id'     => $userId,
             'import_type' => 'member',
         ]);
     }

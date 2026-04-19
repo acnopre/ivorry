@@ -699,31 +699,26 @@ class AccountResource extends Resource
                         }
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
-
-
                         $migrationMode = $data['migration_mode'] ?? false;
 
                         $log = ImportLog::create([
-                            'filename' => $originalFileName,
-                            'disk' => 'public',
-                            'status' => 'processing',
-                            'user_id' => auth()->id(),
+                            'filename'    => $originalFileName,
+                            'disk'        => 'public',
+                            'status'      => 'processing',
+                            'user_id'     => auth()->id(),
                             'import_type' => 'account',
                         ]);
 
-                        $import = new AccountImport($log, auth()->id(), $migrationMode);
-                        Excel::import($import, $absolutePath);
-
-                        $message = "Accounts import completed! {$import->imported} imported.";
-                        if (count($import->duplicates) > 0) {
-                            $message .= ' ' . count($import->duplicates) . ' duplicates skipped.';
-                        }
-                        if (count($import->failed) > 0) {
-                            $message .= ' ' . count($import->failed) . ' rows failed.';
-                        }
+                        \App\Jobs\ProcessAccountImport::dispatch(
+                            $absolutePath,
+                            $log->id,
+                            auth()->id(),
+                            $migrationMode
+                        );
 
                         Notification::make()
-                            ->title($message)
+                            ->title('Import queued!')
+                            ->body('Your account import is being processed. Check Import Logs for progress.')
                             ->success()
                             ->send();
                     }),

@@ -17,10 +17,10 @@ class CSRStatsWidget extends BaseWidget
             return [
                 'active_accounts'  => Account::where('account_status', 'active')->count(),
                 'active_members'   => Member::where('status', 'active')->count(),
-                'today_procedures' => Procedure::whereDate('created_at', today())->count(),
-                'pending'          => Procedure::where('status', 'pending')->count(),
-                'signed_today'     => Procedure::where('status', 'signed')->whereDate('updated_at', today())->count(),
-                'signed'           => Procedure::where('status', 'signed')->count(),
+                'today_procedures' => Procedure::today()->count(),
+                'pending'          => Procedure::pending()->count(),
+                'signed_today'     => Procedure::signed()->whereDate('updated_at', today())->count(),
+                'signed'           => Procedure::signed()->count(),
             ];
         });
 

@@ -18,12 +18,12 @@ class DentistStatsWidget extends BaseWidget
 
         $stats = Cache::remember("dentist_stats_{$clinicId}", 30, function () use ($clinicId) {
             return [
-                'today'       => Procedure::where('clinic_id', $clinicId)->whereDate('created_at', today())->count(),
-                'this_month'  => Procedure::where('clinic_id', $clinicId)->whereMonth('created_at', now()->month)->count(),
-                'pending'     => Procedure::where('status', 'pending')->where('clinic_id', $clinicId)->count(),
-                'signed_today'=> Procedure::where('status', 'signed')->where('clinic_id', $clinicId)->whereDate('updated_at', today())->count(),
-                'total_signed'=> Procedure::where('status', 'signed')->where('clinic_id', $clinicId)->count(),
-                'returned'    => Procedure::where('status', 'returned')->where('clinic_id', $clinicId)->count(),
+                'today'        => Procedure::forClinic($clinicId)->today()->count(),
+                'this_month'   => Procedure::forClinic($clinicId)->thisMonth()->count(),
+                'pending'      => Procedure::pending()->forClinic($clinicId)->count(),
+                'signed_today' => Procedure::signed()->forClinic($clinicId)->whereDate('updated_at', today())->count(),
+                'total_signed' => Procedure::signed()->forClinic($clinicId)->count(),
+                'returned'     => Procedure::returned()->forClinic($clinicId)->count(),
             ];
         });
 

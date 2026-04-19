@@ -29,10 +29,10 @@ class DashboardStats extends BaseWidget
                 'fixed_mbl'           => Account::where('mbl_type', 'Fixed')->where('account_status', 'active')->count(),
                 'members'             => Member::count(),
                 'clinics'             => Clinic::count(),
-                'pending_procedures'  => Procedure::where('status', 'pending')->count(),
-                'signed_procedures'   => Procedure::where('status', 'signed')->count(),
-                'signed_today'        => Procedure::where('status', 'signed')->whereDate('updated_at', today())->count(),
-                'valid_procedures'    => Procedure::where('status', 'valid')->count(),
+                'pending_procedures'  => Procedure::pending()->count(),
+                'signed_procedures'   => Procedure::signed()->count(),
+                'signed_today'        => Procedure::signed()->whereDate('updated_at', today())->count(),
+                'valid_procedures'    => Procedure::valid()->count(),
                 'pending_adc'         => GeneratedSoa::where('request_status', 'PENDING')->count(),
             ];
         });

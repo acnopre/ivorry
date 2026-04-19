@@ -119,6 +119,24 @@ class Procedure extends Model
     }
 
 
+    // -------------------------
+    // Scopes
+    // -------------------------
+    public function scopePending($query)          { return $query->where('status', self::STATUS_PENDING); }
+    public function scopeSigned($query)           { return $query->where('status', self::STATUS_SIGN); }
+    public function scopeValid($query)            { return $query->where('status', self::STATUS_VALID); }
+    public function scopeInvalid($query)          { return $query->where('status', self::STATUS_REJECT); }
+    public function scopeReturned($query)         { return $query->where('status', self::STATUS_RETURN); }
+    public function scopeProcessed($query)        { return $query->where('status', self::STATUS_PROCESSED); }
+    public function scopeCancelled($query)        { return $query->where('status', self::STATUS_CANCELLED); }
+    public function scopeForClinic($query, $id)   { return $query->where('clinic_id', $id); }
+    public function scopeForMember($query, $id)   { return $query->where('member_id', $id); }
+    public function scopeForService($query, $id)  { return $query->where('service_id', $id); }
+    public function scopeToday($query)            { return $query->whereDate('created_at', today()); }
+    public function scopeThisMonth($query)        { return $query->whereMonth('created_at', now()->month); }
+    public function scopeThisWeek($query)         { return $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]); }
+    public function scopeAvailmentBetween($query, $from, $to) { return $query->whereBetween('availment_date', [$from, $to]); }
+
     public function lastUpdatedBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'last_updated_by');

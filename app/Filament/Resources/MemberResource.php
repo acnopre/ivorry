@@ -312,19 +312,15 @@ class MemberResource extends Resource
 
                         $originalFileName = $data['original_filename'] ?? pathinfo($data['file'], PATHINFO_BASENAME);
 
-                        $import = new MembersImport($originalFileName);
-                        Excel::import($import, $absolutePath);
-
-                        $message = "Members import completed! {$import->imported} imported.";
-                        if (count($import->duplicates) > 0) {
-                            $message .= " " . count($import->duplicates) . " duplicates skipped.";
-                        }
-                        if (count($import->failed) > 0) {
-                            $message .= " " . count($import->failed) . " rows failed.";
-                        }
+                        \App\Jobs\ProcessMemberImport::dispatch(
+                            $absolutePath,
+                            $originalFileName,
+                            auth()->id()
+                        );
 
                         Notification::make()
-                            ->title($message)
+                            ->title('Import queued!')
+                            ->body('Your member import is being processed. Check Import Logs for progress.')
                             ->success()
                             ->send();
                     }),

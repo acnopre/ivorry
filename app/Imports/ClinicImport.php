@@ -66,38 +66,40 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
 
             $existingClinic = Clinic::where('clinic_name', $row['clinic_name'])->first();
 
+            // Resolve IDs before opening transaction
+            $regionId       = !empty($row['region_name'])       ? \App\Models\Region::where('name', $row['region_name'])->value('id')             : null;
+            $provinceId     = !empty($row['province_name'])     ? \App\Models\Province::where('name', $row['province_name'])->value('id')         : null;
+            $municipalityId = !empty($row['municipality_name']) ? \App\Models\Municipality::where('name', $row['municipality_name'])->value('id') : null;
+            $barangayId     = !empty($row['barangay_name'])     ? \App\Models\Barangay::where('name', $row['barangay_name'])->value('id')         : null;
+
+            $accountId = null;
+            if (($row['accreditation_status'] ?? '') === 'SPECIFIC ACCOUNT') {
+                if (empty($row['account_name'])) {
+                    $this->logError($index, $row, "account_name is required when accreditation_status is 'SPECIFIC ACCOUNT'");
+                    continue;
+                }
+                $accountId = \App\Models\Account::where('company_name', trim($row['account_name']))->value('id');
+                if (!$accountId) {
+                    $this->logError($index, $row, "Account '{$row['account_name']}' not found in database");
+                    continue;
+                }
+            }
+
+            $hipId = null;
+            if (($row['accreditation_status'] ?? '') === 'SPECIFIC HIP') {
+                if (empty($row['hip_name'])) {
+                    $this->logError($index, $row, "hip_name is required when accreditation_status is 'SPECIFIC HIP'");
+                    continue;
+                }
+                $hipId = \App\Models\Hip::where('name', trim($row['hip_name']))->value('id');
+                if (!$hipId) {
+                    $this->logError($index, $row, "HIP '{$row['hip_name']}' not found in database");
+                    continue;
+                }
+            }
+
             DB::beginTransaction();
             try {
-                $regionId = !empty($row['region_name']) ? \App\Models\Region::where('name', $row['region_name'])->value('id') : null;
-                $provinceId = !empty($row['province_name']) ? \App\Models\Province::where('name', $row['province_name'])->value('id') : null;
-                $municipalityId = !empty($row['municipality_name']) ? \App\Models\Municipality::where('name', $row['municipality_name'])->value('id') : null;
-                $barangayId = !empty($row['barangay_name']) ? \App\Models\Barangay::where('name', $row['barangay_name'])->value('id') : null;
-
-                $accountId = null;
-                if ($row['accreditation_status'] === 'SPECIFIC ACCOUNT') {
-                    if (empty($row['account_name'])) {
-                        $this->logError($index, $row, "account_name is required when accreditation_status is 'SPECIFIC ACCOUNT'");
-                        continue;
-                    }
-                    $accountId = \App\Models\Account::where('company_name', $row['account_name'])->value('id');
-                    if (!$accountId) {
-                        $this->logError($index, $row, "Account '{$row['account_name']}' not found");
-                        continue;
-                    }
-                }
-
-                $hipId = null;
-                if ($row['accreditation_status'] === 'SPECIFIC HIP') {
-                    if (empty($row['hip_name'])) {
-                        $this->logError($index, $row, "hip_name is required when accreditation_status is 'SPECIFIC HIP'");
-                        continue;
-                    }
-                    $hipId = \App\Models\Hip::where('name', $row['hip_name'])->value('id');
-                    if (!$hipId) {
-                        $this->logError($index, $row, "HIP '{$row['hip_name']}' not found");
-                        continue;
-                    }
-                }
 
                 $clinicData = [
                     'registered_name'         => $row['registered_name'] ?? null,

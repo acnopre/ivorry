@@ -284,7 +284,6 @@ class MemberResource extends Resource
 
                 TrashedFilter::make(),
             ])
-            ->deferLoading()
             ->defaultPaginationPageOption(25)
             ->headerActions([
                 Action::make('importXls')

@@ -617,7 +617,6 @@ class AccountResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
-            ->deferLoading()
             ->defaultPaginationPageOption(25)
             ->persistFiltersInSession()
             ->filters([

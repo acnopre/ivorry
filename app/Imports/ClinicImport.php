@@ -134,7 +134,6 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
                     'accreditation_status'    => $row['accreditation_status'] ?? 'INACTIVE',
                     'account_id'              => $accountId,
                     'hip_id'                  => $hipId,
-                    'fee_approval'            => $row['fee_approval'] ?? 'PENDING',
                     'remarks'                 => $row['remarks'] ?? null,
                 ];
 
@@ -196,7 +195,7 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
             'clinic_email', 'alt_address', 'clinic_staff_name', 'clinic_staff_mobile',
             'clinic_staff_viber', 'clinic_staff_email', 'bank_account_name', 'bank_account_number',
             'bank_name', 'bank_branch', 'account_type', 'accreditation_status',
-            'account_id', 'hip_id', 'fee_approval',
+            'account_id', 'hip_id',
         ];
 
         foreach ($fields as $field) {
@@ -346,6 +345,18 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
 
     public function onError(\Throwable $e)
     {
-        \Log::error('Clinic import error', ['message' => $e->getMessage()]);
+        \Log::error('Clinic import error', [
+            'message' => $e->getMessage(),
+            'trace'   => $e->getTraceAsString(),
+        ]);
+
+        ImportLogItem::create([
+            'import_log_id' => $this->log->id,
+            'row_number'    => 0,
+            'raw_data'      => json_encode([]),
+            'status'        => 'error',
+            'message'       => 'Fatal: ' . $e->getMessage(),
+        ]);
+        $this->log->increment('error_rows');
     }
 }

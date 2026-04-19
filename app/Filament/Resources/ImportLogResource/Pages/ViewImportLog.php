@@ -93,7 +93,7 @@ class ViewImportLog extends ViewRecord
                 ->label('Refresh')
                 ->icon('heroicon-o-arrow-path')
                 ->visible(fn(ImportLog $record) => $record->status === 'processing')
-                ->action(fn() => $this->refresh()),
+                ->action(fn() => $this->redirect($this->getUrl())),
         ];
     }
 

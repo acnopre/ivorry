@@ -60,6 +60,32 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
                 $municipalityId = !empty($row['municipality_name']) ? \App\Models\Municipality::where('name', $row['municipality_name'])->value('id') : null;
                 $barangayId = !empty($row['barangay_name']) ? \App\Models\Barangay::where('name', $row['barangay_name'])->value('id') : null;
 
+                $accountId = null;
+                if ($row['accreditation_status'] === 'SPECIFIC ACCOUNT') {
+                    if (empty($row['account_name'])) {
+                        $this->logError($index, $row, "account_name is required when accreditation_status is 'SPECIFIC ACCOUNT'");
+                        continue;
+                    }
+                    $accountId = \App\Models\Account::where('company_name', $row['account_name'])->value('id');
+                    if (!$accountId) {
+                        $this->logError($index, $row, "Account '{$row['account_name']}' not found");
+                        continue;
+                    }
+                }
+
+                $hipId = null;
+                if ($row['accreditation_status'] === 'SPECIFIC HIP') {
+                    if (empty($row['hip_name'])) {
+                        $this->logError($index, $row, "hip_name is required when accreditation_status is 'SPECIFIC HIP'");
+                        continue;
+                    }
+                    $hipId = \App\Models\Hip::where('name', $row['hip_name'])->value('id');
+                    if (!$hipId) {
+                        $this->logError($index, $row, "HIP '{$row['hip_name']}' not found");
+                        continue;
+                    }
+                }
+
                 $clinicData = [
                     'registered_name'         => $row['registered_name'] ?? null,
                     'ptr_no'                  => $row['ptr_no'] ?? null,
@@ -93,8 +119,8 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
                     'bank_branch'             => $row['bank_branch'] ?? null,
                     'account_type'            => $row['account_type'] ?? null,
                     'accreditation_status'    => $row['accreditation_status'] ?? 'INACTIVE',
-                    'account_id'              => $row['account_id'] ?? null,
-                    'hip_id'                  => $row['hip_id'] ?? null,
+                    'account_id'              => $accountId,
+                    'hip_id'                  => $hipId,
                     'fee_approval'            => $row['fee_approval'] ?? 'PENDING',
                     'remarks'                 => $row['remarks'] ?? null,
                 ];

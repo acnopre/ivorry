@@ -24,7 +24,7 @@ class TestDataGenerator extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->form->fill(['count' => 5, 'members_per_account' => 3]);
+        $this->form->fill(['count' => 5, 'members_per_account' => 3, 'member_source' => 'generate']);
     }
 
     public function form(Forms\Form $form): Forms\Form
@@ -49,6 +49,33 @@ class TestDataGenerator extends Page implements HasForms
                             ->required()
                             ->default(3)
                             ->helperText('Each account gets 1 principal + N-1 dependents'),
+
+                        Forms\Components\Radio::make('member_source')
+                            ->label('Member Account Source')
+                            ->options([
+                                'generate' => 'Generate new accounts',
+                                'db'       => 'Use account(s) from database',
+                            ])
+                            ->default('generate')
+                            ->required()
+                            ->inline()
+                            ->live(),
+
+                        Forms\Components\Select::make('account_ids')
+                            ->label('Select Account(s)')
+                            ->multiple()
+                            ->searchable()
+                            ->getSearchResultsUsing(fn(string $search) =>
+                                \App\Models\Account::where('company_name', 'like', "%{$search}%")
+                                    ->limit(20)
+                                    ->pluck('company_name', 'id')
+                            )
+                            ->getOptionLabelsUsing(fn(array $values) =>
+                                \App\Models\Account::whereIn('id', $values)->pluck('company_name', 'id')
+                            )
+                            ->visible(fn(Forms\Get $get) => $get('member_source') === 'db')
+                            ->required(fn(Forms\Get $get) => $get('member_source') === 'db')
+                            ->helperText('Leave empty to use all accounts from DB'),
 
                         Forms\Components\Radio::make('plan_type')
                             ->label('Plan Type')
@@ -156,7 +183,7 @@ class TestDataGenerator extends Page implements HasForms
         foreach ($accounts as $account) {
             $accountName  = is_array($account) ? $account['company_name'] : $account;
             $planType     = is_array($account) ? strtoupper($account['plan_type'] ?? 'INDIVIDUAL') : 'INDIVIDUAL';
-            $coverageType = is_array($account) ? strtoupper($account['coverage_type'] ?? 'ACCOUNT') : 'ACCOUNT';
+            $coverageType = is_array($account) ? strtoupper($account['coverage_period_type'] ?? 'ACCOUNT') : 'ACCOUNT';
             $isMemberCoverage = $coverageType === 'MEMBER';
             $memberEffective  = $isMemberCoverage ? Carbon::today()->format('Y-m-d') : '';
             $memberExpiration = $isMemberCoverage ? Carbon::today()->addYear()->subDay()->format('Y-m-d') : '';
@@ -206,6 +233,113 @@ class TestDataGenerator extends Page implements HasForms
         };
     }
 
+    private function buildClinicRows(int $count): array
+    {
+        $hips = [
+            'ETIQA LIFE AND GENERAL ASSURANCE PHILIPPINES, INC.',
+            'MARSH PHILIPPINES, INC.',
+            'Magsaysay Houlder Insurance Brokers Inc.',
+            'KWIK CARE',
+            'MM ROYAL CARE',
+        ];
+
+        $vatTypes = ['VAT 12%', 'VAT ZERO', 'VAT EXEMPT', 'NON-VAT'];
+        $withholdingTax = ['ZERO', '2%', '5%', '10%'];
+        $businessTypes = ['SOLE PROPRIETORSHIP', 'PARTNERSHIP', 'CORPORATION'];
+        $accreditationStatuses = ['ACTIVE', 'INACTIVE', 'SILENT', 'SPECIFIC ACCOUNT', 'SPECIFIC HIP'];
+
+        $rows = [];
+        for ($i = 0; $i < $count; $i++) {
+            $clinicName          = 'Test Dental Clinic ' . strtoupper(Str::random(5));
+            $firstName           = 'Dr. ' . ['James', 'Maria', 'John', 'Ana', 'Carlos'][array_rand(['James', 'Maria', 'John', 'Ana', 'Carlos'])];
+            $lastName            = ['Santos', 'Reyes', 'Cruz', 'Garcia', 'Torres'][array_rand(['Santos', 'Reyes', 'Cruz', 'Garcia', 'Torres'])];
+            $accreditationStatus = $accreditationStatuses[array_rand($accreditationStatuses)];
+            $accountName         = '';
+            $hipName             = '';
+
+            if ($accreditationStatus === 'SPECIFIC ACCOUNT') {
+                $accountName = \App\Models\Account::inRandomOrder()->value('company_name') ?? '';
+            } elseif ($accreditationStatus === 'SPECIFIC HIP') {
+                $hipName = \App\Models\Hip::inRandomOrder()->value('name') ?? '';
+            }
+
+            $rows[] = [
+                'clinic_name'             => $clinicName,
+                'registered_name'         => $clinicName,
+                'clinic_email'            => strtolower(Str::slug($clinicName)) . '@example.com',
+                'password'                => 'password',
+                'clinic_mobile'           => '09' . rand(100000000, 999999999),
+                'clinic_landline'         => '',
+                'complete_address'        => rand(1, 999) . ' Test St., Manila',
+                'street'                  => 'Test St.',
+                'region_name'             => '',
+                'province_name'           => '',
+                'municipality_name'       => '',
+                'barangay_name'           => '',
+                'business_type'           => $businessTypes[array_rand($businessTypes)],
+                'vat_type'                => $vatTypes[array_rand($vatTypes)],
+                'withholding_tax'         => $withholdingTax[array_rand($withholdingTax)],
+                'tax_identification_no'   => rand(100, 999) . '-' . rand(100, 999) . '-' . rand(100, 999),
+                'sec_registration_no'     => 'SEC-' . strtoupper(Str::random(8)),
+                'ptr_no'                  => 'PTR-' . rand(100000, 999999),
+                'ptr_date_issued'         => Carbon::today()->subMonths(rand(1, 12))->format('Y-m-d'),
+                'accreditation_status'    => $accreditationStatus,
+                'account_name'            => $accountName,
+                'hip_name'                => $hipName,
+                'is_branch'               => [0, 1][array_rand([0, 1])],
+                'bank_name'               => 'BDO',
+                'bank_branch'             => 'Manila Branch',
+                'bank_account_name'       => $clinicName,
+                'bank_account_number'     => rand(1000000000, 9999999999),
+                'account_type'            => 'SAVINGS',
+                'owner_first_name'        => $firstName,
+                'owner_last_name'         => $lastName,
+                'owner_middle_initial'    => '',
+                'owner_prc_license'       => 'PRC-' . rand(100000, 999999),
+                'owner_prc_expiration'    => Carbon::today()->addYears(rand(1, 3))->format('Y-m-d'),
+                'clinic_staff_name'       => '',
+                'clinic_staff_mobile'     => '',
+                'clinic_staff_viber'      => '',
+                'clinic_staff_email'      => '',
+                'viber_no'                => '',
+                'alt_address'             => '',
+                'remarks'                 => '',
+                'consultation'                                                => rand(200, 800),
+                'treatment_of_sores_blisters'                                => rand(100, 500),
+                'temporary_fillings'                                          => rand(200, 600),
+                'simple_tooth_extraction'                                     => rand(300, 800),
+                'recementation_of_fixed_bridges_crowns_jackets_inlays_onlays' => rand(200, 600),
+                'adjustment_of_dentures'                                      => rand(200, 500),
+                'oral_prophylaxis'                                            => rand(400, 1200),
+                'permanent_filling_per_tooth'                                 => rand(500, 1500),
+                'permanent_filling_per_surface'                               => rand(300, 900),
+                'desensitization_of_hypersensitive_teeth'                     => rand(200, 600),
+                'fluoride_brushing'                                           => rand(200, 500),
+                'incision_and_drainage'                                       => rand(500, 1500),
+                'peri_apical_xray'                                            => rand(300, 800),
+                'panoramic_xray'                                              => rand(800, 2000),
+                'complicated_difficult_extraction'                            => rand(800, 2500),
+                'odontectomy_removal_of_impacted_tooth'                       => rand(2000, 6000),
+                'root_canal_treatment_per_canal'                              => rand(1500, 4000),
+                'root_canal_treatment_per_tooth'                              => rand(3000, 8000),
+                'jacket_crowns'                                               => rand(3000, 8000),
+                'dentures'                                                    => rand(5000, 15000),
+                'pit_and_fissure_sealants'                                    => rand(300, 800),
+                'topical_fluoride_application'                                => rand(200, 600),
+                'minor_soft_tissue_surgery'                                   => rand(1000, 3000),
+            ];
+        }
+
+        return $rows;
+    }
+
+    public function generateClinics(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $count = (int) ($this->data['count'] ?? 5);
+        $rows = $this->buildClinicRows($count);
+        return Excel::download($this->makeExport($rows), 'test_clinics_' . now()->format('Ymd_His') . '.xlsx');
+    }
+
     public function generateBoth(): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $this->form->validate();
@@ -250,10 +384,22 @@ class TestDataGenerator extends Page implements HasForms
     {
         $this->form->validate();
 
-        $accounts = \App\Models\Account::select('company_name', 'plan_type')->get()->toArray();
-        if (empty($accounts)) {
-            Notification::make()->title('No accounts found in the database.')->danger()->send();
-            return back();
+        if (($this->data['member_source'] ?? 'generate') === 'db') {
+            $query = \App\Models\Account::select('company_name', 'plan_type', 'coverage_period_type');
+
+            $selectedIds = $this->data['account_ids'] ?? [];
+            if (! empty($selectedIds)) {
+                $query->whereIn('id', $selectedIds);
+            }
+
+            $accounts = $query->get()->toArray();
+
+            if (empty($accounts)) {
+                Notification::make()->title('No accounts found in the database.')->danger()->send();
+                return back();
+            }
+        } else {
+            $accounts = $this->buildAccountRows((int) $this->data['count']);
         }
 
         $rows = $this->buildMemberRows($accounts, (int) $this->data['members_per_account']);

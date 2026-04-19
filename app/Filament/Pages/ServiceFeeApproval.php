@@ -34,7 +34,7 @@ class ServiceFeeApproval extends Page implements HasTable
     {
         return Clinic::query()
             ->with('services')
-            ->where('fee_approval', 'PENDING');
+            ->whereIn('fee_approval', ['PENDING', 'UNAPPROVE']);
     }
 
     /**
@@ -137,7 +137,6 @@ class ServiceFeeApproval extends Page implements HasTable
                 ->visible(auth()->user()->can('fee.approval'))
                 ->requiresConfirmation()
                 ->modalHeading('Approve Clinic Service Fees')
-                // Use a dynamic form to show services and procedures info
                 ->form(function (Clinic $record) {
                     $services = $record->services
                         ->filter(fn($s) => filled($s->pivot->new_fee))
@@ -149,12 +148,9 @@ class ServiceFeeApproval extends Page implements HasTable
                         })
                         ->implode("\n");
 
-                    // Check if there are any processed procedures
                     $hasProcessedProcedures = Procedure::query()
                         ->where('clinic_id', $record->id)
-                        ->whereIn('status', [
-                            Procedure::STATUS_PROCESSED,
-                        ])
+                        ->whereIn('status', [Procedure::STATUS_PROCESSED])
                         ->exists();
 
                     $procedureNotice = $hasProcessedProcedures
@@ -176,7 +172,6 @@ class ServiceFeeApproval extends Page implements HasTable
                     $clinicEditUrl = \App\Filament\Resources\ClinicsResource::getUrl('edit', ['record' => $record]);
                     $clinicProfileUrl = ClinicProfile::getUrl();
 
-                    // Notify dentist (clinic user) → Clinic Profile
                     if ($record->user && $record->user->id) {
                         $clinicUser = $record->user;
                         $url = $clinicUser->hasRole('Dentist') ? $clinicProfileUrl : $clinicEditUrl;
@@ -189,7 +184,6 @@ class ServiceFeeApproval extends Page implements HasTable
                             ->sendToDatabase($clinicUser);
                     }
 
-                    // Notify accreditation team → Clinic Edit
                     $accreditationUsers = User::permission('clinic.update')
                         ->where('id', '!=', auth()->id())
                         ->get();
@@ -202,10 +196,50 @@ class ServiceFeeApproval extends Page implements HasTable
                             ->sendToDatabase($user);
                     }
 
-                    Notification::make()
-                        ->success()
-                        ->title('Service fees approved successfully!')
-                        ->send();
+                    Notification::make()->success()->title('Service fees approved successfully!')->send();
+                }),
+
+            Action::make('reject_fees')
+                ->label('Reject')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->visible(
+                    auth()->user()->hasAnyRole([
+                        \App\Models\Role::UPPER_MANAGEMENT,
+                        \App\Models\Role::MIDDLE_MANAGEMENT,
+                    ])
+                )
+                ->form([
+                    Textarea::make('rejection_reason')
+                        ->label('Reason for Rejection')
+                        ->required()
+                        ->rows(3),
+                ])
+                ->requiresConfirmation()
+                ->modalHeading('Reject Service Fee Update')
+                ->modalDescription('This will discard the proposed fees and revert the clinic back to its current fees.')
+                ->action(function (Clinic $record, array $data) {
+                    DB::transaction(function () use ($record) {
+                        foreach ($record->services as $service) {
+                            if (filled($service->pivot->new_fee)) {
+                                $record->services()->updateExistingPivot($service->id, ['new_fee' => null]);
+                            }
+                        }
+                        $record->update(['fee_approval' => 'UNAPPROVE']);
+                    });
+
+                    $clinicEditUrl = \App\Filament\Resources\ClinicsResource::getUrl('edit', ['record' => $record]);
+
+                    if ($record->user && $record->user->id) {
+                        Notification::make()
+                            ->title('Service Fee Update Rejected')
+                            ->body("The proposed fee update for {$record->clinic_name} was rejected. Reason: {$data['rejection_reason']}")
+                            ->danger()
+                            ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicEditUrl)])
+                            ->sendToDatabase($record->user);
+                    }
+
+                    Notification::make()->danger()->title('Service fee update rejected.')->send();
                 }),
         ];
     }

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="11. Clinic / Dentist — Adding Member Procedure" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="300" y="20" width="700" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- LANE: Dentist -->
+    <mxCell id="lane_d" value="Dentist" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="40" y="80" width="260" height="1100" as="geometry" />
+    </mxCell>
+    <mxCell id="d_start" value="Start&#xa;(Patient Visit)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;fontColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="110" y="130" width="120" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="d1" value="Go to Search Member Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="90" y="210" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d2" value="Enter Card Number&#xa;(Required for Dentist)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="90" y="300" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d3" value="Member Found?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="95" y="390" width="150" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="d4" value="Member Eligible?&#xa;(Status, Coverage,&#xa;Account Active)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="95" y="500" width="150" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="d5" value="Click Add Procedure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="90" y="620" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d6" value="Select Service&#xa;(Non-special only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="90" y="710" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d7" value="Select Units&#xa;(Tooth / Surface /&#xa;Quadrant / Canal / Arch)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="90" y="800" width="160" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="d8" value="Set Availment Date&#xa;(Today only for Dentist)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="90" y="900" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d9" value="Submit Procedure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="90" y="990" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d_not_found" value="Show Error&#xa;Not Found" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="220" y="390" width="70" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d_not_eligible" value="Show Error&#xa;Not Eligible" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="220" y="500" width="70" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- LANE: System -->
+    <mxCell id="lane_sys" value="System" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="320" y="80" width="280" height="1100" as="geometry" />
+    </mxCell>
+    <mxCell id="sys1" value="Filter Members by&#xa;Clinic's Account&#xa;(if SPECIFIC ACCOUNT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="350" y="300" width="160" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="sys2" value="Show SHARED Plan Members&#xa;(Same Card Number)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="350" y="390" width="160" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="sys3" value="Validate Business Rules&#xa;— No duplicate procedure&#xa;— No multi-clinic same day&#xa;— Service restrictions&#xa;— Max per date limit&#xa;— Tooth-level restrictions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="350" y="710" width="160" height="110" as="geometry" />
+    </mxCell>
+    <mxCell id="sys4" value="Rules Pass?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="355" y="860" width="150" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="sys5" value="Deduct Service Qty&#xa;or MBL Balance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="350" y="960" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="sys_err" value="Show Error&#xa;(Rule Violation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="510" y="860" width="80" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- LANE: Procedure -->
+    <mxCell id="lane_proc" value="Procedure" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="620" y="80" width="280" height="1100" as="geometry" />
+    </mxCell>
+    <mxCell id="p1" value="Procedure Created&#xa;Status: PENDING&#xa;Approval Code Generated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="300" width="160" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="p2" value="Show Approval Code&#xa;to Dentist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="410" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="p3" value="Dentist Goes to&#xa;My Procedures Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="510" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="p4" value="Click Sign Procedure&#xa;(Opens Sign Page)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="600" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="p5" value="Capture Member Signature&#xa;OR Mark Member&#xa;Unavailable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="690" width="160" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="p6" value="Status: SIGNED&#xa;Signatures Saved" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="800" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="p7" value="Notify CSR / Approvers&#xa;(New Pending Procedure)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="660" y="890" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="p_end" value="End" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;fontColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="700" y="980" width="80" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- Edges -->
+    <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d_start" target="d1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d1" target="d2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d2" target="sys1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sys1" target="d3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d3" target="sys2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e6" value="No" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d3" target="d_not_found" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e7" value="Yes" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d3" target="d4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e8" value="No" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d4" target="d_not_eligible" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e9" value="Yes" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d4" target="d5" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d5" target="d6" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d6" target="d7" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d7" target="d8" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d8" target="d9" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d6" target="sys3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sys3" target="sys4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e16" value="Pass" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sys4" target="sys5" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e17" value="Fail" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sys4" target="sys_err" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d9" target="p1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sys5" target="p1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e20" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p1" target="p2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e21" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p2" target="p3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e22" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p3" target="p4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e23" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p4" target="p5" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e24" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p5" target="p6" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e25" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p6" target="p7" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e26" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="p7" target="p_end" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+  </root>
+</mxGraphModel>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <mxCell id="title" value="3. Clinic Accreditation &amp; Service Fee Flow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="300" y="20" width="600" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- LANE: Accreditation -->
+    <mxCell id="lane_acc" value="Accreditation Team" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="40" y="80" width="260" height="760" as="geometry" />
+    </mxCell>
+    <mxCell id="acc_start" value="Start" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;fontColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="110" y="130" width="120" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="acc1" value="Register Clinic&#xa;(Form or Import)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="90" y="210" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="acc2" value="Accreditation Status?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="90" y="300" width="160" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="acc3" value="Link to Account Name" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="40" y="420" width="130" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="acc4" value="Link to HIP Name" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="190" y="420" width="100" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="acc5" value="Add Dentist Info&#xa;(PRC License, etc.)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="90" y="510" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="acc6" value="Set Service Fees&#xa;(fee_approval = PENDING)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="90" y="600" width="160" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- LANE: Dentist -->
+    <mxCell id="lane_dentist" value="Dentist" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="320" y="80" width="260" height="760" as="geometry" />
+    </mxCell>
+    <mxCell id="d1" value="View Clinic Profile" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="370" y="600" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="d2" value="Request Service&#xa;Fee Update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="370" y="690" width="160" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- LANE: Management -->
+    <mxCell id="lane_mgt" value="Upper / Middle Management" style="swimlane;startSize=30;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="600" y="80" width="280" height="760" as="geometry" />
+    </mxCell>
+    <mxCell id="m1" value="Review in Service&#xa;Fee Approval Page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="650" y="300" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="m2" value="Decision?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="655" y="390" width="150" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="m3" value="fee_approval = APPROVED&#xa;Fees Applied" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="620" y="500" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="m4" value="fee_approval = UNAPPROVE&#xa;new_fee Cleared" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="620" y="600" width="160" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- LANE: System -->
+    <mxCell id="lane_sys" value="System" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="900" y="80" width="260" height="760" as="geometry" />
+    </mxCell>
+    <mxCell id="sys1" value="Notify Clinic User ✓&#xa;(Approved)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="950" y="500" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="sys2" value="Notify Clinic User ✗&#xa;(Rejected + Reason)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="950" y="600" width="160" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="sys_end" value="Clinic Active" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;fontColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="970" y="700" width="120" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- Edges -->
+    <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc_start" target="acc1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc1" target="acc2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e3" value="Specific Account" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc2" target="acc3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e4" value="Specific HIP" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc2" target="acc4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc3" target="acc5" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc4" target="acc5" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e7" value="Active/Silent" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc2" target="acc5" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc5" target="acc6" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="acc6" target="m1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="m1" target="m2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e11" value="Approve" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="m2" target="m3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e12" value="Reject" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="m2" target="m4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="m3" target="sys1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="m4" target="sys2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="sys1" target="sys_end" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="m4" target="d1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d1" target="d2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="d2" target="acc6" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+  </root>
+</mxGraphModel>

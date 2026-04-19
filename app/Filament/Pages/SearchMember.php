@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\AccountService;
 use App\Models\Clinic;
+use App\Services\ProcedureService;
 use App\Services\ServiceQuantityService;
 use App\Models\ClinicService;
 use App\Models\Member;
@@ -149,40 +150,12 @@ class SearchMember extends Page implements HasActions
 
     public function canAddProcedure($member): bool
     {
-        return $this->getCanAddProcedureReason($member) === null;
+        return ProcedureService::getMemberEligibilityError($member) === null;
     }
 
     public function getCanAddProcedureReason($member): ?string
     {
-        $today = now()->startOfDay();
-
-        if ($member->status !== 'ACTIVE' || $member->inactive_date !== null) {
-            return 'Member is not active';
-        }
-
-        if ($member->effective_date && $today->lt(\Carbon\Carbon::parse($member->effective_date)->startOfDay())) {
-            return 'Member coverage has not started yet';
-        }
-        if ($member->expiration_date && $today->gt(\Carbon\Carbon::parse($member->expiration_date)->endOfDay())) {
-            return 'Member coverage has expired';
-        }
-
-        if (!$member->account) {
-            return 'No account found';
-        }
-
-        if ($member->account->account_status !== 'active') {
-            return 'Account is not active';
-        }
-
-        if ($member->account->effective_date && $today->lt(\Carbon\Carbon::parse($member->account->effective_date)->startOfDay())) {
-            return 'Account coverage has not started yet';
-        }
-        if ($member->account->expiration_date && $today->gt(\Carbon\Carbon::parse($member->account->expiration_date)->endOfDay())) {
-            return 'Account coverage has expired';
-        }
-
-        return null;
+        return ProcedureService::getMemberEligibilityError($member);
     }
 
 
@@ -333,241 +306,6 @@ class SearchMember extends Page implements HasActions
     }
 
 
-    private function validateBusinessRules($data, $clinicId): bool
-    {
-        $service = Service::find($data['service_id']);
-        $serviceName = $service->name;
-        $availmentDate = $data['availment_date'] ?? null;
-        $memberId = $this->selectedMemberId;
-
-        if (!$clinicId) {
-            return $this->showError('Clinic not found', 'Please make sure you have a clinic assigned to your account.');
-        }
-
-        if ($service->type === 'special' && !Auth::user()->hasRole('CSR')) {
-            return $this->showError('Special Service Restriction', 'Please call HPDAI for approval to avail this special service.');
-        }
-
-        // Check if member has procedure in different clinic on same date
-        if ($availmentDate) {
-            $existsInDifferentClinic = Procedure::where('member_id', $memberId)
-                ->where('clinic_id', '!=', $clinicId)
-                ->where('availment_date', $availmentDate)
-                ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
-                ->exists();
-
-            if ($existsInDifferentClinic) {
-                return $this->showError('Multiple Clinic Restriction', 'Member cannot have procedures in different clinics on the same date.');
-            }
-        }
-
-        // Check if procedure exists - include units if present
-        $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
-        $hasUnits = false;
-        $unitIds = [];
-
-        foreach ($unitInputs as $input) {
-            if (isset($data[$input]) && !empty($data[$input])) {
-                $hasUnits = true;
-                $unitIds = array_merge($unitIds, is_array($data[$input]) ? $data[$input] : [$data[$input]]);
-            }
-        }
-
-        if ($hasUnits) {
-            // Check if procedure with same service and units exists
-            foreach ($unitIds as $unitId) {
-                $exists = Procedure::where('service_id', $data['service_id'])
-                    ->where('member_id', $memberId)
-                    ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
-                    ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
-                    ->exists();
-
-                if ($exists) {
-                    return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
-                }
-            }
-        } else {
-            // Check if procedure without units exists
-            if (Procedure::where('service_id', $data['service_id'])
-                ->where('member_id', $memberId)
-                ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
-                ->exists()
-            ) {
-                return $this->showError('Procedure Already Exist', 'This procedure already exists in other clinics and is currently pending. Please contact HPDAI for assistance.');
-            }
-        }
-
-        if (!$availmentDate) {
-            return true;
-        }
-
-        // Check max_per_date limit
-        $maxPerDate = $service->max_per_date;
-        if ($maxPerDate) {
-            $existingCount = Procedure::where('member_id', $memberId)
-                ->where('service_id', $data['service_id'])
-                ->where('availment_date', $availmentDate)
-                ->whereIn('status', [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN])
-                ->count();
-
-            // Count how many new procedures this request will create
-            $newCount = 0;
-            foreach ($unitInputs as $input) {
-                if (isset($data[$input]) && !empty($data[$input])) {
-                    $newCount += count($data[$input]);
-                }
-            }
-            $newCount = max($newCount, 1);
-
-            if (($existingCount + $newCount) > $maxPerDate) {
-                $remaining = max($maxPerDate - $existingCount, 0);
-                return $this->showError('Max Per Date Exceeded', "{$serviceName} is limited to {$maxPerDate} per date. Already used: {$existingCount}, remaining: {$remaining}.");
-            }
-        }
-
-        // Exclusive services (cannot be done with any other service on same date)
-        $exclusiveServices = ['Consultation'];
-        if (in_array($serviceName, $exclusiveServices)) {
-            // If current service has units, only check for other procedures on same units
-            if ($hasUnits) {
-                foreach ($unitIds as $unitId) {
-                    if ($this->hasOtherProceduresOnUnit($memberId, $clinicId, $availmentDate, $unitId)) {
-                        return $this->showError("{$serviceName} Restriction", "{$serviceName} cannot be done with other procedures on the same unit on the same date.");
-                    }
-                }
-            } else {
-                // No units, check for any other procedures
-                if ($this->hasOtherProcedures($memberId, $clinicId, $availmentDate)) {
-                    return $this->showError("{$serviceName} Restriction", "{$serviceName} cannot be done with other procedures on the same date.");
-                }
-            }
-        } else {
-            foreach ($exclusiveServices as $exclusive) {
-                // Always check if the exclusive service exists (it may have no units, e.g. Consultation)
-                if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $exclusive)) {
-                    return $this->showError("{$exclusive} Restriction", "No other procedures can be done on the same date as {$exclusive}.");
-                }
-
-                // Also check on same units if current service has units (e.g. extraction on same tooth)
-                if ($hasUnits) {
-                    foreach ($unitIds as $unitId) {
-                        if ($this->hasProcedureOnUnit($memberId, $clinicId, $availmentDate, $exclusive, $unitId)) {
-                            return $this->showError("{$exclusive} Restriction", "No other procedure can be done with extraction on same tooth number.");
-                        }
-                    }
-                }
-            }
-        }
-
-        // Service pair restrictions (bidirectional)
-        $restrictions = [
-            'Treatment of sores, blisters' => 'Oral Prophylaxis',
-            'Desensitization of Hypersensitive teeth' => 'Oral Prophylaxis',
-            'Oral Prophylaxis' => ['Treatment of sores, blisters', 'Desensitization of Hypersensitive teeth'],
-        ];
-
-        if (isset($restrictions[$serviceName])) {
-            $conflicting = (array) $restrictions[$serviceName];
-            foreach ($conflicting as $conflictService) {
-                if ($this->hasProcedure($memberId, $clinicId, $availmentDate, $conflictService)) {
-                    return $this->showError('Service Restriction', "{$serviceName} cannot be done with {$conflictService} on the same date.");
-                }
-            }
-        }
-
-        // Tooth-specific validations
-        if (isset($data['tooth'])) {
-            foreach ($data['tooth'] as $toothId) {
-                // Temporary fillings vs Permanent filling (bidirectional)
-                if ($serviceName === 'Temporary fillings' && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)'])) {
-                    return $this->showError('Temporary Filling Restriction', 'Temporary fillings cannot be done on the same tooth as permanent filling on the same date.');
-                }
-                if (in_array($serviceName, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']) && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Temporary fillings'])) {
-                    return $this->showError('Permanent Filling Restriction', 'Permanent filling cannot be done on the same tooth as temporary fillings on the same date.');
-                }
-
-                // Desensitization vs Permanent filling (bidirectional)
-                if ($serviceName === 'Desensitization of Hypersensitive teeth' && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)'])) {
-                    return $this->showError('Desensitization Restriction', 'Desensitization cannot be done on the same tooth with permanent filling on the same date.');
-                }
-                if (in_array($serviceName, ['Permanent Filling (per tooth)', 'Permanent filling (per Surface)']) && $this->hasToothProcedure($memberId, $availmentDate, $toothId, ['Desensitization of Hypersensitive teeth'])) {
-                    return $this->showError('Permanent Filling Restriction', 'Permanent filling cannot be done on the same tooth with desensitization on the same date.');
-                }
-
-                // Extraction can only be done once per tooth
-                if ($serviceName === 'Simple tooth extraction' && $this->hasToothProcedure($memberId, null, $toothId, ['Simple tooth extraction'])) {
-                    return $this->showError('Extraction Restriction', 'Simple tooth extraction can only be done once per tooth.');
-                }
-
-                // Cannot do other services on extracted tooth
-                if ($serviceName !== 'Simple tooth extraction' && $this->hasToothProcedure($memberId, null, $toothId, ['Simple tooth extraction'])) {
-                    return $this->showError('Extracted Tooth Restriction', 'Cannot perform other services on a tooth that has been extracted.');
-                }
-            }
-        }
-
-        return true;
-    }
-
-    private function showError(string $title, string $body): bool
-    {
-        Notification::make()->title($title)->body($body)->danger()->send();
-        return false;
-    }
-
-    private function hasOtherProcedures(int $memberId, int $clinicId, string $date): bool
-    {
-        return Procedure::where('member_id', $memberId)
-            ->where('clinic_id', $clinicId)
-            ->where('availment_date', $date)
-            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
-            ->exists();
-    }
-
-    private function hasOtherProceduresOnUnit(int $memberId, int $clinicId, string $date, int $unitId): bool
-    {
-        return Procedure::where('member_id', $memberId)
-            ->where('clinic_id', $clinicId)
-            ->where('availment_date', $date)
-            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
-            ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
-            ->exists();
-    }
-
-    private function hasProcedure(int $memberId, int $clinicId, string $date, string $serviceName): bool
-    {
-        return Procedure::where('member_id', $memberId)
-            ->where('clinic_id', $clinicId)
-            ->where('availment_date', $date)
-            ->whereHas('service', fn($q) => $q->where('name', $serviceName))
-            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
-            ->exists();
-    }
-
-    private function hasProcedureOnUnit(int $memberId, int $clinicId, string $date, string $serviceName, int $unitId): bool
-    {
-        return Procedure::where('member_id', $memberId)
-            ->where('clinic_id', $clinicId)
-            ->where('availment_date', $date)
-            ->whereHas('service', fn($q) => $q->where('name', $serviceName))
-            ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
-            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
-            ->exists();
-    }
-
-    private function hasToothProcedure(int $memberId, ?string $date, int $toothId, array $serviceNames): bool
-    {
-        $query = Procedure::where('member_id', $memberId)
-            ->whereHas('service', fn($q) => $q->whereIn('name', $serviceNames))
-            ->whereHas('units', fn($q) => $q->where('unit_id', $toothId));
-
-        if ($date) {
-            $query->where('availment_date', $date)->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED]);
-        }
-
-        return $query->exists();
-    }
-
 
     public function openAddProcedure(int $memberId): void
     {
@@ -623,31 +361,21 @@ class SearchMember extends Page implements HasActions
 
     private function saveProcedureWithData(array $data, int $clinicId): void
     {
-        $member = Member::where('id', $this->selectedMemberId)->first();
+        $member  = Member::find($this->selectedMemberId);
         $account = $member->account;
+        $isCSR   = Auth::user()->hasRole('CSR');
 
-        if (!$this->validateBusinessRules($data, $clinicId)) {
+        if ($error = ProcedureService::validateBusinessRules($data, $member->id, $clinicId, $isCSR)) {
+            Notification::make()->title('Validation Error')->body($error)->danger()->send();
             return;
         }
 
         $appliedFee = $data['applied_fee'] ?? ClinicService::where('clinic_id', $clinicId)
-            ->where('service_id', $data['service_id'])
-            ->value('fee') ?? 0;
+            ->where('service_id', $data['service_id'])->value('fee') ?? 0;
 
         if ($account->mbl_type === 'Fixed') {
-            // Count total units for multiple unit procedures
-            $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
-            $totalUnits = 0;
-            foreach ($unitInputs as $input) {
-                if (isset($data[$input]) && !empty($data[$input])) {
-                    $totalUnits += count($data[$input]);
-                }
-            }
-            $totalUnits = max($totalUnits, 1);
-            $totalFee = $appliedFee * $totalUnits;
-
-            if ($member->mbl_balance < $totalFee) {
-                Notification::make()->title('Insufficient MBL Balance')->body("Total fee (₱" . number_format($totalFee, 2) . ") exceeds MBL balance (₱" . number_format($member->mbl_balance, 2) . ").")->danger()->send();
+            if ($error = ProcedureService::getMblError($member, $data, $appliedFee)) {
+                Notification::make()->title('Insufficient MBL Balance')->body($error)->danger()->send();
                 return;
             }
         } else {
@@ -657,66 +385,7 @@ class SearchMember extends Page implements HasActions
             }
         }
 
-        $approvalCode = strtoupper(Str::random(8));
-        $status = Auth::user()->hasRole('CSR') ? Procedure::STATUS_SIGN : Procedure::STATUS_PENDING;
-        $unitInputs = ['tooth', 'arch', 'quadrant', 'canal', 'surface'];
-
-        $hasUnits = false;
-        foreach ($unitInputs as $input) {
-            if (isset($data[$input]) && !empty($data[$input])) {
-                $hasUnits = true;
-                break;
-            }
-        }
-
-        if ($hasUnits) {
-            foreach ($unitInputs as $input) {
-                if (!isset($data[$input]) || empty($data[$input])) continue;
-
-                foreach ($data[$input] as $value) {
-                    $procedure = Procedure::create([
-                        'clinic_id' => $clinicId,
-                        'member_id' => $this->selectedMemberId,
-                        'service_id' => $data['service_id'],
-                        'availment_date' => $data['availment_date'] ?? null,
-                        'status' => $status,
-                        'quantity' => $data['quantity'] ?? 1,
-                        'approval_code' => $approvalCode,
-                        'applied_fee' => $appliedFee,
-                    ]);
-
-                    ProcedureUnit::create([
-                        'procedure_id' => $procedure->id,
-                        'unit_id' => $input === 'surface' ? $data['tooth_surface'] : $value,
-                        'quantity' => 1,
-                        'input_quantity' => $data['quantity'] ?? 1,
-                        'surface_id' => $input === 'surface' ? $value : null,
-                    ]);
-                }
-            }
-        } else {
-            Procedure::create([
-                'clinic_id' => $clinicId,
-                'member_id' => $this->selectedMemberId,
-                'service_id' => $data['service_id'],
-                'availment_date' => $data['availment_date'] ?? null,
-                'status' => $status,
-                'quantity' => 1,
-                'approval_code' => $approvalCode,
-                'applied_fee' => $appliedFee,
-            ]);
-        }
-
-        $this->approvalCode = $approvalCode;
-
-        // Deduct immediately on procedure creation for all roles
-        if ($account->mbl_type === 'Fixed') {
-            $member->update([
-                'mbl_balance' => max(0, $member->mbl_balance - $appliedFee),
-            ]);
-        }
-        ServiceQuantityService::deduct($member, $data['service_id']);
-
+        $this->approvalCode = ProcedureService::create($member, array_merge($data, ['applied_fee' => $appliedFee]), $clinicId, $isCSR);
         $this->showApprovalModal = true;
         $this->search();
     }
@@ -990,38 +659,17 @@ class SearchMember extends Page implements HasActions
     public function confirmCancelProcedure(): void
     {
         $procedure = Procedure::find($this->cancelProcedureId);
+        $isCsr     = Auth::user()->hasRole('CSR');
 
-        $isCsr = Auth::user()->hasRole('CSR');
-        $allowedStatuses = $isCsr
-            ? [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN]
-            : [Procedure::STATUS_PENDING];
-
-        if (!$procedure || !in_array($procedure->status, $allowedStatuses)) {
+        if (!$procedure || !ProcedureService::cancel($procedure, $this->cancelReason, $isCsr)) {
             Notification::make()->title('Cannot Cancel')->body('You cannot cancel this procedure.')->danger()->send();
             $this->showCancelModal = false;
             return;
         }
 
-        $procedure->update([
-            'status'  => Procedure::STATUS_CANCELLED,
-            'remarks' => $this->cancelReason,
-        ]);
-
-        // Return quantity and MBL balance
-        $member = $procedure->member;
-        if ($member && $member->account) {
-            ServiceQuantityService::returnQuantity($member, $procedure->service_id);
-
-            if ($member->account->mbl_type === 'Fixed') {
-                $member->update([
-                    'mbl_balance' => $member->mbl_balance + $procedure->applied_fee,
-                ]);
-            }
-        }
-
-        $this->showCancelModal = false;
-        $this->cancelProcedureId = null;
-        $this->cancelReason = null;
+        $this->showCancelModal    = false;
+        $this->cancelProcedureId  = null;
+        $this->cancelReason       = null;
 
         Notification::make()->title('Procedure Cancelled')->success()->send();
         $this->search();

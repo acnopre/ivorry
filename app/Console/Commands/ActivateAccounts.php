@@ -23,10 +23,33 @@ class ActivateAccounts extends Command
 
     public function handle(): int
     {
+        $this->expireAccounts();
         $this->processNewAccounts();
         $this->processRenewals();
 
         return self::SUCCESS;
+    }
+
+    protected function expireAccounts(): void
+    {
+        $expired = Account::where('account_status', 'active')
+            ->whereNotNull('expiration_date')
+            ->whereDate('expiration_date', '<', now()->startOfDay())
+            ->whereDoesntHave('renewals', fn($q) => $q->where('status', 'APPROVED_PENDING_EFFECTIVE'))
+            ->get();
+
+        if ($expired->isEmpty()) return;
+
+        foreach ($expired as $account) {
+            $account->update(['account_status' => 'expired']);
+
+            // Deactivate all active members under this account
+            Member::where('account_id', $account->id)
+                ->where('status', 'ACTIVE')
+                ->update(['status' => 'INACTIVE']);
+        }
+
+        $this->info("Expired {$expired->count()} account(s) and deactivated their members.");
     }
 
     protected function processNewAccounts(): void

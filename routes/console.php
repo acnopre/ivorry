@@ -10,5 +10,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command('members:deactivate')->dailyAt('00:05');
 Schedule::command('accounts:activate')->dailyAt('00:05');
+Schedule::command('print:check-jobs')->everyMinute();
 // Schedule::command('members:deactivate')->everyMinute(); // uncomment for local testing
 // Schedule::command('accounts:activate')->everyMinute(); // uncomment for local testing

@@ -960,7 +960,7 @@ class SearchClaims extends Page implements HasForms, HasTable
             return;
         }
 
-        // Extract job ID from lp output e.g. "request id is PRINTER-123 (1 file(s))"
+        // Extract job ID
         $jobId = null;
         foreach ($lpOutput as $line) {
             if (preg_match('/request id is (\S+)/i', $line, $matches)) {
@@ -969,39 +969,28 @@ class SearchClaims extends Page implements HasForms, HasTable
             }
         }
 
-        // Wait briefly then verify job is not stuck
-        if ($jobId) {
-            sleep(3);
-            $jobStatus = [];
-            exec('lpstat -l -j ' . escapeshellarg($jobId) . ' 2>&1', $jobStatus);
-            $statusText = implode(' ', $jobStatus);
+        Log::info('ADC print job queued', [
+            'printer' => $printerName,
+            'job'     => $jobId,
+            'soa'     => $soa->id,
+        ]);
 
-            foreach (['looking for printer', 'offline', 'stopped', 'unable', 'error'] as $indicator) {
-                if (stripos($statusText, $indicator) !== false) {
-                    exec('cancel ' . escapeshellarg($jobId) . ' 2>&1');
-                    $soa->delete();
-                    $this->dispatch('close-printing');
-                    Notification::make()->danger()->title('Printer Not Reachable')->body("'{$printerName}' could not be reached. Claims were not processed.")->send();
-                    Log::warning('Print job failed after submission', ['printer' => $printerName, 'job' => $jobId, 'status' => $statusText]);
-                    return;
-                }
-            }
-        }
-
-        // ✅ Print succeeded — now mark claims, save files, log
+        // Mark as printing — cron will update to processed/print_failed
         $this->dispatch('update-progress', status: 'Updating claim status...', progress: 97);
 
         foreach ($claims as $procedure) {
             $soa->procedures()->attach($procedure->id, ['amount' => $procedure->clinic_service_fee]);
         }
 
-        Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed', 'adc_number' => $sequenceNumber]);
+        Procedure::whereIn('id', $claims->pluck('id'))->update([
+            'adc_number' => $sequenceNumber,
+        ]);
 
         $this->dispatch('update-progress', status: 'Creating duplicate copy...', progress: 96);
 
-        $duplicatePdf = $generatePdf('DUPLICATE');
+        $duplicatePdf      = $generatePdf('DUPLICATE');
         $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
-        $duplicatePath = 'adc/duplicates/' . $duplicateFileName;
+        $duplicatePath     = 'adc/duplicates/' . $duplicateFileName;
         Storage::disk('public')->put($duplicatePath, $duplicatePdf->Output('S'));
 
         $this->dispatch('update-progress', status: 'Logging print activity...', progress: 98);
@@ -1009,19 +998,22 @@ class SearchClaims extends Page implements HasForms, HasTable
         $soa->increment('print_count');
 
         DB::table('print_logs')->insert([
-            'user_id'     => auth()->id(),
-            'document_id' => $soa->id,
-            'copy_type'   => 'ORIGINAL',
-            'printer'     => $printerName,
-            'created_at'  => now(),
+            'user_id'      => auth()->id(),
+            'document_id'  => $soa->id,
+            'copy_type'    => 'ORIGINAL',
+            'printer'      => $printerName,
+            'cups_job_id'  => $jobId,
+            'status'       => 'sent',
+            'created_at'   => now(),
         ]);
 
         $soa->update([
+            'status'              => 'printing',
             'file_path'           => $originalPath,
             'duplicate_file_path' => $duplicatePath,
         ]);
 
-        Notification::make()->success()->title('ADC Sent to Printer')->body('Document queued on ' . $printerName)->send();
+        Notification::make()->success()->title('ADC Sent to Printer')->body('Document sent to ' . $printerName . '. Status will update automatically once printing is confirmed.')->send();
 
         $this->dispatch('update-progress', status: 'Complete!', progress: 100);
         $this->dispatch('close-printing');

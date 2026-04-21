@@ -50,6 +50,8 @@ class SearchMember extends Page implements HasActions
     public ?string $approvalCode = null;
     public bool $showApprovalModal = false;
     public bool $showCancelModal = false;
+    public bool $showApproveModal = false;
+    public ?int $approveProcedureId = null;
     public ?int $cancelProcedureId = null;
     public ?string $cancelReason = null;
 
@@ -648,6 +650,40 @@ class SearchMember extends Page implements HasActions
         return "Max per date: {$maxPerDate}";
     }
 
+
+    public function openApproveModal(int $procedureId): void
+    {
+        $this->approveProcedureId = $procedureId;
+        $this->showApproveModal = true;
+    }
+
+    public function confirmApproveProcedure(): void
+    {
+        $procedure = Procedure::find($this->approveProcedureId);
+
+        if (! $procedure || ! in_array($procedure->status, [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN])) {
+            Notification::make()->title('Cannot approve this procedure.')->danger()->send();
+            $this->showApproveModal = false;
+            return;
+        }
+
+        if (! auth()->user()->can('member.approve_procedure')) {
+            Notification::make()->title('Unauthorized.')->danger()->send();
+            $this->showApproveModal = false;
+            return;
+        }
+
+        $procedure->update([
+            'status'          => Procedure::STATUS_VALID,
+            'last_updated_by' => auth()->id(),
+        ]);
+
+        $this->showApproveModal = false;
+        $this->approveProcedureId = null;
+
+        Notification::make()->title('Procedure Approved')->success()->send();
+        $this->search();
+    }
 
     public function openCancelModal(int $procedureId): void
     {

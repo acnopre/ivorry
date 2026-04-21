@@ -324,6 +324,8 @@
                                     $showCancel = $isCsr
                                         ? in_array($procedure->status, ['pending', 'signed'])
                                         : ($procedure->status === 'pending' && $isOwnProcedure);
+                                    $showApprove = auth()->user()->can('member.approve_procedure')
+                                        && in_array($procedure->status, ['pending', 'signed']);
                                     $rows = $procedure->units->isEmpty() ? [null] : $procedure->units;
                                     @endphp
                                     @foreach($rows as $unit)
@@ -346,6 +348,9 @@
                                         </td>
                                         @endif
                                         <td class="px-4 py-2">
+                                            @if($showApprove)
+                                            <x-filament::button color="success" size="xs" wire:click="openApproveModal({{ $procedure->id }})">Approve</x-filament::button>
+                                            @endif
                                             @if($showCancel)
                                             <x-filament::button color="danger" size="xs" wire:click="openCancelModal({{ $procedure->id }})">Cancel</x-filament::button>
                                             @endif
@@ -372,6 +377,21 @@
     </div>
 
     <x-filament-actions::modals />
+
+    {{-- Approve Modal --}}
+    <div x-data x-show="$wire.showApproveModal" x-cloak x-trap.noscroll @click.away="$wire.set('showApproveModal', false)" x-on:keydown.escape.window="$wire.set('showApproveModal', false)" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div class="flex items-center gap-2 mb-1">
+                <x-heroicon-o-check-circle class="w-5 h-5 text-success-500 shrink-0" />
+                <h2 class="text-base font-bold text-gray-900 dark:text-white">Approve Procedure</h2>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Are you sure you want to approve this procedure? This will mark it as Valid.</p>
+            <div class="flex justify-end gap-2 mt-4">
+                <x-filament::button color="gray" wire:click="$set('showApproveModal', false)">Dismiss</x-filament::button>
+                <x-filament::button color="success" wire:click="confirmApproveProcedure">Confirm Approve</x-filament::button>
+            </div>
+        </div>
+    </div>
 
     {{-- Cancel Modal --}}
     <div x-data x-show="$wire.showCancelModal" x-cloak x-trap.noscroll @click.away="$wire.showCancelModal = false" x-on:keydown.escape.window="$wire.showCancelModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

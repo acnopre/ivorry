@@ -25,6 +25,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'member.confirm_procedure',
             'member.search',
             'member.upload',
+            'member.view_pending_procedure',
             'import-logs.view',
             'import-logs.view.account',
             'import-logs.view.member',

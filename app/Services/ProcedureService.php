@@ -256,10 +256,16 @@ class ProcedureService
         }
 
         // Deduct balance
-        if ($account->mbl_type === 'Fixed') {
-            $member->update(['mbl_balance' => max(0, $member->mbl_balance - $appliedFee)]);
+        $unitCount = 0;
+        foreach (self::UNIT_INPUTS as $input) {
+            if (!empty($data[$input])) $unitCount += count((array) $data[$input]);
         }
-        ServiceQuantityService::deduct($member, $data['service_id']);
+        $unitCount = max($unitCount, 1);
+
+        if ($account->mbl_type === 'Fixed') {
+            $member->update(['mbl_balance' => max(0, $member->mbl_balance - ($appliedFee * $unitCount))]);
+        }
+        ServiceQuantityService::deduct($member, $data['service_id'], $unitCount);
 
         return $approvalCode;
     }
@@ -285,10 +291,11 @@ class ProcedureService
 
         $member = $procedure->member;
         if ($member && $member->account) {
-            ServiceQuantityService::returnQuantity($member, $procedure->service_id);
+            $unitCount = max($procedure->units()->count(), 1);
+            ServiceQuantityService::returnQuantity($member, $procedure->service_id, $unitCount);
 
             if ($member->account->mbl_type === 'Fixed') {
-                $member->update(['mbl_balance' => $member->mbl_balance + $procedure->applied_fee]);
+                $member->update(['mbl_balance' => $member->mbl_balance + ($procedure->applied_fee * $unitCount)]);
             }
         }
 

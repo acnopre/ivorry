@@ -272,7 +272,7 @@ class PendingProcedures extends Page implements HasForms, HasTable
 
     public static function getNavigationBadge(): ?string
     {
-        if (!auth()->user()?->can('member.approve_procedure')) {
+        if (!auth()->user()?->can('member.view_pending_procedure')) {
             return null;
         }
 
@@ -287,11 +287,11 @@ class PendingProcedures extends Page implements HasForms, HasTable
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->can('member.approve_procedure');
+        return auth()->check() && auth()->user()->can('member.view_pending_procedure');
     }
 
     public static function canAccess(): bool
     {
-        return auth()->user()->can('member.approve_procedure');
+        return auth()->user()->can('member.view_pending_procedure');
     }
 }

@@ -28,7 +28,7 @@ class CheckPrintJobs extends Command
 
         foreach ($pendingLogs as $log) {
             $output = [];
-            exec('lpstat -l -j ' . escapeshellarg($log->cups_job_id) . ' 2>&1', $output);
+            exec('lpstat -o ' . escapeshellarg($log->cups_job_id) . ' 2>&1', $output);
             $statusText = trim(implode(' ', $output));
 
             Log::info('CheckPrintJobs poll', [
@@ -37,8 +37,13 @@ class CheckPrintJobs extends Command
                 'statusText' => $statusText,
             ]);
 
-            // Job gone from queue = completed
-            if (empty($statusText)) {
+            // Job gone or not found = completed successfully
+            if (
+                empty($statusText) ||
+                stripos($statusText, 'unknown') !== false ||
+                stripos($statusText, 'invalid') !== false ||
+                stripos($statusText, 'not found') !== false
+            ) {
                 $this->markCompleted($log);
                 continue;
             }

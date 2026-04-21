@@ -460,13 +460,15 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->disabled(fn() => $this->isResultHasValid)
                     ->form(function () {
                         $printers = \App\Services\PrinterService::getAvailablePrinters();
-                        $default = \App\Services\PrinterService::getPrinter();
+                        $default  = \App\Services\PrinterService::getPrinter();
 
                         if (empty($printers)) {
                             return [
-                                Forms\Components\Placeholder::make('no_printer')
-                                    ->label('')
-                                    ->content('⚠️ No available printers found on the network. Please check your printer connection and try again.'),
+                                Forms\Components\TextInput::make('printer')
+                                    ->label('Printer Name')
+                                    ->placeholder('e.g. EPSON_L365_Series_8')
+                                    ->required()
+                                    ->helperText('No printers auto-detected. Enter the printer name manually.'),
                             ];
                         }
 
@@ -541,13 +543,15 @@ class SearchClaims extends Page implements HasForms, HasTable
                     })
                     ->form(function () {
                         $printers = \App\Services\PrinterService::getAvailablePrinters();
-                        $default = \App\Services\PrinterService::getPrinter();
+                        $default  = \App\Services\PrinterService::getPrinter();
 
                         if (empty($printers)) {
                             return [
-                                Forms\Components\Placeholder::make('no_printer')
-                                    ->label('')
-                                    ->content('⚠️ No available printers found on the network. Please check your printer connection and try again.'),
+                                Forms\Components\TextInput::make('printer')
+                                    ->label('Printer Name')
+                                    ->placeholder('e.g. EPSON_L365_Series_8')
+                                    ->required()
+                                    ->helperText('No printers auto-detected. Enter the printer name manually.'),
                             ];
                         }
 

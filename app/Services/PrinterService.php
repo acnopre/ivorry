@@ -2,74 +2,59 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
-
 class PrinterService
 {
     public static function getPrinter(?string $clinicPrinter = null): ?string
     {
-        $defaultPrinter    = config('printing.printer_name');
+        $defaultPrinter = config('printing.printer_name');
+
         $availablePrinters = self::getAvailablePrinters();
 
+        // Use clinic printer if available
         if ($clinicPrinter && in_array($clinicPrinter, $availablePrinters)) {
             return $clinicPrinter;
         }
 
+        // Use configured default if available
         if ($defaultPrinter && in_array($defaultPrinter, $availablePrinters)) {
             return $defaultPrinter;
         }
 
+        // Fall back to OS default printer
         $osDefault = self::getOsDefaultPrinter();
         if ($osDefault && in_array($osDefault, $availablePrinters)) {
             return $osDefault;
         }
 
+        // Last resort: return first available printer
         return $availablePrinters[0] ?? null;
     }
 
     public static function getAvailablePrinters(): array
     {
-        $lines    = [];
-        $printers = [];
-
+        $lines = [];
         exec('lpstat -p 2>&1', $lines);
 
-        Log::info('PrinterService::getAvailablePrinters', ['output' => $lines]);
+        $printers = [];
+        $currentPrinter = null;
 
         foreach ($lines as $line) {
-            // Match: "printer PRINTER_NAME is idle." or "printer PRINTER_NAME enabled since..."
-            // Also handles: "printer PRINTER_NAME is idle. enabled since..."
-            if (preg_match('/^printer\s+(\S+)/i', $line, $matches)) {
-                $name = $matches[1];
-
-                // Exclude if explicitly offline/disabled on same line
-                if (
-                    stripos($line, 'disabled') !== false ||
-                    stripos($line, 'offline')  !== false
-                ) {
-                    continue;
-                }
-
-                $printers[] = $name;
+            if (preg_match('/^printer (\S+).*\benabled\b/i', $line, $matches)) {
+                $currentPrinter = $matches[1];
+                $printers[$currentPrinter] = true;
+            } elseif ($currentPrinter && (
+                stripos($line, 'offline') !== false ||
+                stripos($line, 'looking for printer') !== false ||
+                stripos($line, 'unable') !== false
+            )) {
+                $printers[$currentPrinter] = false;
+                $currentPrinter = null;
+            } else {
+                $currentPrinter = null;
             }
         }
 
-        // Fallback: try lpstat -a which lists accepted printers
-        if (empty($printers)) {
-            $lines2 = [];
-            exec('lpstat -a 2>&1', $lines2);
-
-            Log::info('PrinterService::getAvailablePrinters fallback lpstat -a', ['output' => $lines2]);
-
-            foreach ($lines2 as $line) {
-                // "PRINTER_NAME accepting requests since..."
-                if (preg_match('/^(\S+)\s+accepting/i', $line, $matches)) {
-                    $printers[] = $matches[1];
-                }
-            }
-        }
-
-        return array_unique($printers);
+        return array_keys(array_filter($printers));
     }
 
     public static function isPrinterOnline(string $printerName): bool
@@ -77,25 +62,15 @@ class PrinterService
         $lines = [];
         exec('lpstat -p ' . escapeshellarg($printerName) . ' 2>&1', $lines);
 
-        Log::info('PrinterService::isPrinterOnline', ['printer' => $printerName, 'output' => $lines]);
-
+        $enabled = false;
         foreach ($lines as $line) {
-            if (stripos($line, 'offline')   !== false) return false;
-            if (stripos($line, 'disabled')  !== false) return false;
-            if (stripos($line, 'unable')    !== false) return false;
-
-            // Any of these mean it's reachable
-            if (
-                stripos($line, 'idle')    !== false ||
-                stripos($line, 'enabled') !== false ||
-                stripos($line, 'ready')   !== false
-            ) {
-                return true;
-            }
+            if (stripos($line, 'offline') !== false) return false;
+            if (stripos($line, 'looking for printer') !== false) return false;
+            if (stripos($line, 'unable') !== false) return false;
+            if (preg_match('/\benabled\b/i', $line)) $enabled = true;
         }
 
-        // If lpstat returned something (printer exists) but no clear status, assume online
-        return !empty($lines);
+        return $enabled;
     }
 
     private static function getOsDefaultPrinter(): ?string

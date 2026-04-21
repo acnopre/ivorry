@@ -14,7 +14,41 @@ class PrinterSettings extends Page
 
     public function mount()
     {
-        $this->printers = $this->getPrinters();
+        $this->printers    = $this->getPrinters();
+        $this->debugOutput = $this->getDebugOutput();
+    }
+
+    public array $debugOutput = [];
+
+    public function getDebugOutput(): array
+    {
+        $out = [];
+
+        $lp = [];
+        exec('which lp 2>&1', $lp);
+        $out['which_lp'] = implode(' ', $lp);
+
+        $lpstat = [];
+        exec('which lpstat 2>&1', $lpstat);
+        $out['which_lpstat'] = implode(' ', $lpstat);
+
+        $p = [];
+        exec('lpstat -p 2>&1', $p);
+        $out['lpstat_p'] = $p;
+
+        $a = [];
+        exec('lpstat -a 2>&1', $a);
+        $out['lpstat_a'] = $a;
+
+        $d = [];
+        exec('lpstat -d 2>&1', $d);
+        $out['lpstat_d'] = $d;
+
+        $whoami = [];
+        exec('whoami 2>&1', $whoami);
+        $out['whoami'] = implode(' ', $whoami);
+
+        return $out;
     }
 
     public function getPrinters(): array

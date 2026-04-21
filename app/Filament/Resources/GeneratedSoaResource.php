@@ -187,9 +187,11 @@ class GeneratedSoaResource extends Resource
 
                         if (empty($printers)) {
                             return [
-                                Forms\Components\Placeholder::make('no_printer')
-                                    ->label('')
-                                    ->content('⚠️ No available printers found. Please check your printer connection.'),
+                                Forms\Components\TextInput::make('printer')
+                                    ->label('Printer Name')
+                                    ->placeholder('e.g. EPSON_L365_Series_8')
+                                    ->required()
+                                    ->helperText('No printers auto-detected. Enter the printer name manually.'),
                             ];
                         }
 

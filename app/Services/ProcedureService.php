@@ -88,6 +88,7 @@ class ProcedureService
         // Duplicate procedure check
         if ($hasUnits) {
             foreach ($unitIds as $unitId) {
+                // Check same service on same unit
                 $exists = Procedure::where('service_id', $data['service_id'])
                     ->forMember($memberId)
                     ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
@@ -96,6 +97,23 @@ class ProcedureService
 
                 if ($exists) {
                     return 'This procedure already exists and is currently pending. Please contact HPDAI for assistance.';
+                }
+
+                // If unit type is Tooth, check if any other procedure already exists on same tooth same date
+                $service = \App\Models\Service::with('unitType')->find($data['service_id']);
+                if ($service?->unitType?->name === 'Tooth' && $availmentDate) {
+                    $toothConflict = Procedure::forMember($memberId)
+                        ->where('service_id', '!=', $data['service_id'])
+                        ->where('availment_date', $availmentDate)
+                        ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED, Procedure::STATUS_REJECT])
+                        ->whereHas('units', fn($q) => $q->where('unit_id', $unitId))
+                        ->with('service')
+                        ->first();
+
+                    if ($toothConflict) {
+                        $unit = \App\Models\Unit::find($unitId);
+                        return "Tooth {$unit?->name} already has a pending procedure ({$toothConflict->service->name}) on this date.";
+                    }
                 }
             }
         } else {
@@ -192,6 +210,10 @@ class ProcedureService
                 }
                 if ($serviceName === 'Simple tooth extraction' && self::hasToothProcedure($memberId, null, $toothId, ['Simple tooth extraction'])) {
                     return 'Simple tooth extraction can only be done once per tooth.';
+                }
+                // Block extraction if other procedures already exist on same tooth same date
+                if ($serviceName === 'Simple tooth extraction' && self::hasOtherToothProcedureOnDate($memberId, $availmentDate, $toothId, 'Simple tooth extraction')) {
+                    return 'Simple tooth extraction cannot be done on a tooth that already has other procedures on the same date.';
                 }
                 if ($serviceName !== 'Simple tooth extraction' && self::hasToothProcedure($memberId, null, $toothId, ['Simple tooth extraction'])) {
                     return 'Cannot perform other services on a tooth that has been extracted.';
@@ -367,7 +389,8 @@ class ProcedureService
     {
         $query = Procedure::forMember($memberId)
             ->whereHas('service', fn($q) => $q->whereIn('name', $serviceNames))
-            ->whereHas('units', fn($q) => $q->where('unit_id', $toothId));
+            ->whereHas('units', fn($q) => $q->where('unit_id', $toothId))
+            ->whereNotIn('status', [Procedure::STATUS_CANCELLED, Procedure::STATUS_REJECT]);
 
         if ($date) {
             $query->where('availment_date', $date)
@@ -375,5 +398,15 @@ class ProcedureService
         }
 
         return $query->exists();
+    }
+
+    private static function hasOtherToothProcedureOnDate(int $memberId, string $date, int $toothId, string $excludeService): bool
+    {
+        return Procedure::forMember($memberId)
+            ->where('availment_date', $date)
+            ->whereNotIn('status', [Procedure::STATUS_VALID, Procedure::STATUS_CANCELLED])
+            ->whereHas('units', fn($q) => $q->where('unit_id', $toothId))
+            ->whereHas('service', fn($q) => $q->where('name', '!=', $excludeService))
+            ->exists();
     }
 }

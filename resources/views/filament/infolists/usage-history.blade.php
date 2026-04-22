@@ -1,6 +1,6 @@
 <div>
     @php
-    $usageHistory = \App\Models\Procedure::with(['service', 'member'])
+    $usageHistory = \App\Models\Procedure::with(['service', 'member', 'units.unitType'])
         ->whereHas('member', fn($q) => $q->where('account_id', $record->id))
         ->whereIn('status', ['signed', 'valid', 'processed'])
         ->orderByDesc('availment_date')
@@ -15,6 +15,7 @@
                     <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Availment Date</th>
                     <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Member</th>
                     <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Service</th>
+                        <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Units</th>
                     <th class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">Fee</th>
                     <th class="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300">Qty</th>
                     <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Approval Code</th>
@@ -40,6 +41,9 @@
                     </td>
                     <td class="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">
                         {{ $usage->service->name ?? '—' }}
+                    </td>
+                    <td class="px-4 py-3 text-gray-700 dark:text-gray-300 text-xs">
+                        {{ $usage->units->map(fn($u) => ($u->unitType?->name ?? '') . ': ' . $u->name)->filter()->join(', ') ?: '—' }}
                     </td>
                     <td class="px-4 py-3 text-right text-gray-900 dark:text-gray-100 font-mono">
                         ₱{{ number_format($usage->applied_fee, 2) }}

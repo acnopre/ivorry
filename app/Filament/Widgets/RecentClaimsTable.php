@@ -25,7 +25,7 @@ class RecentClaimsTable extends BaseWidget
         return $table
             ->query(
                 Procedure::query()
-                    ->with(['member', 'clinic', 'service'])
+                    ->with(['member', 'clinic', 'service', 'units.unitType'])
                     ->latest('availment_date')
                     ->limit(10)
             )
@@ -44,6 +44,16 @@ class RecentClaimsTable extends BaseWidget
 
                 Tables\Columns\TextColumn::make('service.name')
                     ->label('Service')
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('units')
+                    ->label('Units')
+                    ->getStateUsing(fn($record) => $record->units
+                        ->map(fn($u) => ($u->unitType?->name ?? '') . ': ' . $u->name)
+                        ->filter()
+                        ->join(', ') ?: '—'
+                    )
+                    ->wrap()
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('dentist_name')

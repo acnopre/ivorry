@@ -29,7 +29,7 @@ class EditClinics extends EditRecord
                 ->color('info')
                 ->requiresConfirmation()
                 ->modalHeading('Resend Login Credentials')
-                ->modalDescription('This will generate a new password and send it to the clinic email.')
+                ->modalDescription(fn() => 'This will generate a new password and send it to: ' . $this->record->clinic_email)
                 ->visible(fn() => !empty($this->record->clinic_email) && !empty($this->record->user_id) && auth()->user()->can('clinic.update'))
                 ->action(function () {
                     $user = $this->record->user;

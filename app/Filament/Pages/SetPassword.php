@@ -6,11 +6,12 @@ use App\Models\Clinic;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Filament\Notifications\Notification;
+use App\Notifications\SendGeneratedPassword;
 
 class SetPassword extends Page implements Forms\Contracts\HasForms
 {
@@ -73,15 +74,29 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
                 ->send();
             return;
         }
-        
+
         if (! Password::broker()->tokenExists($user, $this->token)) {
+            // Token expired — generate new password and resend
+            $newPassword = Str::random(12);
+
+            $user->update([
+                'password' => Hash::make($newPassword),
+                'must_change_password' => true,
+            ]);
+
+            $user->notify(new SendGeneratedPassword($newPassword));
+
             Notification::make()
-                ->title('This password reset link is invalid or expired.')
-                ->danger()
+                ->title('Link Expired')
+                ->body('Your password reset link has expired. A new temporary password has been sent to your email. Please check your inbox.')
+                ->warning()
+                ->persistent()
                 ->send();
+
+            $this->form->fill();
             return;
         }
-        
+
         if (! Hash::check($this->data['current_password'], $user->password)) {
             Notification::make()
                 ->title('The provided temporary password is incorrect.')
@@ -89,7 +104,7 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
                 ->send();
             return;
         }
-        
+
 
         $user->update([
             'password' => Hash::make($this->data['password']),
@@ -99,11 +114,14 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
         Clinic::where('user_id', $user->id)->update(['welcome_email_status' => 'password_set']);
 
         Password::broker()->deleteToken($user);
-        Auth::login($user);
-        // store a flash session variable
-        session()->flash('password_updated', true);
 
-        $this->redirectRoute('filament.admin.pages.dashboard');
+        Notification::make()
+            ->title('Password Set Successfully')
+            ->body('Your password has been updated. Please log in with your new password.')
+            ->success()
+            ->send();
+
+        $this->redirectRoute('filament.admin.auth.login');
     }
 
 
@@ -121,5 +139,4 @@ class SetPassword extends Page implements Forms\Contracts\HasForms
     {
         return false;
     }
-
 }

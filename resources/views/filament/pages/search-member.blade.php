@@ -31,14 +31,14 @@
         ->get();
         $isShared = strtoupper($member->account?->plan_type ?? '') === 'SHARED';
         if ($member->card_number) {
-            \App\Models\MemberService::initializeForCard($member->card_number, $member->account->id);
-            $filteredServices = \App\Models\MemberService::where('card_number', $member->card_number)
-                ->where('account_id', $member->account->id)
-                ->with('service')
-                ->get()
-                ->filter(fn($ms) => !( auth()->user()->hasRole('Dentist') && $ms->service?->type === 'special'));
+        \App\Models\MemberService::initializeForCard($member->card_number, $member->account->id);
+        $filteredServices = \App\Models\MemberService::where('card_number', $member->card_number)
+        ->where('account_id', $member->account->id)
+        ->with('service')
+        ->get()
+        ->filter(fn($ms) => !( auth()->user()->hasRole('Dentist') && $ms->service?->type === 'special'));
         } else {
-            $filteredServices = collect();
+        $filteredServices = collect();
         }
         $isCsr = auth()->user()->hasRole('CSR');
         $isDentistUser = auth()->user()->hasRole('Dentist');
@@ -237,10 +237,10 @@
                                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                                     @foreach($filteredServices as $item)
                                     @php
-                                        $svc = $item->service;
-                                        $qty = $item->quantity;
-                                        $defaultQty = $item->default_quantity;
-                                        $unlimited = $item->is_unlimited;
+                                    $svc = $item->service;
+                                    $qty = $item->quantity;
+                                    $defaultQty = $item->default_quantity;
+                                    $unlimited = $item->is_unlimited;
                                     @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                         <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{{ $svc->name ?? '—' }}</td>
@@ -251,11 +251,11 @@
                                         </td>
                                         <td class="px-4 py-2 font-mono font-semibold">
                                             @if($unlimited)
-                                                <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
+                                            <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
                                             @elseif($qty == 0)
-                                                <span class="text-danger-600 dark:text-danger-400">{{ $qty }}/{{ $defaultQty }}</span>
+                                            <span class="text-danger-600 dark:text-danger-400">{{ $qty }}/{{ $defaultQty }}</span>
                                             @else
-                                                {{ $qty }}/{{ $defaultQty }}
+                                            {{ $qty }}/{{ $defaultQty }}
                                             @endif
                                         </td>
                                     </tr>
@@ -314,8 +314,8 @@
                                     };
                                     $isOwnProcedure = $userClinicId && $userClinicId === $procedure->clinic_id;
                                     $showCancel = $isCsr
-                                        ? in_array($procedure->status, ['pending', 'signed'])
-                                        : ($procedure->status === 'pending' && $isOwnProcedure);
+                                    ? in_array($procedure->status, ['pending', 'signed'])
+                                    : ($procedure->status === 'pending' && $isOwnProcedure);
                                     $rows = $procedure->units->isEmpty() ? [null] : $procedure->units;
                                     @endphp
                                     @foreach($rows as $unit)
@@ -328,7 +328,9 @@
                                         <td class="px-4 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $procedure->availment_date ? \Carbon\Carbon::parse($procedure->availment_date)->format('M d, Y') : '—' }}</td>
                                         <td class="px-4 py-2 text-gray-500 dark:text-gray-400">
                                             @if($unit === null) <span class="text-gray-300 dark:text-gray-600 italic">—</span>
-                                            @elseif($unit->pivot->surface_id) {{ $unit->unitType->name ?? '—' }}: {{ \App\Models\Unit::find($unit->pivot->unit_id)?->name ?? '—' }} / {{ $unit->name ?? '—' }}
+                                            @elseif($unit->pivot->surface_id)
+                                            @php $sub = \App\Models\Unit::with('unitType')->find($unit->pivot->surface_id); @endphp
+                                            Tooth: {{ $unit->name ?? '—' }} | {{ $sub?->unitType?->name ?? 'Surface' }}: {{ $sub?->name ?? '—' }}
                                             @else {{ $unit->unitType->name ?? '—' }}: {{ $unit->name ?? '—' }}
                                             @endif
                                         </td>

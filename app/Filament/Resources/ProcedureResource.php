@@ -114,7 +114,8 @@ class ProcedureResource extends Resource
                                 ? $surface->pivot->quantity
                                 : 0;
 
-                            $lines[] = "{$unitType}: {$unitName} | Surface: {$surfaceName} | Qty: {$qty}";
+                            $subType = $surface->unitType?->name ?? 'Surface';
+                            $lines[] = "{$unitType}: {$unitName} | {$subType}: {$surfaceName} | Qty: {$qty}";
                         }
 
                         return implode("\n", $lines);

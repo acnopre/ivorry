@@ -48,11 +48,19 @@ class RecentClaimsTable extends BaseWidget
 
                 Tables\Columns\TextColumn::make('units')
                     ->label('Units')
-                    ->getStateUsing(fn($record) => $record->units
-                        ->map(fn($u) => ($u->unitType?->name ?? '') . ': ' . $u->name)
-                        ->filter()
-                        ->join(', ') ?: '—'
-                    )
+                    ->getStateUsing(function ($record) {
+                        $lines = [];
+                        foreach ($record->units as $unit) {
+                            if ($unit->pivot->surface_id) {
+                                $sub = \App\Models\Unit::with('unitType')->find($unit->pivot->surface_id);
+                                $subLabel = $sub?->unitType?->name ?? 'Surface';
+                                $lines[] = 'Tooth ' . $unit->name . ' | ' . $subLabel . ': ' . ($sub?->name ?? '—');
+                            } else {
+                                $lines[] = ($unit->unitType?->name ?? '') . ': ' . $unit->name;
+                            }
+                        }
+                        return implode(', ', $lines) ?: '—';
+                    })
                     ->wrap()
                     ->toggleable(),
 

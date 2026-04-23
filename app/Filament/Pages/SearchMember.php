@@ -170,6 +170,7 @@ class SearchMember extends Page implements HasActions
             'quadrant' => [],
             'tooth' => [],
             'canal' => [],
+            'tooth_canal' => null,
             'arch' => [],
             'unit_id' => [],
         ];
@@ -508,7 +509,10 @@ class SearchMember extends Page implements HasActions
             ->default(1)
             ->required()
             ->live()
-            ->afterStateUpdated(fn(callable $set) => $set('surface', []))
+            ->afterStateUpdated(function (callable $set) {
+                $set('surface', []);
+                $set('canal', []);
+            })
             ->visible(fn(callable $get) => $this->shouldShowQuantityField($get))
             ->disabled(fn(callable $get) => $this->isUnitType($get, 'Session'))
             ->dehydrated()
@@ -525,7 +529,6 @@ class SearchMember extends Page implements HasActions
             ['field' => 'quadrant', 'label' => 'Quadrant', 'type_id' => 2, 'type_name' => 'Quadrant'],
             ['field' => 'tooth', 'label' => 'Tooth', 'type_id' => 3, 'type_name' => 'Tooth'],
             ['field' => 'arch', 'label' => 'Arch', 'type_id' => 4, 'type_name' => 'Arch'],
-            ['field' => 'canal', 'label' => 'Canal', 'type_id' => 6, 'type_name' => 'Canal'],
         ];
 
         $fields = [];
@@ -571,6 +574,23 @@ class SearchMember extends Page implements HasActions
                 ->visible(fn(callable $get) => $this->isUnitType($get, 'Surface') && filled($get('quantity')))
                 ->helperText(fn(callable $get) => "Select up to {$get('quantity')} surface(s)")
                 ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
+
+            Forms\Components\Select::make('tooth_canal')
+                ->label('Tooth')
+                ->options(Unit::where('unit_type_id', 3)->pluck('name', 'id'))
+                ->live()
+                ->required(fn(callable $get) => $this->isUnitType($get, 'Canal') && filled($get('quantity')))
+                ->visible(fn(callable $get) => $this->isUnitType($get, 'Canal') && filled($get('quantity'))),
+
+            Forms\Components\Select::make('canal')
+                ->label('Canal')
+                ->options(Unit::where('unit_type_id', 6)->pluck('name', 'id'))
+                ->multiple()
+                ->live()
+                ->required()
+                ->visible(fn(callable $get) => $this->isUnitType($get, 'Canal') && filled($get('quantity')))
+                ->helperText(fn(callable $get) => "Select up to {$get('quantity')} canal(s)")
+                ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
         ];
     }
 
@@ -589,9 +609,9 @@ class SearchMember extends Page implements HasActions
 
     protected function resetUnitFields(callable $set): void
     {
-        $fields = ['surface', 'quadrant', 'quantity', 'unit_id', 'unit_type_name', 'unit_type_id'];
+        $fields = ['surface', 'canal', 'quadrant', 'quantity', 'unit_id', 'unit_type_name', 'unit_type_id', 'tooth_surface', 'tooth_canal'];
         foreach ($fields as $field) {
-            $set($field, $field === 'surface' || $field === 'quadrant' ? [] : null);
+            $set($field, in_array($field, ['surface', 'canal', 'quadrant']) ? [] : null);
         }
     }
 

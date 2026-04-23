@@ -207,6 +207,22 @@ class SearchClaims extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('approval_code')->label('Approval Code')->limit(30),
                 Tables\Columns\TextColumn::make('service.name')->label('Service Claimed')->limit(30),
                 Tables\Columns\TextColumn::make('applied_fee')->label('Applied Fee')->money('PHP')->sortable(),
+                Tables\Columns\TextColumn::make('units_display')
+                    ->label('Units')
+                    ->getStateUsing(function ($record) {
+                        $lines = [];
+                        foreach ($record->units as $unit) {
+                            if ($unit->pivot->surface_id) {
+                                $sub = \App\Models\Unit::with('unitType')->find($unit->pivot->surface_id);
+                                $subLabel = $sub?->unitType?->name ?? 'Surface';
+                                $lines[] = 'Tooth ' . $unit->name . ' | ' . $subLabel . ': ' . ($sub?->name ?? '—');
+                            } else {
+                                $lines[] = ($unit->unitType?->name ?? '—') . ': ' . $unit->name;
+                            }
+                        }
+                        return implode("\n", $lines) ?: '—';
+                    })
+                    ->wrap(),
                 Tables\Columns\TextColumn::make('availment_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()

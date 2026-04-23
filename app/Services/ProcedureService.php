@@ -257,10 +257,10 @@ class ProcedureService
 
                     ProcedureUnit::create([
                         'procedure_id'   => $procedure->id,
-                        'unit_id'        => $input === 'surface' ? $data['tooth_surface'] : $value,
+                        'unit_id'        => $input === 'surface' ? $data['tooth_surface'] : ($input === 'canal' ? $data['tooth_canal'] : $value),
                         'quantity'       => 1,
                         'input_quantity' => $data['quantity'] ?? 1,
-                        'surface_id'     => $input === 'surface' ? $value : null,
+                        'surface_id'     => ($input === 'surface' || $input === 'canal') ? $value : null,
                     ]);
                 }
             }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClinicService;
+use App\Models\ClinicServiceFeeHistory;
 use App\Models\Member;
 use App\Models\Procedure;
 use App\Models\ProcedureUnit;
@@ -16,6 +17,17 @@ class ProcedureService
     // -------------------------------------------------------------------------
     // Eligibility
     // -------------------------------------------------------------------------
+
+    public static function getAppliedFee(int $clinicId, int $serviceId, string $availmentDate): float
+    {
+        $history = ClinicServiceFeeHistory::where('clinic_id', $clinicId)
+            ->where('service_id', $serviceId)
+            ->where('effective_date', '<=', $availmentDate)
+            ->orderByDesc('effective_date')
+            ->value('new_fee');
+
+        return (float) ($history ?? ClinicService::where('clinic_id', $clinicId)->where('service_id', $serviceId)->value('fee') ?? 0);
+    }
 
     public static function getMemberEligibilityError(Member $member): ?string
     {
@@ -231,7 +243,7 @@ class ProcedureService
     public static function create(Member $member, array $data, int $clinicId, bool $isCSR = false): string
     {
         $account      = $member->account;
-        $appliedFee   = $data['applied_fee'] ?? ClinicService::where('clinic_id', $clinicId)->where('service_id', $data['service_id'])->value('fee') ?? 0;
+        $appliedFee   = $data['applied_fee'] ?? self::getAppliedFee($clinicId, $data['service_id'], $data['availment_date'] ?? now()->toDateString()) ?? 0;
         $approvalCode = strtoupper(Str::random(8));
         $status       = $isCSR ? Procedure::STATUS_SIGN : Procedure::STATUS_PENDING;
 

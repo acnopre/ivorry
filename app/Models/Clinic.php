@@ -108,7 +108,7 @@ class Clinic extends Model
     }
     public function services()
     {
-        return $this->belongsToMany(Service::class, 'clinic_services')->withPivot('fee', 'new_fee', 'old_fee')->withTimestamps();
+        return $this->belongsToMany(Service::class, 'clinic_services')->withPivot('fee', 'new_fee', 'old_fee', 'effective_date', 'approved_at')->withTimestamps();
     }
     public function user()
     {

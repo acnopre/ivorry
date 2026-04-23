@@ -164,81 +164,12 @@ class EditClinics extends EditRecord
             }
         }
 
-        // Sync new fees (basic, enhancement, special)
-        $basicFees       = $this->data['services']['basic_new_fee'] ?? [];
-        $enhancementFees = $this->data['services']['enhancement_new_fee'] ?? [];
-        $specialFees     = $this->data['services']['special_new_fee'] ?? [];
-
-        $allNewFees = collect($basicFees)->union($enhancementFees)->union($specialFees)
-            ->filter(fn($fee) => !is_null($fee) && $fee !== '')
-            ->mapWithKeys(fn($fee, $serviceId) => [$serviceId => ['new_fee' => $fee]])
-            ->toArray();
-
-        $feesSubmitted = !empty($allNewFees);
-
-        if ($feesSubmitted) {
-            foreach ($allNewFees as $serviceId => $pivotData) {
-                $clinic->services()->updateExistingPivot($serviceId, $pivotData);
-            }
-
-            $clinic->update(['fee_approval' => 'pending']);
-
-            $approvalUrl     = \App\Filament\Pages\ServiceFeeApproval::getUrl();
-            $clinicEditUrl   = ClinicsResource::getUrl('edit', ['record' => $clinic]);
-            $clinicProfileUrl = \App\Filament\Pages\ClinicProfile::getUrl();
-
-            $approvers = User::permission('fee.approval')->get();
-            foreach ($approvers as $approver) {
-                Notification::make()
-                    ->title('Service Fee Update Pending')
-                    ->body('Service fees for ' . $clinic->clinic_name . ' have been updated and require approval.')
-                    ->warning()
-                    ->actions([NotificationAction::make('view')->label('Review Fees')->url($approvalUrl)])
-                    ->sendToDatabase($approver);
-            }
-
-            $accreditationUsers = User::permission('clinic.update')->where('id', '!=', auth()->id())->get();
-            foreach ($accreditationUsers as $user) {
-                Notification::make()
-                    ->title('Clinic Fee Update Submitted')
-                    ->body('Service fees for ' . $clinic->clinic_name . ' have been submitted for approval.')
-                    ->info()
-                    ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicEditUrl)])
-                    ->sendToDatabase($user);
-            }
-
-            $clinicUser = $clinic->user;
-            if ($clinicUser && $clinicUser->id !== auth()->id()) {
-                Notification::make()
-                    ->title('Service Fee Update Submitted')
-                    ->body('Service fees for ' . $clinic->clinic_name . ' have been submitted for approval.')
-                    ->info()
-                    ->actions([NotificationAction::make('view')->label('View Profile')->url($clinicProfileUrl)])
-                    ->sendToDatabase($clinicUser);
-            }
-        }
-
         // Toast for the current user
-        if ($feesSubmitted) {
-            $feeCount = count($allNewFees);
-            Notification::make()
-                ->success()
-                ->title('Clinic Saved & Fees Submitted')
-                ->body(
-                    $clinic->clinic_name . ' has been updated. ' .
-                    $feeCount . ' service fee' . ($feeCount > 1 ? 's have' : ' has') .
-                    ' been submitted for approval.'
-                )
-                ->icon('heroicon-o-check-badge')
-                ->persistent()
-                ->send();
-        } else {
-            Notification::make()
-                ->success()
-                ->title('Clinic Saved')
-                ->body($clinic->clinic_name . ' has been updated successfully.')
-                ->icon('heroicon-o-building-storefront')
-                ->send();
-        }
+        Notification::make()
+            ->success()
+            ->title('Clinic Saved')
+            ->body($clinic->clinic_name . ' has been updated successfully.')
+            ->icon('heroicon-o-building-storefront')
+            ->send();
     }
 }

@@ -9,6 +9,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\DB;
 use App\Models\Clinic;
+use App\Models\ClinicServiceFeeHistory;
 use App\Models\Procedure;
 use App\Models\User;
 use Filament\Forms\Components\Textarea;
@@ -85,7 +86,6 @@ class ServiceFeeApproval extends Page implements HasTable
             Tables\Columns\TextColumn::make('services')
                 ->label('Services (Fee / New Fee / Difference)')
                 ->formatStateUsing(function ($record) {
-                    // Only services that have a new_fee
                     $pendingServices = $record->services->filter(fn($s) => filled($s->pivot->new_fee));
 
                     if ($pendingServices->isEmpty()) {
@@ -93,26 +93,28 @@ class ServiceFeeApproval extends Page implements HasTable
                     }
 
                     $html = '<table class="w-full text-sm">';
-                    $html .= '<thead>
-                                <tr class="border-b">
-                                    <th class="text-left px-2 py-1">Service</th>
-                                    <th class="text-right px-2 py-1">Current Fee</th>
-                                    <th class="text-right px-2 py-1">New Fee</th>
-                                    <th class="text-right px-2 py-1">Difference</th>
-                                </tr>
-                              </thead>';
-                    $html .= '<tbody>';
+                    $html .= '<thead><tr class="border-b">'
+                        . '<th class="text-left px-2 py-1">Service</th>'
+                        . '<th class="text-right px-2 py-1">Current Fee</th>'
+                        . '<th class="text-right px-2 py-1">New Fee</th>'
+                        . '<th class="text-right px-2 py-1">Difference</th>'
+                        . '<th class="text-left px-2 py-1">Effective Date</th>'
+                        . '</tr></thead><tbody>';
 
                     foreach ($pendingServices as $service) {
                         $fee  = number_format($service->pivot->fee, 2);
                         $new  = number_format($service->pivot->new_fee, 2);
                         $diff = number_format($service->pivot->new_fee - $service->pivot->fee, 2);
+                        $date = $service->pivot->effective_date
+                            ? \Carbon\Carbon::parse($service->pivot->effective_date)->format('M d, Y')
+                            : '—';
 
                         $html .= '<tr class="border-b">';
                         $html .= "<td class='px-2 py-1'>{$service->name}</td>";
                         $html .= "<td class='px-2 py-1 text-right'>₱{$fee}</td>";
                         $html .= "<td class='px-2 py-1 text-right'>₱{$new}</td>";
                         $html .= "<td class='px-2 py-1 text-right'>₱{$diff}</td>";
+                        $html .= "<td class='px-2 py-1'>{$date}</td>";
                         $html .= '</tr>';
                     }
 
@@ -144,18 +146,27 @@ class ServiceFeeApproval extends Page implements HasTable
                             $fee  = number_format($s->pivot->fee, 2);
                             $new  = number_format($s->pivot->new_fee, 2);
                             $diff = number_format($s->pivot->new_fee - $s->pivot->fee, 2);
-                            return "{$s->name}: Fee ₱{$fee} → New Fee ₱{$new} | Difference ₱{$diff}";
+                            $date = $s->pivot->effective_date
+                                ? ' | Effective: ' . \Carbon\Carbon::parse($s->pivot->effective_date)->format('M d, Y')
+                                : '';
+                            return "{$s->name}: ₱{$fee} → ₱{$new} | Diff ₱{$diff}{$date}";
                         })
                         ->implode("\n");
 
-                    $hasProcessedProcedures = Procedure::query()
-                        ->where('clinic_id', $record->id)
-                        ->whereIn('status', [Procedure::STATUS_PROCESSED])
-                        ->exists();
+                    $affectedCount = $record->services
+                        ->filter(fn($s) => filled($s->pivot->new_fee))
+                        ->sum(function ($s) use ($record) {
+                            $effectiveDate = $s->pivot->effective_date ?? now()->toDateString();
+                            return Procedure::where('clinic_id', $record->id)
+                                ->where('service_id', $s->id)
+                                ->where('status', Procedure::STATUS_PROCESSED)
+                                ->whereDate('availment_date', '>=', $effectiveDate)
+                                ->count();
+                        });
 
-                    $procedureNotice = $hasProcessedProcedures
-                        ? "⚠ Some procedures already exist for this clinic. New procedures will be created for fee differences."
-                        : "No existing procedures. Fees will be updated directly.";
+                    $procedureNotice = $affectedCount > 0
+                        ? "\u26a0 {$affectedCount} processed procedure(s) with availment date >= effective date will receive fee adjustment."
+                        : 'No processed procedures fall within the effective date range. No adjustments will be created.';
 
                     return [
                         Textarea::make('modal_summary')
@@ -266,52 +277,28 @@ class ServiceFeeApproval extends Page implements HasTable
                     continue;
                 }
 
-                $oldFee = $service->pivot->fee;
-                $newFee = $service->pivot->new_fee;
-                $difference = $newFee - $oldFee;
+                $oldFee        = $service->pivot->fee;
+                $newFee        = $service->pivot->new_fee;
+                $effectiveDate = $service->pivot->effective_date ?? now()->toDateString();
 
-                // Check if processed procedures exist
-                $hasProcessedProcedures = Procedure::query()
-                    ->where('clinic_id', $clinic->id)
-                    ->where('service_id', $service->id)
-                    ->whereIn('status', [
-                        Procedure::STATUS_PROCESSED,
-                    ]);
+                // Insert fee history record
+                ClinicServiceFeeHistory::create([
+                    'clinic_id'      => $clinic->id,
+                    'service_id'     => $service->id,
+                    'old_fee'        => $oldFee,
+                    'new_fee'        => $newFee,
+                    'effective_date' => $effectiveDate,
+                    'approved_by'    => auth()->id(),
+                    'created_by'     => auth()->id(),
+                ]);
 
-                $hasProcessedProceduresExist = $hasProcessedProcedures->exists();
-
-
-                // Create adjustment procedure if needed
-                if ($hasProcessedProceduresExist && $difference != 0) {
-                    Procedure::create([
-                        'member_id'      => $hasProcessedProcedures->first()->member_id,
-                        'clinic_id'      => $clinic->id,
-                        'service_id'     => $service->id,
-                        'availment_date' => $hasProcessedProcedures->first()->availment_date,
-                        'status'         => Procedure::STATUS_VALID,
-                        'remarks'        => 'Service fee adjustment after approval',
-                        'applied_fee'    => $difference,
-                        'is_fee_adjusted' => true,
-                        'adc_number_from' => $hasProcessedProcedures->first()->adc_number,
-                        // 'quantity'       => 1,
-                    ]);
-                }
-
-                // Apply fee update
-                $clinic->services()->updateExistingPivot(
-                    $service->id,
-                    [
-                        'old_fee' => $oldFee,
-                        'fee'     => $newFee,
-                        'new_fee' => null,
-                    ]
-                );
+                // Mark as approved — scheduler will apply when effective_date arrives
+                $clinic->services()->updateExistingPivot($service->id, [
+                    'approved_at' => now(),
+                ]);
             }
 
-            // Update clinic approval
-            $clinic->update([
-                'fee_approval' => 'APPROVED',
-            ]);
+            $clinic->update(['fee_approval' => 'APPROVED']);
         });
     }
 

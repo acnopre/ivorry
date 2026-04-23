@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\GeneratedSoaResource\Pages;
 use App\Models\GeneratedSoa;
+use App\Models\Procedure;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\PrinterService;
@@ -37,7 +38,8 @@ class GeneratedSoaResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')
-                    ->label('ADC ID')
+                    ->label('ADC Number')
+                    ->getStateUsing(fn($record) => $record->procedures()->value('adc_number') ?? '—')
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('clinic.clinic_name')
@@ -250,6 +252,49 @@ class GeneratedSoaResource extends Resource
 
                         $record->update(['is_request_original' => false]);
                         $record->increment('print_count');
+
+                        if (\App\Filament\Pages\PrinterSettings::isSimulating()) {
+                            $record->update(['status' => 'processed']);
+                            Procedure::whereIn('id', $record->procedures->pluck('id'))->update(['status' => 'processed']);
+                            DB::table('print_logs')->insert([
+                                'user_id'     => auth()->id(),
+                                'document_id' => $record->id,
+                                'copy_type'   => 'ORIGINAL',
+                                'printer'     => 'SIMULATED',
+                                'cups_job_id' => null,
+                                'status'      => 'completed',
+                                'created_at'  => now(),
+                            ]);
+                            Notification::make()->success()->title('ADC Processed (Simulated)')->body('Print simulation enabled — claims marked as processed.')->send();
+                            return;
+                        }
+
+                        if (!PrinterService::isPrinterOnline($printerName)) {
+                            Notification::make()->danger()->title('Printer Offline')->body("'{$printerName}' is currently offline. Please check the printer and try again.")->send();
+                            return;
+                        }
+
+                        $absolutePath = $disk->path($record->file_path);
+                        $output       = [];
+                        exec(
+                            'lp -o landscape -d ' . escapeshellarg($printerName) . ' ' . escapeshellarg($absolutePath) . ' 2>&1',
+                            $output,
+                            $statusCode
+                        );
+
+                        if ($statusCode !== 0) {
+                            Notification::make()->warning()->title('Print Failed')->body('The print job was rejected by the printer. Please try again.')->send();
+                            Log::error('Original ADC printing failed', ['soa_id' => $record->id, 'printer' => $printerName, 'output' => $output]);
+                            return;
+                        }
+
+                        $jobId = null;
+                        foreach ($output as $line) {
+                            if (preg_match('/request id is (\S+)/i', $line, $matches)) {
+                                $jobId = $matches[1];
+                                break;
+                            }
+                        }
 
                         DB::table('print_logs')->insert([
                             'user_id'     => auth()->id(),

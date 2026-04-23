@@ -41,10 +41,6 @@ class SignatureController extends Controller
             'signature_path' => $filename,
         ]);
 
-        // Check if all signatures are completed
-        if ($procedure->signatures()->count() >= 3) {
-            $procedure->update(['status' => Procedure::STATUS_COMPLETED]);
-        }
 
         return redirect()->back()->with('success', 'Signature saved successfully!');
     }

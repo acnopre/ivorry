@@ -2,7 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Cache;
 
 class PrinterSettings extends Page
 {
@@ -11,11 +13,30 @@ class PrinterSettings extends Page
     protected static ?string $navigationGroup = 'Settings';
 
     public array $printers = [];
+    public bool $simulatePrint = false;
+
+    public static function isSimulating(): bool
+    {
+        return Cache::get('print_simulate', config('app.print_simulate', false));
+    }
 
     public function mount()
     {
-        $this->printers    = $this->getPrinters();
-        $this->debugOutput = $this->getDebugOutput();
+        $this->printers      = $this->getPrinters();
+        $this->debugOutput   = $this->getDebugOutput();
+        $this->simulatePrint = self::isSimulating();
+    }
+
+    public function toggleSimulate(): void
+    {
+        $this->simulatePrint = !$this->simulatePrint;
+        Cache::forever('print_simulate', $this->simulatePrint);
+
+        Notification::make()
+            ->title($this->simulatePrint ? 'Print Simulation Enabled' : 'Print Simulation Disabled')
+            ->body($this->simulatePrint ? 'Claims will be marked as processed without sending to printer.' : 'Claims will be sent to the printer as normal.')
+            ->color($this->simulatePrint ? 'warning' : 'success')
+            ->send();
     }
 
     public array $debugOutput = [];

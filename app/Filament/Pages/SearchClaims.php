@@ -654,15 +654,16 @@ class SearchClaims extends Page implements HasForms, HasTable
 
         $this->previewData = [
             'claims'         => $claims->map(fn($p) => [
-                'availment_date'    => $p->availment_date,
-                'member_name'       => $p->member->first_name . ' ' . $p->member->last_name,
-                'company_name'      => $p->member->account->company_name ?? '—',
-                'service_name'      => $p->service->name ?? '—',
-                'units'             => $p->units->map(fn($u) => ($u->unitType?->name ?? '—') . ': ' . ($u->name ?? '—'))->join(', '),
+                'availment_date'     => $p->availment_date,
+                'member_name'        => $p->member->first_name . ' ' . $p->member->last_name,
+                'company_name'       => $p->member->account->company_name ?? '—',
+                'service_name'       => $p->service->name ?? '—',
+                'units'              => $p->units->map(fn($u) => ($u->unitType?->name ?? '—') . ': ' . ($u->name ?? '—'))->join(', '),
                 'clinic_service_fee' => $p->clinic_service_fee,
-                'vat_amount'        => $p->vat_amount,
-                'ewt_amount'        => $p->ewt_amount,
-                'net'               => $p->net,
+                'vat_amount'         => $p->vat_amount,
+                'ewt_amount'         => $p->ewt_amount,
+                'net'                => $p->net,
+                'adc_number_from'    => $p->adc_number_from,
             ])->toArray(),
             'clinic_name'    => $clinicDetails?->clinic_name,
             'dentist_name'   => $dentist ? $dentist->first_name . ' ' . $dentist->last_name : '—',
@@ -941,6 +942,47 @@ class SearchClaims extends Page implements HasForms, HasTable
         $this->dispatch('update-progress', status: 'Saving original PDF...', progress: 92);
         Storage::disk('public')->put($originalPath, $originalPdf->Output('S'));
 
+        $this->dispatch('update-progress', status: 'Updating claim status...', progress: 97);
+
+        foreach ($claims as $procedure) {
+            $soa->procedures()->attach($procedure->id, ['amount' => $procedure->clinic_service_fee]);
+        }
+
+        Procedure::whereIn('id', $claims->pluck('id'))->update(['adc_number' => $sequenceNumber]);
+
+        $this->dispatch('update-progress', status: 'Creating duplicate copy...', progress: 96);
+
+        $duplicatePdf      = $generatePdf('DUPLICATE');
+        $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
+        $duplicatePath     = 'adc/duplicates/' . $duplicateFileName;
+        Storage::disk('public')->put($duplicatePath, $duplicatePdf->Output('S'));
+
+        $this->dispatch('update-progress', status: 'Logging print activity...', progress: 98);
+
+        $soa->increment('print_count');
+
+        if (\App\Filament\Pages\PrinterSettings::isSimulating()) {
+            $soa->update([
+                'status'              => 'processed',
+                'file_path'           => $originalPath,
+                'duplicate_file_path' => $duplicatePath,
+            ]);
+            Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+            DB::table('print_logs')->insert([
+                'user_id'     => auth()->id(),
+                'document_id' => $soa->id,
+                'copy_type'   => 'ORIGINAL',
+                'printer'     => 'SIMULATED',
+                'cups_job_id' => null,
+                'status'      => 'completed',
+                'created_at'  => now(),
+            ]);
+            Notification::make()->success()->title('ADC Processed (Simulated)')->body('Print simulation enabled — claims marked as processed.')->send();
+            $this->dispatch('update-progress', status: 'Complete!', progress: 100);
+            $this->dispatch('close-printing');
+            return;
+        }
+
         $this->dispatch('update-progress', status: 'Sending to printer...', progress: 95);
 
         $clinicPrinter = $clinicDetails->printer_name ?? null;
@@ -978,7 +1020,6 @@ class SearchClaims extends Page implements HasForms, HasTable
             return;
         }
 
-        // Extract job ID
         $jobId = null;
         foreach ($lpOutput as $line) {
             if (preg_match('/request id is (\S+)/i', $line, $matches)) {
@@ -987,33 +1028,13 @@ class SearchClaims extends Page implements HasForms, HasTable
             }
         }
 
-        Log::info('ADC print job queued', [
-            'printer' => $printerName,
-            'job'     => $jobId,
-            'soa'     => $soa->id,
+        Log::info('ADC print job queued', ['printer' => $printerName, 'job' => $jobId, 'soa' => $soa->id]);
+
+        $soa->update([
+            'status'              => 'printing',
+            'file_path'           => $originalPath,
+            'duplicate_file_path' => $duplicatePath,
         ]);
-
-        // Mark as printing — cron will update to processed/print_failed
-        $this->dispatch('update-progress', status: 'Updating claim status...', progress: 97);
-
-        foreach ($claims as $procedure) {
-            $soa->procedures()->attach($procedure->id, ['amount' => $procedure->clinic_service_fee]);
-        }
-
-        Procedure::whereIn('id', $claims->pluck('id'))->update([
-            'adc_number' => $sequenceNumber,
-        ]);
-
-        $this->dispatch('update-progress', status: 'Creating duplicate copy...', progress: 96);
-
-        $duplicatePdf      = $generatePdf('DUPLICATE');
-        $duplicateFileName = 'ADC_DUPLICATE_' . $timestamp . '.pdf';
-        $duplicatePath     = 'adc/duplicates/' . $duplicateFileName;
-        Storage::disk('public')->put($duplicatePath, $duplicatePdf->Output('S'));
-
-        $this->dispatch('update-progress', status: 'Logging print activity...', progress: 98);
-
-        $soa->increment('print_count');
 
         DB::table('print_logs')->insert([
             'user_id'      => auth()->id(),
@@ -1023,12 +1044,6 @@ class SearchClaims extends Page implements HasForms, HasTable
             'cups_job_id'  => $jobId,
             'status'       => 'sent',
             'created_at'   => now(),
-        ]);
-
-        $soa->update([
-            'status'              => 'printing',
-            'file_path'           => $originalPath,
-            'duplicate_file_path' => $duplicatePath,
         ]);
 
         Notification::make()->success()->title('ADC Sent to Printer')->body('Document sent to ' . $printerName . '. Status will update automatically once printing is confirmed.')->send();

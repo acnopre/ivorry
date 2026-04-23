@@ -26,6 +26,7 @@
             <span class="font-semibold text-gray-700 dark:text-gray-300">Claims — {{ count($previewData['claims']) }} record(s)</span>
         </div>
         <div class="overflow-x-auto">
+            @php $hasAdcRef = collect($previewData['claims'])->contains(fn($c) => !empty($c['adc_number_from'])); @endphp
             <table class="w-full text-xs">
                 <thead class="bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400">
                     <tr>
@@ -34,6 +35,9 @@
                         <th class="px-3 py-2 text-left border-b border-gray-200 dark:border-white/10">Company</th>
                         <th class="px-3 py-2 text-left border-b border-gray-200 dark:border-white/10">Service</th>
                         <th class="px-3 py-2 text-left border-b border-gray-200 dark:border-white/10">Units</th>
+                        @if($hasAdcRef)
+                        <th class="px-3 py-2 text-left border-b border-gray-200 dark:border-white/10">ADC Ref</th>
+                        @endif
                         <th class="px-3 py-2 text-right border-b border-gray-200 dark:border-white/10">Rate</th>
                         <th class="px-3 py-2 text-right border-b border-gray-200 dark:border-white/10">VAT</th>
                         <th class="px-3 py-2 text-right border-b border-gray-200 dark:border-white/10">EWT</th>
@@ -48,20 +52,29 @@
                         <td class="px-3 py-2">{{ $claim['company_name'] }}</td>
                         <td class="px-3 py-2">{{ $claim['service_name'] }}</td>
                         <td class="px-3 py-2 text-gray-500">{{ $claim['units'] ?: '—' }}</td>
-                        <td class="px-3 py-2 text-right">₱{{ number_format($claim['clinic_service_fee'], 2) }}</td>
-                        <td class="px-3 py-2 text-right">₱{{ number_format($claim['vat_amount'], 2) }}</td>
-                        <td class="px-3 py-2 text-right">₱{{ number_format($claim['ewt_amount'], 2) }}</td>
-                        <td class="px-3 py-2 text-right font-medium">₱{{ number_format($claim['net'], 2) }}</td>
+                        @if($hasAdcRef)
+                        <td class="px-3 py-2">
+                            @if(!empty($claim['adc_number_from']))
+                                <x-filament::badge color="warning" size="sm">{{ $claim['adc_number_from'] }}</x-filament::badge>
+                            @else
+                                <span class="text-gray-300 dark:text-gray-600">—</span>
+                            @endif
+                        </td>
+                        @endif
+                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($claim['clinic_service_fee'], 2) }}</td>
+                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($claim['vat_amount'], 2) }}</td>
+                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($claim['ewt_amount'], 2) }}</td>
+                        <td class="px-3 py-2 text-right font-medium">&#8369;{{ number_format($claim['net'], 2) }}</td>
                     </tr>
                     @endforeach
                 </tbody>
                 <tfoot class="bg-gray-50 dark:bg-white/5 font-semibold border-t border-gray-200 dark:border-white/10">
                     <tr>
-                        <td colspan="5" class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">Totals:</td>
-                        <td class="px-3 py-2 text-right">₱{{ number_format($previewData['total_fee'], 2) }}</td>
-                        <td class="px-3 py-2 text-right">₱{{ number_format($previewData['total_vat'], 2) }}</td>
-                        <td class="px-3 py-2 text-right">₱{{ number_format($previewData['total_ewt'], 2) }}</td>
-                        <td class="px-3 py-2 text-right">₱{{ number_format($previewData['total_net'], 2) }}</td>
+                        <td colspan="{{ $hasAdcRef ? 6 : 5 }}" class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">Totals:</td>
+                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($previewData['total_fee'], 2) }}</td>
+                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($previewData['total_vat'], 2) }}</td>
+                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($previewData['total_ewt'], 2) }}</td>
+                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($previewData['total_net'], 2) }}</td>
                     </tr>
                 </tfoot>
             </table>

@@ -41,6 +41,8 @@ return [
 
     'debug' => (bool) env('APP_DEBUG', false),
 
+    'print_simulate' => (bool) env('PRINT_SIMULATE', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application URL

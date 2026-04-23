@@ -119,6 +119,11 @@ class EditClinics extends EditRecord
         return $data;
     }
 
+    protected function getSavedNotification(): ?Notification
+    {
+        return null; // handled manually in afterSave()
+    }
+
     protected function afterSave(): void
     {
         $clinic = $this->record;
@@ -127,30 +132,23 @@ class EditClinics extends EditRecord
         // Create or update user for owner dentist
         if ($ownerDentist && !empty($clinic->clinic_email)) {
             if (!$clinic->user_id) {
-                // Create new user
                 $plainPassword = Str::random(12);
-
                 $user = User::create([
                     'name' => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
                     'email' => $clinic->clinic_email,
                     'password' => Hash::make($plainPassword),
                     'must_change_password' => true,
                 ]);
-
                 $user->assignRole('Dentist');
                 $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
-
                 $clinic->update(['user_id' => $user->id]);
             } else {
                 $oldEmail = $clinic->user->email;
                 $newEmail = $clinic->clinic_email;
-
                 $clinic->user->update([
                     'name'  => $ownerDentist->first_name . ' ' . $ownerDentist->last_name,
                     'email' => $newEmail,
                 ]);
-
-                // Send new credentials if email changed
                 if ($oldEmail !== $newEmail) {
                     try {
                         $plainPassword = Str::random(12);
@@ -167,27 +165,28 @@ class EditClinics extends EditRecord
         }
 
         // Sync new fees (basic, enhancement, special)
-        $basicFees = $this->data['services']['basic_new_fee'] ?? [];
+        $basicFees       = $this->data['services']['basic_new_fee'] ?? [];
         $enhancementFees = $this->data['services']['enhancement_new_fee'] ?? [];
-        $specialFees = $this->data['services']['special_new_fee'] ?? [];
+        $specialFees     = $this->data['services']['special_new_fee'] ?? [];
 
         $allNewFees = collect($basicFees)->union($enhancementFees)->union($specialFees)
             ->filter(fn($fee) => !is_null($fee) && $fee !== '')
             ->mapWithKeys(fn($fee, $serviceId) => [$serviceId => ['new_fee' => $fee]])
             ->toArray();
 
-        if (!empty($allNewFees)) {
+        $feesSubmitted = !empty($allNewFees);
+
+        if ($feesSubmitted) {
             foreach ($allNewFees as $serviceId => $pivotData) {
                 $clinic->services()->updateExistingPivot($serviceId, $pivotData);
             }
 
             $clinic->update(['fee_approval' => 'pending']);
 
-            $approvalUrl = \App\Filament\Pages\ServiceFeeApproval::getUrl();
-            $clinicEditUrl = ClinicsResource::getUrl('edit', ['record' => $clinic]);
+            $approvalUrl     = \App\Filament\Pages\ServiceFeeApproval::getUrl();
+            $clinicEditUrl   = ClinicsResource::getUrl('edit', ['record' => $clinic]);
             $clinicProfileUrl = \App\Filament\Pages\ClinicProfile::getUrl();
 
-            // Notify fee approvers (upper management) → Service Fee Approval
             $approvers = User::permission('fee.approval')->get();
             foreach ($approvers as $approver) {
                 Notification::make()
@@ -198,10 +197,7 @@ class EditClinics extends EditRecord
                     ->sendToDatabase($approver);
             }
 
-            // Notify accreditation team → Clinic Edit
-            $accreditationUsers = User::permission('clinic.update')
-                ->where('id', '!=', auth()->id())
-                ->get();
+            $accreditationUsers = User::permission('clinic.update')->where('id', '!=', auth()->id())->get();
             foreach ($accreditationUsers as $user) {
                 Notification::make()
                     ->title('Clinic Fee Update Submitted')
@@ -211,7 +207,6 @@ class EditClinics extends EditRecord
                     ->sendToDatabase($user);
             }
 
-            // Notify dentist (clinic user) → Clinic Profile
             $clinicUser = $clinic->user;
             if ($clinicUser && $clinicUser->id !== auth()->id()) {
                 Notification::make()
@@ -221,6 +216,29 @@ class EditClinics extends EditRecord
                     ->actions([NotificationAction::make('view')->label('View Profile')->url($clinicProfileUrl)])
                     ->sendToDatabase($clinicUser);
             }
+        }
+
+        // Toast for the current user
+        if ($feesSubmitted) {
+            $feeCount = count($allNewFees);
+            Notification::make()
+                ->success()
+                ->title('Clinic Saved & Fees Submitted')
+                ->body(
+                    $clinic->clinic_name . ' has been updated. ' .
+                    $feeCount . ' service fee' . ($feeCount > 1 ? 's have' : ' has') .
+                    ' been submitted for approval.'
+                )
+                ->icon('heroicon-o-check-badge')
+                ->persistent()
+                ->send();
+        } else {
+            Notification::make()
+                ->success()
+                ->title('Clinic Saved')
+                ->body($clinic->clinic_name . ' has been updated successfully.')
+                ->icon('heroicon-o-building-storefront')
+                ->send();
         }
     }
 }

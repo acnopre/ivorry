@@ -288,7 +288,7 @@ class ServiceFeeApproval extends Page implements HasTable
                         'clinic_id'      => $clinic->id,
                         'service_id'     => $service->id,
                         'availment_date' => $hasProcessedProcedures->first()->availment_date,
-                        'status'         => Procedure::STATUS_COMPLETED,
+                        'status'         => Procedure::STATUS_VALID,
                         'remarks'        => 'Service fee adjustment after approval',
                         'applied_fee'    => $difference,
                         'is_fee_adjusted' => true,

@@ -424,25 +424,14 @@ class SearchMember extends Page implements HasActions
                 $account = $member?->account;
                 if (!$account) return collect();
 
-                // For SHARED accounts, use family-level quantities
-                if (strtoupper($account->plan_type) === 'SHARED') {
-                    \App\Models\MemberService::initializeForFamily($member->card_number, $account->id);
-                    return \App\Models\MemberService::where('card_number', $member->card_number)
-                        ->where('account_id', $account->id)
-                        ->where(fn($q) => $q->where('quantity', '>', 0)->orWhere('is_unlimited', true))
-                        ->with('service')
-                        ->get()
-                        ->when($isDentist, fn($col) => $col->filter(fn($ms) => $ms->service?->type !== 'special'))
-                        ->groupBy('service.type')
-                        ->map(fn($group) => $group->pluck('service.name', 'service_id'))
-                        ->toArray();
-                }
-
-                return AccountService::where('account_id', $accountId)
+                // Use MemberService (per card_number) for all plan types
+                \App\Models\MemberService::initializeForCard($member->card_number, $account->id);
+                return \App\Models\MemberService::where('card_number', $member->card_number)
+                    ->where('account_id', $account->id)
                     ->where(fn($q) => $q->where('quantity', '>', 0)->orWhere('is_unlimited', true))
                     ->with('service')
                     ->get()
-                    ->when($isDentist, fn($col) => $col->filter(fn($as) => $as->service?->type !== 'special'))
+                    ->when($isDentist, fn($col) => $col->filter(fn($ms) => $ms->service?->type !== 'special'))
                     ->groupBy('service.type')
                     ->map(fn($group) => $group->pluck('service.name', 'service_id'))
                     ->toArray();

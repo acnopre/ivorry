@@ -246,10 +246,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 ]);
                 $member->save();
 
-                // Initialize family service quantities for SHARED accounts
-                if (strtoupper($account->plan_type) === 'SHARED') {
-                    MemberService::initializeForFamily($member->card_number, $account->id);
-                }
+                // Initialize member service quantities for all accounts
+                MemberService::initializeForCard($member->card_number, $account->id);
 
                 if (strtoupper($row['status'] ?? 'ACTIVE') === 'ACTIVE' || $pendingRenewal) {
                     $user = User::create([

@@ -422,13 +422,11 @@ class ViewAccount extends ViewRecord
                     $amendment->services()->delete();
                     $amendment->delete();
 
-                    // Reset family service quantities for SHARED accounts
-                    if (strtoupper($record->plan_type) === 'SHARED') {
-                        MemberService::where('account_id', $record->id)->delete();
-                        $record->members->pluck('card_number')->unique()->filter()->each(
-                            fn($cardNumber) => MemberService::initializeForFamily($cardNumber, $record->id)
-                        );
-                    }
+                    // Reset member service quantities for all plan types
+                    MemberService::where('account_id', $record->id)->delete();
+                    $record->members->pluck('card_number')->unique()->filter()->each(
+                        fn($cardNumber) => MemberService::initializeForCard($cardNumber, $record->id)
+                    );
 
                     Notification::make()
                         ->title('Account amendment approved successfully.')

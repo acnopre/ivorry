@@ -30,17 +30,15 @@
         ->orderByDesc('updated_at')
         ->get();
         $isShared = strtoupper($member->account?->plan_type ?? '') === 'SHARED';
-        if ($isShared && $member->card_number) {
-            \App\Models\MemberService::initializeForFamily($member->card_number, $member->account->id);
+        if ($member->card_number) {
+            \App\Models\MemberService::initializeForCard($member->card_number, $member->account->id);
             $filteredServices = \App\Models\MemberService::where('card_number', $member->card_number)
                 ->where('account_id', $member->account->id)
                 ->with('service')
                 ->get()
                 ->filter(fn($ms) => !( auth()->user()->hasRole('Dentist') && $ms->service?->type === 'special'));
         } else {
-            $filteredServices = $member->account?->services->filter(fn($s) =>
-                !(auth()->user()->hasRole('Dentist') && $s->type === 'special')
-            ) ?? collect();
+            $filteredServices = collect();
         }
         $isCsr = auth()->user()->hasRole('CSR');
         $isDentistUser = auth()->user()->hasRole('Dentist');
@@ -234,18 +232,15 @@
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Service</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Type</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Qty</th>
-                                        @if(!$isShared)
-                                        <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Remarks</th>
-                                        @endif
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                                     @foreach($filteredServices as $item)
                                     @php
-                                        $svc = $isShared ? $item->service : $item;
-                                        $qty = $isShared ? $item->quantity : $item->pivot->quantity;
-                                        $defaultQty = $isShared ? $item->default_quantity : $item->pivot->default_quantity;
-                                        $unlimited = $isShared ? $item->is_unlimited : $item->pivot->is_unlimited;
+                                        $svc = $item->service;
+                                        $qty = $item->quantity;
+                                        $defaultQty = $item->default_quantity;
+                                        $unlimited = $item->is_unlimited;
                                     @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                         <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{{ $svc->name ?? '—' }}</td>
@@ -263,9 +258,6 @@
                                                 {{ $qty }}/{{ $defaultQty }}
                                             @endif
                                         </td>
-                                        @if(!$isShared)
-                                        <td class="px-4 py-2 text-gray-400 italic">{{ $item->pivot->remarks ?? '—' }}</td>
-                                        @endif
                                     </tr>
                                     @endforeach
                                 </tbody>

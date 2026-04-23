@@ -285,7 +285,7 @@ class ProcedureService
         $unitCount = max($unitCount, 1);
 
         if ($account->mbl_type === 'Fixed') {
-            $member->update(['mbl_balance' => max(0, $member->mbl_balance - ($appliedFee * $unitCount))]);
+            self::deductMbl($member, $appliedFee * $unitCount);
         }
         ServiceQuantityService::deduct($member, $data['service_id'], $unitCount);
 
@@ -317,7 +317,7 @@ class ProcedureService
             ServiceQuantityService::returnQuantity($member, $procedure->service_id, $unitCount);
 
             if ($member->account->mbl_type === 'Fixed') {
-                $member->update(['mbl_balance' => $member->mbl_balance + ($procedure->applied_fee * $unitCount)]);
+                self::returnMbl($member, $procedure->applied_fee * $unitCount);
             }
         }
 
@@ -338,8 +338,11 @@ class ProcedureService
         }
         $totalFee = $appliedFee * max($totalUnits, 1);
 
-        if ($member->mbl_balance < $totalFee) {
-            return "Total fee (₱" . number_format($totalFee, 2) . ") exceeds MBL balance (₱" . number_format($member->mbl_balance, 2) . ").";
+        // For SHARED plans, check the principal member's balance (shared across family)
+        $balance = self::getFamilyMblBalance($member);
+
+        if ($balance < $totalFee) {
+            return "Total fee (₱" . number_format($totalFee, 2) . ") exceeds MBL balance (₱" . number_format($balance, 2) . ").";
         }
 
         return null;
@@ -408,5 +411,58 @@ class ProcedureService
             ->whereHas('units', fn($q) => $q->where('unit_id', $toothId))
             ->whereHas('service', fn($q) => $q->where('name', '!=', $excludeService))
             ->exists();
+    }
+
+    // -------------------------------------------------------------------------
+    // MBL Helpers (SHARED-aware)
+    // -------------------------------------------------------------------------
+
+    private static function getFamilyMblBalance(Member $member): float
+    {
+        $account = $member->account;
+        if (!$account) return 0;
+
+        // SHARED plan — balance is shared across all members with same card_number
+        if (strtoupper($account->plan_type) === 'SHARED' && $member->card_number) {
+            return (float) Member::where('card_number', $member->card_number)
+                ->where('account_id', $account->id)
+                ->min('mbl_balance') ?? 0;
+        }
+
+        return (float) $member->mbl_balance;
+    }
+
+    private static function deductMbl(Member $member, float $amount): void
+    {
+        $account = $member->account;
+        if (!$account) return;
+
+        if (strtoupper($account->plan_type) === 'SHARED' && $member->card_number) {
+            // Deduct from ALL members with same card_number
+            Member::where('card_number', $member->card_number)
+                ->where('account_id', $account->id)
+                ->each(function (Member $m) use ($amount) {
+                    $m->update(['mbl_balance' => max(0, $m->mbl_balance - $amount)]);
+                });
+        } else {
+            $member->update(['mbl_balance' => max(0, $member->mbl_balance - $amount)]);
+        }
+    }
+
+    public static function returnMbl(Member $member, float $amount): void
+    {
+        $account = $member->account;
+        if (!$account) return;
+
+        if (strtoupper($account->plan_type) === 'SHARED' && $member->card_number) {
+            // Return to ALL members with same card_number
+            Member::where('card_number', $member->card_number)
+                ->where('account_id', $account->id)
+                ->each(function (Member $m) use ($amount) {
+                    $m->update(['mbl_balance' => $m->mbl_balance + $amount]);
+                });
+        } else {
+            $member->update(['mbl_balance' => $member->mbl_balance + $amount]);
+        }
     }
 }

@@ -157,13 +157,11 @@ class ActivateAccounts extends Command
                 'account_status'   => 'active',
             ]);
 
-            // 6. Reset MemberService for SHARED
-            if (strtoupper($account->plan_type) === 'SHARED') {
-                MemberService::where('account_id', $account->id)->delete();
-                $account->members()->where('status', 'ACTIVE')->pluck('card_number')
-                    ->unique()->filter()
-                    ->each(fn($cardNumber) => MemberService::initializeForFamily($cardNumber, $account->id));
-            }
+            // 6. Reset MemberService for all plan types
+            MemberService::where('account_id', $account->id)->delete();
+            $account->members()->where('status', 'ACTIVE')->pluck('card_number')
+                ->unique()->filter()
+                ->each(fn($cardNumber) => MemberService::initializeForCard($cardNumber, $account->id));
 
             // 7. Mark renewal as APPROVED
             $renewal->update(['status' => 'APPROVED']);

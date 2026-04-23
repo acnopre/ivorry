@@ -28,12 +28,13 @@ class MemberService extends Model
     }
 
     /**
-     * Initialize family service quantities from account services for a given card_number.
+     * Initialize member service quantities from account services for a given card_number.
+     * Works for both SHARED and INDIVIDUAL accounts.
      */
-    public static function initializeForFamily(string $cardNumber, int $accountId): void
+    public static function initializeForCard(string $cardNumber, int $accountId): void
     {
         $account = Account::find($accountId);
-        if (!$account || strtoupper($account->plan_type) !== 'SHARED') return;
+        if (!$account) return;
 
         foreach ($account->services as $service) {
             static::firstOrCreate(

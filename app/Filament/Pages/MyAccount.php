@@ -37,7 +37,7 @@ class MyAccount extends Page
 
             // For SHARED plans, override service quantities with family-level member_service data
             if (strtoupper($this->account->plan_type) === 'SHARED' && $member->card_number) {
-                \App\Models\MemberService::initializeForFamily($member->card_number, $this->account->id);
+                \App\Models\MemberService::initializeForCard($member->card_number, $this->account->id);
 
                 $memberServices = \App\Models\MemberService::where('card_number', $member->card_number)
                     ->where('account_id', $this->account->id)

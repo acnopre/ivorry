@@ -165,9 +165,7 @@ class PendingProcedures extends Page implements HasForms, HasTable
                             ServiceQuantityService::returnQuantity($member, $record->service_id);
 
                             if ($account->mbl_type === 'Fixed') {
-                                $member->update([
-                                    'mbl_balance' => $member->mbl_balance + $record->applied_fee,
-                                ]);
+                                \App\Services\ProcedureService::returnMbl($member, $record->applied_fee);
                             }
                         }
 

@@ -51,6 +51,14 @@ class CreateMember extends CreateRecord
         return $data;
     }
 
+    protected function afterCreate(): void
+    {
+        $cardNumber = $this->record->card_number ?? $this->record->coc_number;
+        if ($cardNumber && $this->record->account_id) {
+            MemberService::initializeForCard($cardNumber, $this->record->account_id);
+        }
+    }
+
     protected function createSharedFamily(array $data, Account $account): void
     {
         $cardNumber = $data['shared_card_number'] ?? null;
@@ -123,7 +131,7 @@ class CreateMember extends CreateRecord
                 $depCount++;
             }
 
-            MemberService::initializeForFamily($cardNumber, $account->id);
+            MemberService::initializeForCard($cardNumber, $account->id);
 
             DB::commit();
 

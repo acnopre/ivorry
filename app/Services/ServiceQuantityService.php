@@ -16,16 +16,11 @@ class ServiceQuantityService
     {
         $account = $member->account;
 
-        if (strtoupper($account->plan_type) === 'SHARED') {
-            MemberService::initializeForFamily($member->card_number, $account->id);
+        // Always use MemberService (per card_number) for both SHARED and INDIVIDUAL
+        MemberService::initializeForCard($member->card_number, $account->id);
 
-            return MemberService::where('card_number', $member->card_number)
-                ->where('account_id', $account->id)
-                ->where('service_id', $serviceId)
-                ->first();
-        }
-
-        return AccountService::where('account_id', $account->id)
+        return MemberService::where('card_number', $member->card_number)
+            ->where('account_id', $account->id)
             ->where('service_id', $serviceId)
             ->first();
     }

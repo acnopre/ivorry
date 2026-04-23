@@ -21,7 +21,7 @@ class CreateDependentMember extends CreateRecord
     {
         $member = $this->record;
         if ($member->card_number && $member->account_id) {
-            MemberService::initializeForFamily($member->card_number, $member->account_id);
+            MemberService::initializeForCard($member->card_number, $member->account_id);
         }
     }
 

@@ -794,6 +794,21 @@ class SearchClaims extends Page implements HasForms, HasTable
         /** Create the SOA — created before PDF so we have the ID for the sequence number */
         $this->dispatch('update-progress', status: 'Creating SOA record...', progress: 70);
 
+        // Guard: block if any procedure is already linked to a printing SOA
+        $printingSOA = \App\Models\GeneratedSoa::where('status', 'printing')
+            ->whereHas('procedures', fn($q) => $q->whereIn('procedures.id', $claims->pluck('id')))
+            ->first();
+
+        if ($printingSOA) {
+            $this->dispatch('close-printing');
+            \Filament\Notifications\Notification::make()
+                ->warning()
+                ->title('Print Already In Progress')
+                ->body('These claims are already linked to a SOA that is currently printing. Please wait for it to complete.')
+                ->send();
+            return;
+        }
+
         $soa = GeneratedSoa::create([
             'clinic_id'    => $data['clinic_id'],
             'from_date'    => $data['availment_from'],

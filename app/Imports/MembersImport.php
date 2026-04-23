@@ -362,8 +362,18 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Effective date and expiration date are required when account coverage type is MEMBER';
         }
 
-        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL' && Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->where('first_name', '!=', $row['first_name'])->where('last_name', '!=', $row['last_name'])->exists()) {
-            return 'Account with SHARED plan type can only have 1 PRINCIPAL member';
+        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
+            $existingPrincipal = Member::withTrashed()
+                ->where('account_id', $account->id)
+                ->where('member_type', 'PRINCIPAL')
+                ->where('card_number', $row['card_number'])
+                ->whereNull('deleted_at')
+                ->first();
+
+            if ($existingPrincipal &&
+                !($existingPrincipal->first_name === $row['first_name'] && $existingPrincipal->last_name === $row['last_name'])) {
+                return 'Card number ' . $row['card_number'] . ' already has a PRINCIPAL: ' . $existingPrincipal->first_name . ' ' . $existingPrincipal->last_name;
+            }
         }
 
         if (strtoupper($row['member_type']) === 'DEPENDENT' && !Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {

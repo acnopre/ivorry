@@ -36,10 +36,9 @@
                 ->where('account_id', $member->account->id)
                 ->with('service')
                 ->get()
-                ->filter(fn($ms) => ($ms->is_unlimited || $ms->quantity > 0) && !(auth()->user()->hasRole('Dentist') && $ms->service?->type === 'special'));
+                ->filter(fn($ms) => !( auth()->user()->hasRole('Dentist') && $ms->service?->type === 'special'));
         } else {
             $filteredServices = $member->account?->services->filter(fn($s) =>
-                ($s->pivot->is_unlimited || $s->pivot->quantity > 0) &&
                 !(auth()->user()->hasRole('Dentist') && $s->type === 'special')
             ) ?? collect();
         }
@@ -235,7 +234,6 @@
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Service</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Type</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Qty</th>
-                                        <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Unlimited</th>
                                         @if(!$isShared)
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Remarks</th>
                                         @endif
@@ -246,6 +244,7 @@
                                     @php
                                         $svc = $isShared ? $item->service : $item;
                                         $qty = $isShared ? $item->quantity : $item->pivot->quantity;
+                                        $defaultQty = $isShared ? $item->default_quantity : $item->pivot->default_quantity;
                                         $unlimited = $isShared ? $item->is_unlimited : $item->pivot->is_unlimited;
                                     @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
@@ -255,12 +254,13 @@
                                                 {{ ucfirst($svc->type ?? '') }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-2 font-mono font-semibold text-gray-700 dark:text-gray-300">{{ $qty ?? '—' }}</td>
-                                        <td class="px-4 py-2">
+                                        <td class="px-4 py-2 font-mono font-semibold">
                                             @if($unlimited)
-                                            <x-filament::badge color="success" size="sm">Yes</x-filament::badge>
+                                                <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
+                                            @elseif($qty == 0)
+                                                <span class="text-danger-600 dark:text-danger-400">{{ $qty }}/{{ $defaultQty }}</span>
                                             @else
-                                            <x-filament::badge color="gray" size="sm">No</x-filament::badge>
+                                                {{ $qty }}/{{ $defaultQty }}
                                             @endif
                                         </td>
                                         @if(!$isShared)

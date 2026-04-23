@@ -7,10 +7,9 @@
         $services = \App\Models\MemberService::where('card_number', $member->card_number)
             ->where('account_id', $account->id)
             ->with('service')
-            ->get()
-            ->filter(fn($ms) => $ms->is_unlimited || $ms->quantity > 0);
+            ->get();
     } else {
-        $services = $account->services->filter(fn($s) => $s->pivot->is_unlimited || $s->pivot->quantity > 0);
+        $services = $account->services;
     }
 @endphp
 
@@ -29,8 +28,7 @@
             <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Quantity</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Default Quantity</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qty (Used/Total)</th>
                     @unless($isShared)
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Remarks</th>
                     @endunless
@@ -41,11 +39,14 @@
                     @foreach($services as $ms)
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ $ms->service->name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                {{ $ms->is_unlimited ? 'Unlimited' : $ms->quantity }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                {{ $ms->is_unlimited ? '—' : $ms->default_quantity }}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-semibold">
+                                @if($ms->is_unlimited)
+                                    <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
+                                @elseif($ms->quantity == 0)
+                                    <span class="text-danger-600 dark:text-danger-400">{{ $ms->quantity }}/{{ $ms->default_quantity }}</span>
+                                @else
+                                    {{ $ms->quantity }}/{{ $ms->default_quantity }}
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -53,11 +54,14 @@
                     @foreach($services as $service)
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ $service->name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                {{ $service->pivot->is_unlimited ? 'Unlimited' : $service->pivot->quantity }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                {{ $service->pivot->is_unlimited ? '—' : $service->pivot->default_quantity }}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-semibold">
+                                @if($service->pivot->is_unlimited)
+                                    <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
+                                @elseif($service->pivot->quantity == 0)
+                                    <span class="text-danger-600 dark:text-danger-400">{{ $service->pivot->quantity }}/{{ $service->pivot->default_quantity }}</span>
+                                @else
+                                    {{ $service->pivot->quantity }}/{{ $service->pivot->default_quantity }}
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $service->pivot->remarks ?? '—' }}</td>
                         </tr>

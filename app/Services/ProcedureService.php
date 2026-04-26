@@ -262,7 +262,7 @@ class ProcedureService
                         'service_id'     => $data['service_id'],
                         'availment_date' => $data['availment_date'] ?? null,
                         'status'         => $status,
-                        'quantity'       => $data['quantity'] ?? 1,
+                        'quantity'       => 1,
                         'approval_code'  => $approvalCode,
                         'applied_fee'    => $appliedFee,
                     ]);

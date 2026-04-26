@@ -76,67 +76,43 @@
             Services Covered
         </x-slot>
 
-        @if ($account->services->isNotEmpty())
+        @if ($memberServices && $memberServices->isNotEmpty())
         <div class="overflow-x-auto">
-            {{-- Added 'table-auto' to ensure columns adjust based on content and available space --}}
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm table-auto">
                 <thead>
                     <tr class="bg-gray-50 dark:bg-gray-800">
-                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">
-                            Service Name
-                        </th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Service Name</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Type</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Unit Type</th>
-
-                        {{-- Removed w-24 --}}
-                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">
-                            Quantity
-                        </th>
-                        {{-- Removed w-28 --}}
-                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">
-                            Unlimited
-                        </th>
-                        <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">
-                            Remarks
-                        </th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 tracking-wider">Qty (Current/Default)</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @foreach ($account->services as $service)
-                    @if($service->pivot->quantity > 0 || $service->pivot->is_unlimited)
+                    @foreach ($memberServices as $ms)
                     <tr class="bg-white dark:bg-gray-900">
-                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                            {{ $service->name }}
-                        </td>
+                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ $ms->service->name ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             @php
-                                $typeColor = match(strtolower($service->type ?? '')) {
+                                $typeColor = match(strtolower($ms->service->type ?? '')) {
                                     'basic' => 'success',
                                     'enhancement' => 'info',
                                     'special' => 'warning',
                                     default => 'gray',
                                 };
                             @endphp
-                            <x-filament::badge :color="$typeColor" size="sm">{{ ucfirst($service->type) }}</x-filament::badge>
+                            <x-filament::badge :color="$typeColor" size="sm">{{ ucfirst($ms->service->type ?? '') }}</x-filament::badge>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
-                            {{ $service->unit_type }}
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
-                            @if($service->pivot->is_unlimited)
-                                <span class="text-green-600 font-medium">Unlimited</span>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $ms->service->unit_type ?? '—' }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap font-mono font-semibold">
+                            @if($ms->is_unlimited)
+                                <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
+                            @elseif($ms->quantity == 0)
+                                <span class="text-danger-600 dark:text-danger-400">{{ $ms->quantity }}/{{ $ms->default_quantity }}</span>
                             @else
-                                {{ $service->pivot->quantity ?? '0' }}
+                                {{ $ms->quantity }}/{{ $ms->default_quantity }}
                             @endif
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            {{ $service->pivot->is_unlimited ? 'Yes' : 'No' }}
-                        </td>
-                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
-                            {{ $service->pivot->remarks ?? 'No specific remarks.' }}
-                        </td>
                     </tr>
-                    @endif
                     @endforeach
                 </tbody>
             </table>
@@ -180,7 +156,25 @@
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->availment_date?->format('M d, Y') ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->quantity ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->dentist_name ?? '—' }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ ucfirst($procedure->status) }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            @php
+                                $procColor = match($procedure->status) {
+                                    'pending'   => 'warning',
+                                    'signed'    => 'info',
+                                    'valid'     => 'success',
+                                    'invalid'   => 'danger',
+                                    'returned'  => 'gray',
+                                    'processed' => 'primary',
+                                    'cancelled' => 'danger',
+                                    default     => 'gray',
+                                };
+                                $procLabel = match($procedure->status) {
+                                    'invalid' => 'Rejected',
+                                    default   => ucfirst($procedure->status),
+                                };
+                            @endphp
+                            <x-filament::badge :color="$procColor" size="sm">{{ $procLabel }}</x-filament::badge>
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>

@@ -485,9 +485,9 @@ class SearchMember extends Page implements HasActions
                 return $service?->type !== 'special';
             })
             ->dehydrated()
-            ->visible(function (callable $get) {
+            ->visible(function (callable $get) use ($isCSR) {
                 if (!filled($get('service_id'))) return false;
-                return true;
+                return $isCSR;
             });
     }
 

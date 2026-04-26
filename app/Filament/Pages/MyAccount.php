@@ -16,6 +16,7 @@ class MyAccount extends Page
     protected static string $view = 'filament.pages.my-account';
 
     public ?Account $account = null;
+    public $memberServices = null;
 
     public function mount(): void
     {
@@ -35,22 +36,13 @@ class MyAccount extends Page
         if ($member->account) {
             $this->account = $member->account->load(['services', 'hip']);
 
-            // For SHARED plans, override service quantities with family-level member_service data
-            if (strtoupper($this->account->plan_type) === 'SHARED' && $member->card_number) {
+            // Use MemberService for all plan types (per card_number)
+            if ($member->card_number) {
                 \App\Models\MemberService::initializeForCard($member->card_number, $this->account->id);
-
-                $memberServices = \App\Models\MemberService::where('card_number', $member->card_number)
+                $this->memberServices = \App\Models\MemberService::where('card_number', $member->card_number)
                     ->where('account_id', $this->account->id)
-                    ->get()
-                    ->keyBy('service_id');
-
-                $this->account->services->each(function ($service) use ($memberServices) {
-                    $ms = $memberServices->get($service->id);
-                    if ($ms) {
-                        $service->pivot->quantity    = $ms->quantity;
-                        $service->pivot->is_unlimited = $ms->is_unlimited;
-                    }
-                });
+                    ->with('service')
+                    ->get();
             }
         }
     }

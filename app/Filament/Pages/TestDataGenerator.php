@@ -86,7 +86,20 @@ class TestDataGenerator extends Page implements HasForms
                             ])
                             ->default('RANDOM')
                             ->required()
-                            ->inline(),
+                            ->inline()
+                            ->live(),
+
+                        Forms\Components\Radio::make('member_coverage_type')
+                            ->label('Member Coverage Type')
+                            ->options([
+                                'DEFAULT'       => 'Default (Principal + Dependents)',
+                                'ALL_PRINCIPAL' => 'All Principal',
+                                'ALL_DEPENDENT' => 'All Dependent',
+                            ])
+                            ->default('DEFAULT')
+                            ->required()
+                            ->inline()
+                            ->visible(fn(Forms\Get $get) => $get('plan_type') === 'INDIVIDUAL'),
 
                         Forms\Components\Radio::make('coverage_type')
                             ->label('Coverage Type')
@@ -105,20 +118,18 @@ class TestDataGenerator extends Page implements HasForms
 
     private function buildAccountRows(int $count): array
     {
-        $hips = [
-            'ETIQA LIFE AND GENERAL ASSURANCE PHILIPPINES, INC.',
-            'MARSH PHILIPPINES, INC.',
-            'Magsaysay Houlder Insurance Brokers Inc.',
-            'OMNI International Consultants, Inc.',
-            'Generali Life Assurance Phils, Inc.',
-            'KWIK CARE',
-            'MM ROYAL CARE',
-        ];
+        $hips = \App\Models\Hip::pluck('name')->toArray();
+
+        if (empty($hips)) {
+            $hips = ['DEFAULT HIP'];
+        }
 
         $planTypes      = ['INDIVIDUAL', 'SHARED'];
         $selectedPlan   = $this->data['plan_type'] ?? 'RANDOM';
         $coverageTypes  = ['ACCOUNT', 'MEMBER'];
         $selectedCoverage = $this->data['coverage_type'] ?? 'RANDOM';
+        $selectedMemberCoverage = $this->data['member_coverage_type'] ?? 'DEFAULT';
+        $memberCoverageTypes = ['DEFAULT', 'ALL_PRINCIPAL', 'ALL_DEPENDENT'];
         $mblTypes      = ['Procedural', 'Fixed'];
         $cardUsed      = ['IVORRY', 'HMO'];
         $effectiveDate  = Carbon::today()->format('Y-m-d');
@@ -129,16 +140,19 @@ class TestDataGenerator extends Page implements HasForms
             $mblType      = $mblTypes[array_rand($mblTypes)];
             $planType     = $selectedPlan === 'RANDOM' ? $planTypes[array_rand($planTypes)] : $selectedPlan;
             $coverageType = $selectedCoverage === 'RANDOM' ? $coverageTypes[array_rand($coverageTypes)] : $selectedCoverage;
+            // member_coverage_type only applies to INDIVIDUAL
+            $memberCoverageType = $planType === 'INDIVIDUAL' ? $selectedMemberCoverage : 'DEFAULT';
             $rows[] = [
-                'company_name'    => 'Test Company ' . strtoupper(Str::random(6)),
-                'policy_code'     => 'POL-' . strtoupper(Str::random(8)),
-                'hip'             => $hips[array_rand($hips)],
-                'card_used'       => $cardUsed[array_rand($cardUsed)],
-                'effective_date'  => $effectiveDate,
-                'expiration_date' => $expirationDate,
-                'plan_type'       => $planType,
-                'coverage_type'   => $coverageType,
-                'endorsement_type' => 'NEW',
+                'company_name'         => 'Test Company ' . strtoupper(Str::random(6)),
+                'policy_code'          => 'POL-' . strtoupper(Str::random(8)),
+                'hip'                  => $hips[array_rand($hips)],
+                'card_used'            => $cardUsed[array_rand($cardUsed)],
+                'effective_date'       => $effectiveDate,
+                'expiration_date'      => $expirationDate,
+                'plan_type'            => $planType,
+                'coverage_type'        => $coverageType,
+                'member_coverage_type' => $memberCoverageType,
+                'endorsement_type'     => 'NEW',
                 'mbl_type'        => $mblType,
                 'mbl_amount'      => $mblType === 'Fixed' ? rand(5000, 50000) : '',
                 'consultation'                                               => 'unlimited',
@@ -181,9 +195,14 @@ class TestDataGenerator extends Page implements HasForms
 
         $rows = [];
         foreach ($accounts as $account) {
-            $accountName  = is_array($account) ? $account['company_name'] : $account;
-            $planType     = is_array($account) ? strtoupper($account['plan_type'] ?? 'INDIVIDUAL') : 'INDIVIDUAL';
-            $coverageType = is_array($account) ? strtoupper($account['coverage_period_type'] ?? 'ACCOUNT') : 'ACCOUNT';
+            $accountName        = is_array($account) ? $account['company_name'] : $account;
+            $planType           = is_array($account) ? strtoupper($account['plan_type'] ?? 'INDIVIDUAL') : 'INDIVIDUAL';
+            $coverageType       = is_array($account) ? strtoupper($account['coverage_period_type'] ?? $account['coverage_type'] ?? 'ACCOUNT') : 'ACCOUNT';
+            $memberCoverageType = is_array($account) ? strtoupper($account['member_coverage_type'] ?? $account['coverage_type'] ?? 'DEFAULT') : 'DEFAULT';
+            // Normalise: if it came from DB coverage_type column it could be ACCOUNT/MEMBER — treat those as DEFAULT
+            if (! in_array($memberCoverageType, ['DEFAULT', 'ALL_PRINCIPAL', 'ALL_DEPENDENT'])) {
+                $memberCoverageType = 'DEFAULT';
+            }
             $isMemberCoverage = $coverageType === 'MEMBER';
             $memberEffective  = $isMemberCoverage ? Carbon::today()->format('Y-m-d') : '';
             $memberExpiration = $isMemberCoverage ? Carbon::today()->addYear()->subDay()->format('Y-m-d') : '';
@@ -195,7 +214,19 @@ class TestDataGenerator extends Page implements HasForms
             for ($j = 0; $j < $membersPerAccount; $j++) {
                 $firstName  = $firstNames[array_rand($firstNames)];
                 $lastName   = $lastNames[array_rand($lastNames)];
-                $memberType = $j === 0 ? 'PRINCIPAL' : 'DEPENDENT';
+
+                // Determine member_type based on coverage type
+                if ($planType === 'SHARED') {
+                    $memberType = $j === 0 ? 'PRINCIPAL' : 'DEPENDENT';
+                } elseif ($memberCoverageType === 'ALL_PRINCIPAL') {
+                    $memberType = 'PRINCIPAL';
+                } elseif ($memberCoverageType === 'ALL_DEPENDENT') {
+                    $memberType = 'DEPENDENT';
+                } else {
+                    // DEFAULT: first is PRINCIPAL, rest are DEPENDENT
+                    $memberType = $j === 0 ? 'PRINCIPAL' : 'DEPENDENT';
+                }
+
                 $cardNumber = $planType === 'SHARED'
                     ? $sharedCardNumber
                     : str_pad(rand(0, 999999999999), 12, '0', STR_PAD_LEFT);
@@ -210,7 +241,7 @@ class TestDataGenerator extends Page implements HasForms
                     'card_number'     => $cardNumber,
                     'birthdate'       => Carbon::now()->subYears(rand(20, 55))->subDays(rand(0, 365))->format('Y-m-d'),
                     'gender'          => $genders[array_rand($genders)],
-                    'email'           => strtolower($firstName . '.' . $lastName . rand(10, 999)) . '@example.com',
+                    'email'           => strtolower(str_replace(' ', '', $firstName) . '.' . str_replace(' ', '', $lastName) . rand(10, 999)) . '@example.com',
                     'phone'           => '09' . rand(100000000, 999999999),
                     'address'         => rand(1, 999) . ' ' . $lastNames[array_rand($lastNames)] . ' St., Manila',
                     'status'          => 'ACTIVE',
@@ -235,13 +266,11 @@ class TestDataGenerator extends Page implements HasForms
 
     private function buildClinicRows(int $count): array
     {
-        $hips = [
-            'ETIQA LIFE AND GENERAL ASSURANCE PHILIPPINES, INC.',
-            'MARSH PHILIPPINES, INC.',
-            'Magsaysay Houlder Insurance Brokers Inc.',
-            'KWIK CARE',
-            'MM ROYAL CARE',
-        ];
+        $hips = \App\Models\Hip::pluck('name')->toArray();
+
+        if (empty($hips)) {
+            $hips = ['DEFAULT HIP'];
+        }
 
         $vatTypes = ['VAT 12%', 'VAT ZERO', 'VAT EXEMPT', 'NON-VAT'];
         $withholdingTax = ['ZERO', '2%', '5%', '10%'];
@@ -385,7 +414,7 @@ class TestDataGenerator extends Page implements HasForms
         $this->form->validate();
 
         if (($this->data['member_source'] ?? 'generate') === 'db') {
-            $query = \App\Models\Account::select('company_name', 'plan_type', 'coverage_period_type');
+            $query = \App\Models\Account::select('company_name', 'plan_type', 'coverage_period_type', 'coverage_type');
 
             $selectedIds = $this->data['account_ids'] ?? [];
             if (! empty($selectedIds)) {

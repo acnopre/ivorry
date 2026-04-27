@@ -360,6 +360,15 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Effective date and expiration date are required when account coverage type is MEMBER';
         }
 
+        // Validate member_type against account coverage_type
+        $coverageType = $account->coverage_type ?? 'DEFAULT';
+        if ($coverageType === 'ALL_PRINCIPAL' && strtoupper($row['member_type']) === 'DEPENDENT') {
+            return 'This account only allows PRINCIPAL members. DEPENDENT is not allowed.';
+        }
+        if ($coverageType === 'ALL_DEPENDENT' && strtoupper($row['member_type']) === 'PRINCIPAL') {
+            return 'This account only allows DEPENDENT members. PRINCIPAL is not allowed.';
+        }
+
         if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
             $existingPrincipal = Member::withTrashed()
                 ->where('account_id', $account->id)
@@ -374,7 +383,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
         }
 
-        if (strtoupper($row['member_type']) === 'DEPENDENT' && !Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
+        if (strtoupper($row['member_type']) === 'DEPENDENT'
+            && ($account->coverage_type ?? 'DEFAULT') === 'DEFAULT'
+            && !Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
             return 'Cannot add DEPENDENT member without a PRINCIPAL member in the account';
         }
 

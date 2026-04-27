@@ -23,6 +23,7 @@ class Account extends Model
         'account_status',
         'endorsement_status',
         'plan_type',
+        'coverage_type',
         'coverage_period_type',
         'mbl_type',
         'mbl_amount',

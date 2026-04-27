@@ -529,6 +529,21 @@ class ViewAccount extends ViewRecord
                                                         'warning' => fn($state): bool => $state === 'SHARED',
                                                     ]),
 
+                                                TextEntry::make('coverage_type')
+                                                    ->label('Member Coverage')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'gray'    => fn($state): bool => $state === 'DEFAULT',
+                                                        'success' => fn($state): bool => $state === 'ALL_PRINCIPAL',
+                                                        'warning' => fn($state): bool => $state === 'ALL_DEPENDENT',
+                                                    ])
+                                                    ->formatStateUsing(fn($state) => match($state) {
+                                                        'ALL_PRINCIPAL' => 'All Principal',
+                                                        'ALL_DEPENDENT' => 'All Dependent',
+                                                        default         => 'Default',
+                                                    })
+                                                    ->visible(fn($record) => ($record?->plan_type ?? $this->record->plan_type) === 'INDIVIDUAL'),
+
                                                 TextEntry::make('coverage_period_type')
                                                     ->label('Coverage Type')
                                                     ->badge(),
@@ -808,6 +823,21 @@ class ViewAccount extends ViewRecord
                                                         'info' => fn($state): bool => $state === 'INDIVIDUAL',
                                                         'warning' => fn($state): bool => $state === 'SHARED',
                                                     ]),
+
+                                                TextEntry::make('coverage_type')
+                                                    ->label('Member Coverage')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'gray'    => fn($state): bool => $state === 'DEFAULT',
+                                                        'success' => fn($state): bool => $state === 'ALL_PRINCIPAL',
+                                                        'warning' => fn($state): bool => $state === 'ALL_DEPENDENT',
+                                                    ])
+                                                    ->formatStateUsing(fn($state) => match($state) {
+                                                        'ALL_PRINCIPAL' => 'All Principal',
+                                                        'ALL_DEPENDENT' => 'All Dependent',
+                                                        default         => 'Default',
+                                                    })
+                                                    ->visible(fn($record) => $record->plan_type === 'INDIVIDUAL'),
 
                                                 TextEntry::make('mbl_type')
                                                     ->label('MBL Type')

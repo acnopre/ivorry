@@ -109,6 +109,18 @@ class AccountResource extends Resource
                                 ->required()
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
+                            Select::make('coverage_type')
+                                ->label('Coverage Type')
+                                ->options([
+                                    'DEFAULT' => 'Default (Principal + Dependents)',
+                                    'ALL_PRINCIPAL' => 'All Principal',
+                                    'ALL_DEPENDENT' => 'All Dependent',
+                                ])
+                                ->default('DEFAULT')
+                                ->required()
+                                ->visible(fn(Forms\Get $get) => $get('plan_type') === 'INDIVIDUAL')
+                                ->disabled(! $isCreate),
+
                             Select::make('coverage_period_type')
                                 ->label('Coverage Period Type')
                                 ->default('ACCOUNT')

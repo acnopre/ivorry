@@ -28,6 +28,15 @@ class CreateMember extends CreateRecord
             throw new Halt();
         }
 
+        // INDIVIDUAL flow — auto-set member_type from coverage_type
+        if ($account && $account->plan_type === 'INDIVIDUAL') {
+            if ($account->coverage_type === 'ALL_PRINCIPAL') {
+                $data['member_type'] = 'PRINCIPAL';
+            } elseif ($account->coverage_type === 'ALL_DEPENDENT') {
+                $data['member_type'] = 'DEPENDENT';
+            }
+        }
+
         // INDIVIDUAL flow
         if (! empty($data['coc_number'])) {
             $data['card_number'] = null;
@@ -148,7 +157,7 @@ class CreateMember extends CreateRecord
         }
     }
 
-    protected static function createUserForMember(string $firstName, string $lastName, ?string $email): User
+    public static function createUserForMember(string $firstName, string $lastName, ?string $email): User
     {
         $plainPassword = Str::random(12);
         $user = User::create([

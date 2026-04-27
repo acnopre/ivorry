@@ -212,6 +212,7 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                         'hip_id'               => $this->requireHipId($row['hip'] ?? null),
                         'expiration_date'      => $this->transformDate($row['expiration_date']),
                         'plan_type'            => $row['plan_type'],
+                        'coverage_type'        => $this->resolveMemberCoverageType($row, $account->coverage_type ?? 'DEFAULT'),
                         'coverage_period_type' => $row['coverage_type'],
                         'mbl_type'             => $row['mbl_type'] ?? $existing->mbl_type,
                         'mbl_amount'           => $row['mbl_amount'] ?? $existing->mbl_amount,
@@ -248,6 +249,7 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 'effective_date'       => $effectiveDate,
                 'expiration_date'      => $this->transformDate($row['expiration_date']),
                 'plan_type'            => $row['plan_type'],
+                'coverage_type'        => $this->resolveMemberCoverageType($row),
                 'coverage_period_type' => $row['coverage_type'],
                 'mbl_type'             => $row['mbl_type'] ?? 'Procedural',
                 'mbl_amount'           => $row['mbl_amount'] ?? null,
@@ -310,6 +312,13 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Invalid coverage type. Accepted values are: ACCOUNT or MEMBER';
         }
 
+        // Validate member_coverage_type if provided (only applies to INDIVIDUAL)
+        if (!empty($row['member_coverage_type']) && strtoupper($row['plan_type']) === 'INDIVIDUAL') {
+            if (!in_array(strtoupper($row['member_coverage_type']), ['DEFAULT', 'ALL_PRINCIPAL', 'ALL_DEPENDENT'])) {
+                return 'Invalid member_coverage_type. Accepted values are: DEFAULT, ALL_PRINCIPAL, or ALL_DEPENDENT';
+            }
+        }
+
         if (!empty($row['mbl_type']) && !in_array($row['mbl_type'], ['Procedural', 'Fixed'])) {
             return 'Invalid MBL type. Accepted values are: Procedural or Fixed';
         }
@@ -330,6 +339,14 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         }
 
         return null;
+    }
+
+    private function resolveMemberCoverageType(array $row, string $existing = 'DEFAULT'): string
+    {
+        if (!empty($row['member_coverage_type']) && strtoupper($row['plan_type'] ?? '') === 'INDIVIDUAL') {
+            return strtoupper($row['member_coverage_type']);
+        }
+        return $existing;
     }
 
     private function sanitizeErrorMessage(\Throwable $e): string

@@ -89,7 +89,7 @@ class TestDataGenerator extends Page implements HasForms
                             ->inline()
                             ->live(),
 
-                        Forms\Components\Radio::make('member_coverage_type')
+                        Forms\Components\Radio::make('account_coverage_type')
                             ->label('Member Coverage Type')
                             ->options([
                                 'DEFAULT'       => 'Default (Principal + Dependents)',
@@ -128,7 +128,7 @@ class TestDataGenerator extends Page implements HasForms
         $selectedPlan   = $this->data['plan_type'] ?? 'RANDOM';
         $coverageTypes  = ['ACCOUNT', 'MEMBER'];
         $selectedCoverage = $this->data['coverage_type'] ?? 'RANDOM';
-        $selectedMemberCoverage = $this->data['member_coverage_type'] ?? 'DEFAULT';
+        $selectedMemberCoverage = $this->data['account_coverage_type'] ?? 'DEFAULT';
         $memberCoverageTypes = ['DEFAULT', 'ALL_PRINCIPAL', 'ALL_DEPENDENT'];
         $mblTypes      = ['Procedural', 'Fixed'];
         $cardUsed      = ['IVORRY', 'HMO'];
@@ -140,7 +140,7 @@ class TestDataGenerator extends Page implements HasForms
             $mblType      = $mblTypes[array_rand($mblTypes)];
             $planType     = $selectedPlan === 'RANDOM' ? $planTypes[array_rand($planTypes)] : $selectedPlan;
             $coverageType = $selectedCoverage === 'RANDOM' ? $coverageTypes[array_rand($coverageTypes)] : $selectedCoverage;
-            // member_coverage_type only applies to INDIVIDUAL
+            // account_coverage_type only applies to INDIVIDUAL
             $memberCoverageType = $planType === 'INDIVIDUAL' ? $selectedMemberCoverage : 'DEFAULT';
             $rows[] = [
                 'company_name'         => 'Test Company ' . strtoupper(Str::random(6)),
@@ -151,7 +151,7 @@ class TestDataGenerator extends Page implements HasForms
                 'expiration_date'      => $expirationDate,
                 'plan_type'            => $planType,
                 'coverage_type'        => $coverageType,
-                'member_coverage_type' => $memberCoverageType,
+                'account_coverage_type' => $memberCoverageType,
                 'endorsement_type'     => 'NEW',
                 'mbl_type'        => $mblType,
                 'mbl_amount'      => $mblType === 'Fixed' ? rand(5000, 50000) : '',
@@ -198,7 +198,7 @@ class TestDataGenerator extends Page implements HasForms
             $accountName        = is_array($account) ? $account['company_name'] : $account;
             $planType           = is_array($account) ? strtoupper($account['plan_type'] ?? 'INDIVIDUAL') : 'INDIVIDUAL';
             $coverageType       = is_array($account) ? strtoupper($account['coverage_period_type'] ?? $account['coverage_type'] ?? 'ACCOUNT') : 'ACCOUNT';
-            $memberCoverageType = is_array($account) ? strtoupper($account['member_coverage_type'] ?? $account['coverage_type'] ?? 'DEFAULT') : 'DEFAULT';
+            $memberCoverageType = is_array($account) ? strtoupper($account['account_coverage_type'] ?? $account['coverage_type'] ?? 'DEFAULT') : 'DEFAULT';
             // Normalise: if it came from DB coverage_type column it could be ACCOUNT/MEMBER — treat those as DEFAULT
             if (! in_array($memberCoverageType, ['DEFAULT', 'ALL_PRINCIPAL', 'ALL_DEPENDENT'])) {
                 $memberCoverageType = 'DEFAULT';

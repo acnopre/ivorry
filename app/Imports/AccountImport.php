@@ -322,6 +322,13 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Effective date and expiration date are required when coverage type is ACCOUNT';
         }
 
+        if (!empty($row['expiration_date'])) {
+            $expirationDate = $this->transformDate($row['expiration_date']);
+            if ($expirationDate && $expirationDate < now()->format('Y-m-d')) {
+                return 'Expiration date is in the past. Expired accounts cannot be imported.';
+            }
+        }
+
         return null;
     }
 

@@ -251,6 +251,16 @@ class ClinicsResource extends Resource
                             ->schema([
                                 Forms\Components\Repeater::make('dentists')
                                     ->relationship('dentists')
+                                    ->afterStateHydrated(function ($state, callable $set) {
+                                        if (empty($state)) return;
+                                        $keys = array_keys($state);
+                                        $firstKey = $keys[0];
+                                        // If no owner set, default first dentist as owner
+                                        $hasOwner = collect($state)->contains('is_owner', true);
+                                        if (!$hasOwner) {
+                                            $set("dentists.{$firstKey}.is_owner", true);
+                                        }
+                                    })
                                     ->schema([
                                         TextInput::make('last_name')->label('Last Name')->required(),
                                         TextInput::make('first_name')->label('Given Name')->required(),
@@ -259,6 +269,7 @@ class ClinicsResource extends Resource
                                         DatePicker::make('prc_expiration_date')->label('Expiry Date'),
                                         Forms\Components\Toggle::make('is_owner')
                                             ->label('Clinic Owner')
+                                            ->default(false)
                                             ->inline(false)
                                             ->reactive()
                                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
@@ -296,21 +307,18 @@ class ClinicsResource extends Resource
                         Section::make('Basic Dental Services')
                             ->icon('heroicon-o-clipboard-document-list')
                             ->schema(function ($record) {
-                                if (!$record) return [Placeholder::make('no_record')->label('')->content('Save the clinic first to manage fees.')];
                                 return self::buildServiceFeeRows(Service::where('type', 'basic')->get(), $record, 'basic');
                             }),
 
                         Section::make('Plan Enhancements')
                             ->icon('heroicon-o-plus-circle')
                             ->schema(function ($record) {
-                                if (!$record) return [];
                                 return self::buildServiceFeeRows(Service::where('type', 'enhancement')->get(), $record, 'enhancement');
                             }),
 
                         Section::make('Special Procedures')
                             ->icon('heroicon-o-star')
                             ->schema(function ($record) {
-                                if (!$record) return [];
                                 return self::buildServiceFeeRows(Service::where('type', 'special')->get(), $record, 'special');
                             }),
 
@@ -377,11 +385,11 @@ class ClinicsResource extends Resource
                     ->columnSpan(4),
 
                 TextInput::make("services.{$type}.{$service->id}")
-                    ->label('Current Fee')
+                    ->label('Fee')
                     ->numeric()
                     ->prefix('₱')
-                    ->disabled()
-                    ->columnSpan(3)
+                    ->disabled($record !== null) // editable during creation, disabled during edit
+                    ->columnSpan($record ? 3 : 8)
                     ->formatStateUsing(function ($state, $record) use ($service) {
                         return $record ? $record->services()->where('service_id', $service->id)->value('fee') : $state;
                     }),
@@ -389,6 +397,7 @@ class ClinicsResource extends Resource
                 Forms\Components\View::make("fee_status_{$type}_{$service->id}")
                     ->view('filament.components.fee-status-badge')
                     ->viewData(function () use ($record, $service) {
+                        if (!$record) return ['new_fee' => null, 'effective_date' => null, 'approved_at' => null];
                         $pivot = $record->services()->where('service_id', $service->id)->first()?->pivot;
                         return [
                             'new_fee'        => $pivot?->new_fee,
@@ -396,7 +405,8 @@ class ClinicsResource extends Resource
                             'approved_at'    => $pivot?->approved_at,
                         ];
                     })
-                    ->columnSpan(3),
+                    ->columnSpan(3)
+                    ->visible($record !== null),
 
                 Forms\Components\Actions::make([
                     Forms\Components\Actions\Action::make("request_fee_{$type}_{$service->id}")
@@ -404,6 +414,7 @@ class ClinicsResource extends Resource
                         ->icon('heroicon-o-pencil-square')
                         ->color('gray')
                         ->size('sm')
+                        ->visible($record !== null)
                         ->modalHeading('Request Fee Update — ' . $service->name)
                         ->modalWidth('sm')
                         ->form([

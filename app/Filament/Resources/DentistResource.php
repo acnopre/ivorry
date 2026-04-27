@@ -43,7 +43,7 @@ class DentistResource extends Resource
                     Forms\Components\TextInput::make('middle_initial')->maxLength(3),
                     Forms\Components\TextInput::make('prc_license_number')->label('PRC License No.'),
                     Forms\Components\DatePicker::make('prc_expiration_date')->label('PRC Expiration Date'),
-                    Forms\Components\Toggle::make('is_owner')->label('Is Owner'),
+                    Forms\Components\Toggle::make('is_owner')->label('Is Owner')->default(false),
                     Forms\Components\Select::make('specializations')
                         ->label('Specializations')
                         ->multiple()

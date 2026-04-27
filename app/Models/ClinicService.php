@@ -6,12 +6,30 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClinicService extends Model
 {
-    //
+    protected $table = 'clinic_services';
+
     protected $fillable = [
         'clinic_id',
         'service_id',
-        'fee', //fee to be used
-        'old_fee', //for history
-        'new_fee', //if ever approved
+        'fee',
+        'old_fee',
+        'new_fee',
+        'effective_date',
+        'approved_at',
     ];
+
+    protected $casts = [
+        'effective_date' => 'date',
+        'approved_at'    => 'datetime',
+    ];
+
+    public function clinic()
+    {
+        return $this->belongsTo(Clinic::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
+    }
 }

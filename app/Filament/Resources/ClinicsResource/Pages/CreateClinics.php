@@ -76,7 +76,7 @@ class CreateClinics extends CreateRecord
         }
 
         // Handle services
-        $mergedServices = ($this->servicesData['basic'] ?? []) + ($this->servicesData['enhancement'] ?? []);
+        $mergedServices = ($this->servicesData['basic'] ?? []) + ($this->servicesData['enhancement'] ?? []) + ($this->servicesData['special'] ?? []);
 
         if (!empty($mergedServices)) {
             $filtered = collect($mergedServices)

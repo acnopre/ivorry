@@ -22,7 +22,19 @@
             <td>{{ $claim->service->name }}</td>
             <td>
                 @forelse ($claim->units as $unit)
-                {{ $unit->unitType?->name ?? '—' }} : {{ $unit->name ?? '—' }}
+                @php
+                    if ($unit->pivot->surface_id) {
+                        $surface = \App\Models\Unit::with('unitType')->find($unit->pivot->surface_id);
+                        $surfaceLabel = $surface?->unitType?->name ?? 'Surface';
+                        $unitStr = 'Tooth ' . ($unit->name ?? '—') . ' | ' . $surfaceLabel . ': ' . ($surface?->name ?? '—');
+                    } elseif ($unit->unitType?->name === 'Canal') {
+                        $tooth = \App\Models\Unit::with('unitType')->find($unit->pivot->unit_id);
+                        $unitStr = 'Tooth ' . ($tooth?->name ?? '—') . ' | Canal: ' . ($unit->name ?? '—');
+                    } else {
+                        $unitStr = ($unit->unitType?->name ?? '—') . ': ' . ($unit->name ?? '—');
+                    }
+                @endphp
+                {{ $unitStr }}
                 @if (! $loop->last), @endif
                 @empty
                 —

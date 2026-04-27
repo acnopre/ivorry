@@ -658,7 +658,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 'member_name'        => $p->member->first_name . ' ' . $p->member->last_name,
                 'company_name'       => $p->member->account->company_name ?? '—',
                 'service_name'       => $p->service->name ?? '—',
-                'units'              => $p->units->map(fn($u) => ($u->unitType?->name ?? '—') . ': ' . ($u->name ?? '—'))->join(', '),
+                'units'              => self::formatUnits($p->units),
                 'clinic_service_fee' => $p->clinic_service_fee,
                 'vat_amount'         => $p->vat_amount,
                 'ewt_amount'         => $p->ewt_amount,
@@ -1068,6 +1068,26 @@ class SearchClaims extends Page implements HasForms, HasTable
     }
 
 
+
+    private static function formatUnits($units): string
+    {
+        $lines = [];
+        foreach ($units as $unit) {
+            if ($unit->pivot->surface_id) {
+                // Surface: Tooth 12 | Surface: Mesial
+                $surface = \App\Models\Unit::with('unitType')->find($unit->pivot->surface_id);
+                $surfaceLabel = $surface?->unitType?->name ?? 'Surface';
+                $lines[] = 'Tooth ' . ($unit->name ?? '—') . ' | ' . $surfaceLabel . ': ' . ($surface?->name ?? '—');
+            } elseif ($unit->pivot->unit_id && $unit->unitType?->name === 'Canal') {
+                // Canal: Tooth 12 | Canal: MB
+                $tooth = \App\Models\Unit::with('unitType')->find($unit->pivot->unit_id);
+                $lines[] = 'Tooth ' . ($tooth?->name ?? '—') . ' | Canal: ' . ($unit->name ?? '—');
+            } else {
+                $lines[] = ($unit->unitType?->name ?? '—') . ': ' . ($unit->name ?? '—');
+            }
+        }
+        return implode(', ', $lines) ?: '—';
+    }
 
     private function parsePercentage(?string $value): float
     {

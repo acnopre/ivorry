@@ -419,8 +419,6 @@ class ViewAccount extends ViewRecord
                         'endorsement_status' => 'APPROVED',
                         'approved_by' => auth()->id(),
                     ]);
-                    $amendment->services()->delete();
-                    $amendment->delete();
 
                     // Reset member service quantities for all plan types
                     MemberService::where('account_id', $record->id)->delete();
@@ -463,7 +461,7 @@ class ViewAccount extends ViewRecord
     public function infolist(Infolists\Infolist $infolist): Infolists\Infolist
     {
         $renewalRecord = $this->record->renewals->first();
-        $amendmentAccount = AccountAmendment::where('account_id', $this->record->id)->first();
+        $amendmentAccount = AccountAmendment::with('hip')->where('account_id', $this->record->id)->first();
         $pendingRenewal = $this->record->renewals()->where('status', 'APPROVED_PENDING_EFFECTIVE')->first();
         return $infolist
             ->schema([
@@ -661,21 +659,30 @@ class ViewAccount extends ViewRecord
                                                     ->label('Company Name')
                                                     ->weight(FontWeight::Bold)
                                                     ->size(TextEntrySize::Large)
-                                                    ->default($amendmentAccount?->company_name),
+                                                    ->default($amendmentAccount?->company_name)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'company_name', $this->record->company_name)),
 
                                                 TextEntry::make('policy_code_amendment')
                                                     ->label('Policy Code')
                                                     ->copyable()
                                                     ->copyMessage('Policy code copied!')
-                                                    ->default($amendmentAccount?->policy_code),
+                                                    ->default($amendmentAccount?->policy_code)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'policy_code', $this->record->policy_code)),
 
                                                 TextEntry::make('hip_amendment')
                                                     ->label('HIP')
-                                                    ->default($amendmentAccount?->hip?->name),
+                                                    ->default($amendmentAccount?->hip?->name)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom(
+                                                        $amendmentAccount,
+                                                        'hip_id',
+                                                        $this->record->hip?->name,
+                                                        $amendmentAccount?->hip?->name
+                                                    )),
 
                                                 TextEntry::make('card_used_amendment')
                                                     ->label('Card Used')
-                                                    ->default($amendmentAccount?->card_used),
+                                                    ->default($amendmentAccount?->card_used)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'card_used', $this->record->card_used)),
 
                                                 TextEntry::make('plan_type_amendment')
                                                     ->label('Plan Type')
@@ -689,7 +696,8 @@ class ViewAccount extends ViewRecord
                                                 TextEntry::make('coverage_period_type_amendment')
                                                     ->label('Coverage Type')
                                                     ->badge()
-                                                    ->default($amendmentAccount?->coverage_period_type),
+                                                    ->default($amendmentAccount?->coverage_period_type)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'coverage_period_type', $this->record->coverage_period_type)),
 
                                                 TextEntry::make('endorsement_type_amendment')
                                                     ->label('Endorsement Type')
@@ -710,12 +718,14 @@ class ViewAccount extends ViewRecord
                                                         'success' => fn($state): bool => strtolower($state) === 'fixed',
                                                     ])
                                                     ->default($amendmentAccount?->mbl_type)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'mbl_type', $this->record->mbl_type))
                                                     ->visible(fn() => $amendmentAccount?->mbl_type),
 
                                                 TextEntry::make('mbl_amount_amendment')
                                                     ->label('MBL Amount')
                                                     ->money('PHP')
                                                     ->default($amendmentAccount?->mbl_amount)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'mbl_amount', $this->record->mbl_amount ? '₱'.number_format($this->record->mbl_amount, 2) : null, $amendmentAccount?->mbl_amount ? '₱'.number_format($amendmentAccount->mbl_amount, 2) : null))
                                                     ->visible(fn() => $amendmentAccount?->mbl_type === 'Fixed'),
                                             ]),
                                         Grid::make(3)
@@ -757,16 +767,15 @@ class ViewAccount extends ViewRecord
                                                     ->label('Effective Date')
                                                     ->date('M d, Y')
                                                     ->icon('heroicon-m-calendar-days')
-                                                    ->default($amendmentAccount?->effective_date),
-
-
+                                                    ->default($amendmentAccount?->effective_date)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'effective_date', $this->record->effective_date ? \Carbon\Carbon::parse($this->record->effective_date)->format('M d, Y') : null, $amendmentAccount?->effective_date ? \Carbon\Carbon::parse($amendmentAccount->effective_date)->format('M d, Y') : null)),
 
                                                 TextEntry::make('expiration_date_amendment')
                                                     ->label('Expiration Date')
                                                     ->date('M d, Y')
                                                     ->icon('heroicon-m-calendar-days')
-                                                    ->default($amendmentAccount?->expiration_date),
-
+                                                    ->default($amendmentAccount?->expiration_date)
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'expiration_date', $this->record->expiration_date ? \Carbon\Carbon::parse($this->record->expiration_date)->format('M d, Y') : null, $amendmentAccount?->expiration_date ? \Carbon\Carbon::parse($amendmentAccount->expiration_date)->format('M d, Y') : null)),
 
                                                 TextEntry::make('remarks')
                                                     ->label('Remarks')
@@ -780,7 +789,8 @@ class ViewAccount extends ViewRecord
                                     ->columnSpanFull()
                                     ->label(false)
                                     ->view('filament.infolists.amendment.amendment-services', [
-                                        'amendment_services' => $amendmentAccount
+                                        'amendment_services' => $amendmentAccount,
+                                        'current_services' => \App\Models\AccountService::where('account_id', $this->record->id)->get()->keyBy('service_id'),
                                     ]),
                             ]),
                         // Active Account Tab
@@ -940,32 +950,55 @@ class ViewAccount extends ViewRecord
     /**
      * Group renewal history by effective and expiry date range.
      */
+    protected function amendmentChangedFrom(?\App\Models\AccountAmendment $amendment, string $field, $currentValue, $newValue = null): ?string
+    {
+        if (!$amendment) return null;
+        $newVal = $newValue !== null ? $newValue : $amendment->$field;
+        if (trim((string) $currentValue) === trim((string) $newVal)) return null;
+        return 'Current Value: ' . ($currentValue ?: '—');
+    }
+
     protected function groupRenewalHistory(): array
     {
-        $records = AccountServiceHistory::with('service')
+        $renewals = \App\Models\AccountRenewal::withTrashed()
+            ->with(['services.service', 'requester', 'approver'])
             ->where('account_id', $this->record->id)
-            ->orderByDesc('effective_date')
+            ->whereIn('status', ['APPROVED_PENDING_EFFECTIVE', 'APPROVED'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Get old dates from AccountServiceHistory grouped by action date
+        $historyByRenewal = AccountServiceHistory::with('service')
+            ->where('account_id', $this->record->id)
+            ->where('action', 'renewal')
+            ->orderByDesc('created_at')
             ->get()
             ->groupBy(function ($item) {
-                // Ensure dates exist before formatting
-                $start = optional($item->effective_date)->format('M d, Y');
-                $end = optional($item->expiration_date)->format('M d, Y');
-                return "{$start} - {$end}";
+                return optional($item->effective_date)->format('Y-m-d') . '_' . optional($item->expiration_date)->format('Y-m-d');
             });
 
         $groups = [];
-        foreach ($records as $period => $items) {
-            $groups[$period] = [
-                'label' => $period,
-                'records' => $items->map(function ($item) {
-                    return [
-                        'service_name' => $item->service->name ?? 'N/A',
-                        'quantity' => $item->quantity,
-                        'remarks' => $item->remarks,
-                        // Formatted date for display
-                        'created_at' => $item->created_at->format('M d, Y H:i'),
-                    ];
-                })->toArray(),
+        foreach ($renewals as $index => $renewal) {
+            // Match old dates from history — pick the history group closest before this renewal's new dates
+            $oldHistory = $historyByRenewal->first();
+            $historyByRenewal->shift();
+
+            $groups[] = [
+                'renewal_id'      => $renewal->id,
+                'new_effective'   => $renewal->effective_date ? \Carbon\Carbon::parse($renewal->effective_date)->format('M d, Y') : null,
+                'new_expiration'  => $renewal->expiration_date ? \Carbon\Carbon::parse($renewal->expiration_date)->format('M d, Y') : null,
+                'old_effective'   => $oldHistory ? optional($oldHistory->first()?->effective_date)->format('M d, Y') : null,
+                'old_expiration'  => $oldHistory ? optional($oldHistory->first()?->expiration_date)->format('M d, Y') : null,
+                'requested_by'    => $renewal->requester?->name,
+                'approved_by'     => $renewal->approver?->name,
+                'created_at'      => $renewal->created_at->format('M d, Y · h:i A'),
+                'status'          => $renewal->status,
+                'records'         => $renewal->services->map(fn($s) => [
+                    'service_name' => $s->service->name ?? 'N/A',
+                    'quantity'     => $s->quantity,
+                    'is_unlimited' => $s->is_unlimited,
+                    'remarks'      => $s->remarks,
+                ])->toArray(),
             ];
         }
         return $groups;

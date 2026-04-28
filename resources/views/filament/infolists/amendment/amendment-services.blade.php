@@ -32,7 +32,7 @@ $visibleServicesCount = $amendment_services->services
     <div class="py-6">
         {{-- Services Tab Content --}}
         <div x-show="activeTab === 'amendment_services'" x-cloak>
-            @include('filament.infolists.components.amendment-services-table', ['amendment_services' => $amendment_services])
+            @include('filament.infolists.components.amendment-services-table', ['amendment_services' => $amendment_services, 'current_services' => $current_services ?? collect()])
         </div>
     </div>
 </div>

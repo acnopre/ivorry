@@ -126,6 +126,7 @@ class EditAccount extends EditRecord
                 ->body('The renewal has been submitted for approval. All services will be reset to their default quantities upon approval.')
                 ->send();
 
+            $this->halt();
             return;
         }
 
@@ -139,29 +140,52 @@ class EditAccount extends EditRecord
                 AccountEndorsementService::deletePendingAmendments($record->id);
 
                 $amendment = AccountAmendment::create([
-                    'account_id'        => $record->id,
-                    'company_name'      => $data['company_name'],
-                    'policy_code'       => $data['policy_code'],
-                    'hip_id'            => $data['hip_id'] ?? null,
-                    'card_used'         => $data['card_used'] ?? null,
-                    'effective_date'    => $data['effective_date'] ?? null,
-                    'expiration_date'   => $data['expiration_date'] ?? null,
-                    'endorsement_type'  => 'AMENDMENT',
-                    'endorsement_status' => 'PENDING',
+                    'account_id'           => $record->id,
+                    'company_name'         => $data['company_name'],
+                    'policy_code'          => $data['policy_code'],
+                    'hip_id'               => $data['hip_id'] ?? null,
+                    'card_used'            => $data['card_used'] ?? null,
+                    'effective_date'       => $data['effective_date'] ?? null,
+                    'expiration_date'      => $data['expiration_date'] ?? null,
+                    'endorsement_type'     => 'AMENDMENT',
+                    'endorsement_status'   => 'PENDING',
                     'coverage_period_type' => $data['coverage_period_type'] ?? null,
-                    'mbl_type'          => $data['mbl_type'] ?? null,
-                    'mbl_amount'        => $data['mbl_amount'] ?? null,
-                    'remarks'           => $data['remarks'] ?? null,
-                    'requested_by'      => auth()->id(),
+                    'mbl_type'             => $data['mbl_type'] ?? null,
+                    'mbl_amount'           => $data['mbl_amount'] ?? null,
+                    'remarks'              => $data['remarks'] ?? null,
+                    'requested_by'         => auth()->id(),
+                    'old_company_name'         => $record->getOriginal('company_name'),
+                    'old_policy_code'          => $record->getOriginal('policy_code'),
+                    'old_hip_id'               => $record->getOriginal('hip_id'),
+                    'old_card_used'            => $record->getOriginal('card_used'),
+                    'old_effective_date'       => $record->getOriginal('effective_date'),
+                    'old_expiration_date'      => $record->getOriginal('expiration_date'),
+                    'old_coverage_period_type' => $record->getOriginal('coverage_period_type'),
+                    'old_mbl_type'             => $record->getOriginal('mbl_type'),
+                    'old_mbl_amount'           => $record->getOriginal('mbl_amount'),
+                    'old_plan_type'            => $record->getOriginal('plan_type'),
+                    'old_coverage_type'        => $record->getOriginal('coverage_type'),
                 ]);
 
                 $record->update([
-                    'endorsement_type'   => 'AMENDMENT',
-                    'endorsement_status' => 'PENDING',
+                    'endorsement_type'     => 'AMENDMENT',
+                    'endorsement_status'   => 'PENDING',
+                    'hip_id'               => $record->getOriginal('hip_id'),
+                    'company_name'         => $record->getOriginal('company_name'),
+                    'policy_code'          => $record->getOriginal('policy_code'),
+                    'card_used'            => $record->getOriginal('card_used'),
+                    'effective_date'       => $record->getOriginal('effective_date'),
+                    'expiration_date'      => $record->getOriginal('expiration_date'),
+                    'coverage_period_type' => $record->getOriginal('coverage_period_type'),
+                    'mbl_type'             => $record->getOriginal('mbl_type'),
+                    'mbl_amount'           => $record->getOriginal('mbl_amount'),
+                    'plan_type'            => $record->getOriginal('plan_type'),
+                    'coverage_type'        => $record->getOriginal('coverage_type'),
                 ]);
 
+                $currentServices = \App\Models\AccountService::where('account_id', $record->id)->get();
                 $servicesByType = $this->servicesData ?: ($data['services'] ?? []);
-                AccountEndorsementService::attachServicesToAmendmentFromForm($amendment, $servicesByType);
+                AccountEndorsementService::attachServicesToAmendmentFromForm($amendment, $servicesByType, $currentServices);
             });
 
             $accountUrl = AccountResource::getUrl('view', ['record' => $record]);
@@ -181,6 +205,7 @@ class EditAccount extends EditRecord
                 ->body('The amendment has been submitted for approval. Changes will take effect once approved by management.')
                 ->send();
 
+            $this->halt();
             return;
         }
     }

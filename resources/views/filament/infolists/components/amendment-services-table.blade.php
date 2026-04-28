@@ -47,6 +47,11 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                             @foreach ($filteredServices as $service)
+                            @php
+                                $current = $current_services[$service->service_id] ?? null;
+                                $qtyChanged = $current && (string)$current->quantity !== (string)$service->quantity;
+                                $unlimitedChanged = $current && (bool)$current->is_unlimited !== (bool)$service->is_unlimited;
+                            @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                 <td class="px-6 py-4">
                                     <div class="font-medium text-gray-900 dark:text-gray-100">
@@ -69,17 +74,23 @@
                                     @else
                                     <span class="text-lg font-bold text-danger-600 dark:text-danger-400">0</span>
                                     @endif
+                                    @if ($qtyChanged)
+                                    <div class="text-xs text-warning-600 dark:text-warning-400 mt-0.5">
+                                        Current Value: {{ $current->is_unlimited ? 'Unlimited' : number_format($current->quantity) }}
+                                    </div>
+                                    @endif
                                 </td>
 
                                 <td class="px-6 py-4 text-center">
                                     @if ($service->is_unlimited)
-                                    <x-filament::badge color="success">
-                                        Unlimited
-                                    </x-filament::badge>
+                                    <x-filament::badge color="success">Unlimited</x-filament::badge>
                                     @else
-                                    <x-filament::badge color="gray">
-                                        Limited
-                                    </x-filament::badge>
+                                    <x-filament::badge color="gray">Limited</x-filament::badge>
+                                    @endif
+                                    @if ($unlimitedChanged && !$qtyChanged)
+                                    <div class="text-xs text-warning-600 dark:text-warning-400 mt-1">
+                                        Current Value: {{ $current->is_unlimited ? 'Unlimited' : 'Limited' }}
+                                    </div>
                                     @endif
                                 </td>
                             </tr>

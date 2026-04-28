@@ -16,6 +16,8 @@ class AccountServiceAmendment extends Model
         'default_quantity',
         'is_unlimited',
         'remarks',
+        'old_quantity',
+        'old_is_unlimited',
     ];
 
     public function amendment()

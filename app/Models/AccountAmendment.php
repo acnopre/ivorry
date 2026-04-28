@@ -26,11 +26,27 @@ class AccountAmendment extends Model
         'remarks',
         'requested_by',
         'approved_by',
+        'old_company_name',
+        'old_policy_code',
+        'old_hip_id',
+        'old_card_used',
+        'old_effective_date',
+        'old_expiration_date',
+        'old_coverage_period_type',
+        'old_mbl_type',
+        'old_mbl_amount',
+        'old_plan_type',
+        'old_coverage_type',
     ];
 
     public function hip()
     {
         return $this->belongsTo(Hip::class);
+    }
+
+    public function oldHip()
+    {
+        return $this->belongsTo(Hip::class, 'old_hip_id');
     }
 
     public function services()

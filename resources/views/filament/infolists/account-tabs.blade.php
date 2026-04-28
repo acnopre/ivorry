@@ -11,11 +11,8 @@ $visibleServicesCount = $record->services
 ->filter(fn($service) => $service->pivot->deleted_at === null && ($service->pivot->quantity != 0 || $service->pivot->is_unlimited))
 ->count();
 
-// Convert grouped history data into the flat structure needed by the history blade view
-$history_records = collect($renewal_groups)
-->flatMap(fn($group) => collect($group['records'])->map(fn($record) => array_merge(['period' => $group['label']], $record)))
-->values()
-->toArray();
+// Pass renewal_groups directly as the new structure is already flat
+$history_records = $renewal_groups;
 $historyCount = count($renewal_groups);
 
 // Get amendment history count
@@ -62,14 +59,14 @@ $amendmentCount = \App\Models\AccountAmendment::where('account_id', $record->id)
         </div>
 
         {{-- Renewal History Tab --}}
-        <div x-show="activeTab === 'renewal_history'" x-cloak>
+        <div x-show="activeTab === 'renewal_history'" x-cloak class="px-4 py-6 sm:px-6">
             @include('filament.infolists.account-renewal-history', [
             'records' => $history_records,
             ])
         </div>
 
         {{-- Amendment History Tab --}}
-        <div x-show="activeTab === 'amendment_history'" x-cloak>
+        <div x-show="activeTab === 'amendment_history'" x-cloak class="px-4 py-6 sm:px-6">
             @include('filament.infolists.account-amendment-history', [
             'record' => $record,
             ])

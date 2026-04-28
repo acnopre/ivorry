@@ -41,20 +41,25 @@ class AccountEndorsementService
         }
     }
 
-    public static function attachServicesToAmendmentFromForm(AccountAmendment $amendment, array $servicesByType): void
+    public static function attachServicesToAmendmentFromForm(AccountAmendment $amendment, array $servicesByType, $currentServices = null): void
     {
+        $currentServicesKeyed = $currentServices ? $currentServices->keyBy('service_id') : collect();
+
         foreach (['basic', 'enhancement', 'special'] as $type) {
             if (empty($servicesByType[$type])) continue;
 
             foreach ($servicesByType[$type] as $serviceId => $serviceData) {
                 $newQty = $serviceData['quantity'] ?? null;
+                $current = $currentServicesKeyed->get($serviceId);
 
                 $amendment->services()->create([
-                    'service_id' => $serviceId,
-                    'quantity' => $newQty,
+                    'service_id'       => $serviceId,
+                    'quantity'         => $newQty,
                     'default_quantity' => $newQty,
-                    'is_unlimited' => $serviceData['is_unlimited'] ?? false,
-                    'remarks' => $serviceData['remarks'] ?? null,
+                    'is_unlimited'     => $serviceData['is_unlimited'] ?? false,
+                    'remarks'          => $serviceData['remarks'] ?? null,
+                    'old_quantity'     => $current?->quantity,
+                    'old_is_unlimited' => $current?->is_unlimited,
                 ]);
             }
         }

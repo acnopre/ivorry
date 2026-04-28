@@ -109,11 +109,12 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             AccountEndorsementService::deletePendingRenewals($account->id);
 
             $renewal = AccountRenewal::create([
-                'account_id'     => $account->id,
-                'effective_date' => $this->transformDate($row['effective_date']),
+                'account_id'      => $account->id,
+                'effective_date'  => $this->transformDate($row['effective_date']),
                 'expiration_date' => $this->transformDate($row['expiration_date']),
-                'requested_by'   => $this->userId,
-                'status'         => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                'requested_by'    => $this->userId,
+                'approved_by'     => $this->migrationMode ? $this->userId : null,
+                'status'          => $this->migrationMode ? 'APPROVED' : 'PENDING',
             ]);
 
             $account->update([
@@ -147,40 +148,106 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         try {
             AccountEndorsementService::deletePendingAmendments($account->id);
 
+            $newHipId = isset($row['hip']) && filled($row['hip'])
+                ? $this->requireHipId($row['hip'])
+                : $account->hip_id;
+
             $amendment = AccountAmendment::create([
-                'account_id'          => $account->id,
-                'company_name'        => $row['company_name'],
-                'policy_code'         => $row['policy_code'],
-                'hip_id'              => isset($row['hip']) && filled($row['hip'])
-                    ? $this->requireHipId($row['hip'])
-                    : $account->hip_id,
-                'effective_date'      => $this->transformDate($row['effective_date']) ?? $account->effective_date,
-                'expiration_date'     => $this->transformDate($row['expiration_date']) ?? $account->expiration_date,
-                'endorsement_type'    => 'AMENDMENT',
-                'endorsement_status'  => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                'account_id'           => $account->id,
+                'company_name'         => $row['company_name'],
+                'policy_code'          => $row['policy_code'],
+                'hip_id'               => $newHipId,
+                'card_used'            => $row['card_used'] ?? $account->card_used,
+                'effective_date'       => $this->transformDate($row['effective_date']) ?? $account->effective_date,
+                'expiration_date'      => $this->transformDate($row['expiration_date']) ?? $account->expiration_date,
+                'endorsement_type'     => 'AMENDMENT',
+                'endorsement_status'   => $this->migrationMode ? 'APPROVED' : 'PENDING',
                 'coverage_period_type' => $row['coverage_type'] ?? $account->coverage_period_type,
-                'mbl_type'            => $row['mbl_type'] ?? $account->mbl_type,
-                'mbl_amount'          => $row['mbl_amount'] ?? $account->mbl_amount,
-                'remarks'             => $row['remarks'] ?? null,
-                'requested_by'        => $this->userId,
+                'mbl_type'             => $row['mbl_type'] ?? $account->mbl_type,
+                'mbl_amount'           => $row['mbl_amount'] ?? $account->mbl_amount,
+                'remarks'              => $row['remarks'] ?? null,
+                'requested_by'         => $this->userId,
+                'approved_by'          => $this->migrationMode ? $this->userId : null,
+                // Old value snapshots
+                'old_company_name'         => $account->company_name,
+                'old_policy_code'          => $account->policy_code,
+                'old_hip_id'               => $account->hip_id,
+                'old_card_used'            => $account->card_used,
+                'old_effective_date'       => $account->effective_date,
+                'old_expiration_date'      => $account->expiration_date,
+                'old_coverage_period_type' => $account->coverage_period_type,
+                'old_mbl_type'             => $account->mbl_type,
+                'old_mbl_amount'           => $account->mbl_amount,
+                'old_plan_type'            => $account->plan_type,
+                'old_coverage_type'        => $account->coverage_type,
             ]);
 
+            // Always restore original fields on account — only endorsement status changes
             $account->update([
-                'endorsement_type'   => 'AMENDMENT',
-                'endorsement_status' => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                'endorsement_type'     => 'AMENDMENT',
+                'endorsement_status'   => $this->migrationMode ? 'APPROVED' : 'PENDING',
+                'hip_id'               => $account->getOriginal('hip_id'),
+                'company_name'         => $account->getOriginal('company_name'),
+                'policy_code'          => $account->getOriginal('policy_code'),
+                'card_used'            => $account->getOriginal('card_used'),
+                'effective_date'       => $account->getOriginal('effective_date'),
+                'expiration_date'      => $account->getOriginal('expiration_date'),
+                'coverage_period_type' => $account->getOriginal('coverage_period_type'),
+                'mbl_type'             => $account->getOriginal('mbl_type'),
+                'mbl_amount'           => $account->getOriginal('mbl_amount'),
+                'plan_type'            => $account->getOriginal('plan_type'),
+                'coverage_type'        => $account->getOriginal('coverage_type'),
             ]);
 
-            if ($this->migrationMode && isset($row['mbl_type']) && $account->mbl_type !== $row['mbl_type']) {
-                MblBalanceService::handleMblTypeChange(
-                    $account->id,
-                    $account->mbl_type,
-                    $row['mbl_type'],
-                    $row['mbl_amount'] ?? null,
-                    $this->transformDate($row['effective_date']) ?? $account->effective_date
-                );
-            }
+            $currentServices = AccountService::where('account_id', $account->id)->get();
+            $this->attachServicesToAmendment($amendment, $row, $currentServices);
 
-            $this->attachServicesToAmendment($amendment, $row);
+            // Migration mode: apply amendment immediately like the web approveAmendment action
+            if ($this->migrationMode) {
+                $updateData = [
+                    'company_name'         => $amendment->company_name,
+                    'policy_code'          => $amendment->policy_code,
+                    'hip_id'               => $amendment->hip_id,
+                    'card_used'            => $amendment->card_used,
+                    'effective_date'       => $amendment->effective_date,
+                    'expiration_date'      => $amendment->expiration_date,
+                    'endorsement_type'     => 'AMENDED',
+                    'endorsement_status'   => 'APPROVED',
+                    'account_status'       => 'active',
+                    'coverage_period_type' => $amendment->coverage_period_type,
+                ];
+                if ($amendment->mbl_type) {
+                    $updateData['mbl_type'] = $amendment->mbl_type;
+                }
+                if ($amendment->mbl_amount) {
+                    $updateData['mbl_amount'] = $amendment->mbl_amount;
+                    if ($amendment->mbl_type === 'Fixed') {
+                        $updateData['mbl_balance'] = $amendment->mbl_amount;
+                    }
+                }
+                if ($amendment->mbl_type && $account->mbl_type !== $amendment->mbl_type) {
+                    MblBalanceService::handleMblTypeChange(
+                        $account->id,
+                        $account->mbl_type,
+                        $amendment->mbl_type,
+                        $amendment->mbl_amount,
+                        $amendment->effective_date ?? $account->effective_date
+                    );
+                }
+                $account->update($updateData);
+
+                AccountService::where('account_id', $account->id)->delete();
+                foreach ($amendment->services as $srv) {
+                    AccountService::create([
+                        'account_id'       => $account->id,
+                        'service_id'       => $srv->service_id,
+                        'quantity'         => $srv->quantity,
+                        'default_quantity' => $srv->default_quantity,
+                        'is_unlimited'     => $srv->is_unlimited,
+                        'remarks'          => $srv->remarks,
+                    ]);
+                }
+            }
 
             DB::commit();
             $this->logSuccess($row, "Amendment submitted for '{$row['company_name']}'");
@@ -406,18 +473,24 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         }
     }
 
-    private function attachServicesToAmendment(AccountAmendment $amendment, array $row): void
+    private function attachServicesToAmendment(AccountAmendment $amendment, array $row, $currentServices = null): void
     {
+        $currentKeyed = $currentServices ? $currentServices->keyBy('service_id') : collect();
+
         foreach ($this->services as $service) {
             if (isset($row[$service->slug])) {
                 $value       = $row[$service->slug];
                 $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
                 $quantity    = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
+                $current     = $currentKeyed->get($service->id);
+
                 $amendment->services()->create([
                     'service_id'       => $service->id,
                     'quantity'         => $quantity,
                     'default_quantity' => $quantity,
                     'is_unlimited'     => $isUnlimited,
+                    'old_quantity'     => $current?->quantity,
+                    'old_is_unlimited' => $current?->is_unlimited,
                 ]);
             }
         }

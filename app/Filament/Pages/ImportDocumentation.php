@@ -2,11 +2,15 @@
 
 namespace App\Filament\Pages;
 
+use App\Support\ImportTemplates;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Illuminate\Support\Facades\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class ImportDocumentation extends Page
 {
@@ -51,12 +55,12 @@ class ImportDocumentation extends Page
                 Action::make('downloadAccount')
                     ->label('Account Template')
                     ->icon('heroicon-o-table-cells')
-                    ->action(fn() => $this->downloadFile('account')),
+                    ->action(fn() => $this->downloadTemplate('account')),
 
                 Action::make('downloadMember')
                     ->label('Member Template')
                     ->icon('heroicon-o-table-cells')
-                    ->action(fn() => $this->downloadFile('member')),
+                    ->action(fn() => $this->downloadTemplate('member')),
 
                 Action::make('downloadProcedure')
                     ->label('Procedure Template')
@@ -66,7 +70,7 @@ class ImportDocumentation extends Page
                 Action::make('downloadClinic')
                     ->label('Clinic Template')
                     ->icon('heroicon-o-table-cells')
-                    ->action(fn() => $this->downloadFile('clinic')),
+                    ->action(fn() => $this->downloadTemplate('clinic')),
             ])
             ->label('Download Templates')
             ->icon('heroicon-o-arrow-down-tray')
@@ -75,28 +79,36 @@ class ImportDocumentation extends Page
         ];
     }
 
+    public function downloadTemplate(string $type): mixed
+    {
+        $row = match ($type) {
+            'account' => ImportTemplates::account(),
+            'member'  => ImportTemplates::member(),
+            'clinic'  => ImportTemplates::clinic(),
+            default   => null,
+        };
+
+        if (!$row) return null;
+
+        $export = new class($row) implements FromArray, WithHeadings {
+            public function __construct(private array $row) {}
+            public function array(): array { return [array_values($this->row)]; }
+            public function headings(): array { return array_keys($this->row); }
+        };
+
+        return Excel::download($export, 'import-' . $type . '-template.xlsx');
+    }
+
     public function downloadFile(string $type)
     {
         $files = [
             'docs' => [
                 'path' => base_path('IMPORT_DOCUMENTATION.md'),
-                'name' => 'HPDAI_Import_Documentation.md'
-            ],
-            'account' => [
-                'path' => storage_path('app/templates/import-account-template.xlsx'),
-                'name' => 'import-account-template.xlsx'
-            ],
-            'member' => [
-                'path' => storage_path('app/templates/import-member-template.xlsx'),
-                'name' => 'import-member-template.xlsx'
+                'name' => 'HPDAI_Import_Documentation.md',
             ],
             'procedure' => [
                 'path' => storage_path('app/templates/import-procedure-template.xlsx'),
-                'name' => 'import-procedure-template.xlsx'
-            ],
-            'clinic' => [
-                'path' => storage_path('app/templates/clinic_import_template.xls'),
-                'name' => 'clinic_import_template.xls'
+                'name' => 'import-procedure-template.xlsx',
             ],
         ];
 

@@ -60,6 +60,7 @@ class DatabaseSeeder extends Seeder
             ReturnReasonsSeeder::class,
             InvalidReasonsSeeder::class,
             MblTypeSeeder::class,
+            ScheduleSettingsSeeder::class,
         ]);
     }
 }

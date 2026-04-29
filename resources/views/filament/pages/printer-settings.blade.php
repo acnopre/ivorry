@@ -69,7 +69,7 @@
                     </div>
                     <div>
                         <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                            {{ $stuckCount > 0 ? $stuckCount . ' SOA(s) stuck in printing status' : 'No stuck jobs' }}
+                            {{ $stuckCount > 0 ? $stuckCount . ' ADC(s) stuck in printing status' : 'No stuck jobs' }}
                         </p>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                             ADC get stuck when a print job fails or the server restarts mid-print. Clearing resets them to allow reprinting.

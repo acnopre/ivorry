@@ -2,11 +2,28 @@
     <div class="space-y-6">
 
         {{-- Header note --}}
-        <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900 px-6 py-4 flex items-start gap-3">
-            <x-heroicon-o-information-circle class="h-5 w-5 text-info-500 shrink-0 mt-0.5" />
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-                Changes to schedule times take effect on the <strong class="text-gray-900 dark:text-white">next scheduler cycle</strong>. The scheduler is managed by <strong class="text-gray-900 dark:text-white">Supervisor</strong> on the server and runs automatically.
-            </p>
+        @php $cronStatus = $this->cronStatus; @endphp
+        <div class="rounded-xl ring-1 {{ $cronStatus['is_running'] ? 'ring-success-200 dark:ring-success-700/30 bg-success-50 dark:bg-success-900/10' : 'ring-danger-200 dark:ring-danger-700/30 bg-danger-50 dark:bg-danger-900/10' }} px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-full {{ $cronStatus['is_running'] ? 'bg-success-100 dark:bg-success-900/30' : 'bg-danger-100 dark:bg-danger-900/30' }}">
+                    @if($cronStatus['is_running'])
+                        <x-heroicon-s-check-circle class="h-5 w-5 text-success-600 dark:text-success-400" />
+                    @else
+                        <x-heroicon-s-x-circle class="h-5 w-5 text-danger-600 dark:text-danger-400" />
+                    @endif
+                </div>
+                <div>
+                    <p class="text-sm font-semibold {{ $cronStatus['is_running'] ? 'text-success-700 dark:text-success-300' : 'text-danger-700 dark:text-danger-300' }}">
+                        {{ $cronStatus['is_running'] ? 'Scheduler is running' : 'Scheduler not detected' }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ $cronStatus['last_ping'] ? 'Last heartbeat: ' . \Carbon\Carbon::parse($cronStatus['last_ping'])->diffForHumans() : 'No heartbeat received yet — cron may not be configured.' }}
+                    </p>
+                </div>
+            </div>
+            <div class="text-xs text-gray-400 dark:text-gray-500">
+                Changes take effect on the next scheduler cycle. Managed by <strong>Supervisor</strong>.
+            </div>
         </div>
 
         {{-- Tasks --}}

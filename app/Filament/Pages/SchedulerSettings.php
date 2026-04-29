@@ -29,6 +29,15 @@ class SchedulerSettings extends Page
             ->toArray();
     }
 
+    public function getCronStatusProperty(): array
+    {
+        $lastRun = \Illuminate\Support\Facades\Cache::get('scheduler_last_ping');
+        return [
+            'last_ping' => $lastRun,
+            'is_running' => $lastRun && \Carbon\Carbon::parse($lastRun)->diffInMinutes(now()) <= 2,
+        ];
+    }
+
     public function save(): void
     {
         foreach ($this->settings as $id => $data) {

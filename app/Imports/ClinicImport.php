@@ -66,11 +66,11 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
 
             $existingClinic = Clinic::where('clinic_name', $row['clinic_name'])->first();
 
-            // Resolve IDs before opening transaction
+            // Resolve IDs — already validated so these are guaranteed to match
             $regionId       = !empty($row['region_name'])       ? \App\Models\Region::where('name', $row['region_name'])->value('id')             : null;
-            $provinceId     = !empty($row['province_name'])     ? \App\Models\Province::where('name', $row['province_name'])->value('id')         : null;
-            $municipalityId = !empty($row['municipality_name']) ? \App\Models\Municipality::where('name', $row['municipality_name'])->value('id') : null;
-            $barangayId     = !empty($row['barangay_name'])     ? \App\Models\Barangay::where('name', $row['barangay_name'])->value('id')         : null;
+            $provinceId     = !empty($row['province_name'])     ? \App\Models\Province::where('name', $row['province_name'])->where('region_id', $regionId)->value('id') : null;
+            $municipalityId = !empty($row['municipality_name']) ? \App\Models\Municipality::where('name', $row['municipality_name'])->where('province_id', $provinceId)->value('id') : null;
+            $barangayId     = !empty($row['barangay_name']) ? \App\Models\Barangay::where('name', $row['barangay_name'])->value('id') : null;
 
             $accountId = null;
             if (($row['accreditation_status'] ?? '') === 'SPECIFIC ACCOUNT') {
@@ -236,6 +236,44 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
 
         if ($emailTaken) {
             return "Email '{$row['clinic_email']}' is already assigned to a different clinic";
+        }
+
+        // --- Location validation ---
+        $regionId = null;
+        $provinceId = null;
+        $municipalityId = null;
+
+        if (!empty($row['region_name'])) {
+            $regionId = \App\Models\Region::where('name', $row['region_name'])->value('id');
+            if (!$regionId) {
+                return "Region '{$row['region_name']}' not found";
+            }
+        }
+
+        if (!empty($row['province_name'])) {
+            $provinceQuery = \App\Models\Province::where('name', $row['province_name']);
+            if ($regionId) {
+                $provinceQuery->where('region_id', $regionId);
+            }
+            $provinceId = $provinceQuery->value('id');
+            if (!$provinceId) {
+                return !empty($row['region_name'])
+                    ? "Province '{$row['province_name']}' does not belong to region '{$row['region_name']}'"
+                    : "Province '{$row['province_name']}' not found";
+            }
+        }
+
+        if (!empty($row['municipality_name'])) {
+            $municipalityQuery = \App\Models\Municipality::where('name', $row['municipality_name']);
+            if ($provinceId) {
+                $municipalityQuery->where('province_id', $provinceId);
+            }
+            $municipalityId = $municipalityQuery->value('id');
+            if (!$municipalityId) {
+                return !empty($row['province_name'])
+                    ? "Municipality '{$row['municipality_name']}' does not belong to province '{$row['province_name']}'"
+                    : "Municipality '{$row['municipality_name']}' not found";
+            }
         }
 
         return null;

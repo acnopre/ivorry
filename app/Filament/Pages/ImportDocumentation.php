@@ -22,7 +22,8 @@ class ImportDocumentation extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()->can('documentation.view');
+        return auth()->user()->can('documentation.view')
+            || auth()->user()->hasRole(\App\Models\Role::ACCREDITATION);
     }
 
     public function exportPdf(): mixed
@@ -81,6 +82,10 @@ class ImportDocumentation extends Page
 
     public function downloadTemplate(string $type): mixed
     {
+        if ($type === 'clinic') {
+            return (new \App\Exports\ClinicImportTemplateExport())->download();
+        }
+
         $row = match ($type) {
             'account' => ImportTemplates::account(),
             'member'  => ImportTemplates::member(),

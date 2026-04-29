@@ -120,6 +120,7 @@ class DatabaseDocumentation extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()->can('documentation.view');
+        return auth()->user()->can('documentation.view')
+            || auth()->user()->hasRole(\App\Models\Role::ACCREDITATION);
     }
 }

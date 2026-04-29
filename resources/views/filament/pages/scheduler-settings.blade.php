@@ -7,9 +7,13 @@
             <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 items-center justify-center rounded-full {{ $cronStatus['is_running'] ? 'bg-success-100 dark:bg-success-900/30' : 'bg-danger-100 dark:bg-danger-900/30' }}">
                     @if($cronStatus['is_running'])
-                        <x-heroicon-s-check-circle class="h-5 w-5 text-success-600 dark:text-success-400" />
+                        <svg style="color: #16a34a; width:1.25rem; height:1.25rem;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                        </svg>
                     @else
-                        <x-heroicon-s-x-circle class="h-5 w-5 text-danger-600 dark:text-danger-400" />
+                        <svg style="color: #dc2626; width:1.25rem; height:1.25rem;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                        </svg>
                     @endif
                 </div>
                 <div>
@@ -50,16 +54,16 @@
                 @php $key = $task->id; @endphp
 
                 <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
-                     x-data="{ enabled: {{ json_encode((bool)($settings[$key]['enabled'] ?? $task->enabled)) }} }">
+                     x-data="{ get enabled() { return $wire.get('settings.{{ $key }}.enabled') }, set enabled(val) { $wire.set('settings.{{ $key }}.enabled', val) } }">
 
                     {{-- Task header --}}
                     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/10">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors"
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
                                 :class="enabled ? 'bg-success-100 dark:bg-success-900/30' : 'bg-gray-100 dark:bg-white/5'">
-                                <span :class="enabled ? 'text-success-600 dark:text-success-400' : 'text-gray-400'">
-                                    <x-heroicon-s-clock class="h-4 w-4" />
-                                </span>
+                                <svg :style="enabled ? 'color:#16a34a' : 'color:#9ca3af'" style="width:1.25rem;height:1.25rem;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                                </svg>
                             </div>
                             <div>
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -93,7 +97,7 @@
                         {{-- Enable toggle --}}
                         <div class="flex items-center gap-3">
                             <button type="button"
-                                x-on:click="enabled = !enabled; $wire.set('settings.{{ $key }}.enabled', enabled)"
+                                x-on:click="enabled = !enabled"
                                 :aria-checked="enabled.toString()"
                                 :class="enabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-white/10'"
                                 class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2">

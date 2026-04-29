@@ -9,12 +9,16 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('schedule_settings')) {
+            return;
+        }
+
         Schema::create('schedule_settings', function (Blueprint $table) {
             $table->id();
             $table->string('command');
             $table->string('label');
             $table->string('description')->nullable();
-            $table->string('daily_time')->default('00:05'); // HH:MM
+            $table->string('daily_time')->nullable(); // HH:MM
             $table->boolean('enabled')->default(true);
             $table->timestamp('last_run_at')->nullable();
             $table->string('last_run_status')->nullable(); // success, failed

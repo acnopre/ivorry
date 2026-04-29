@@ -17,7 +17,7 @@ class CancelPendingProcedures extends Command
         DB::beginTransaction();
         try {
             $count = Procedure::where('status', Procedure::STATUS_PENDING)
-                ->whereDate('created_at', today())
+                ->whereDate('availment_date', '<', today())
                 ->update([
                     'status'          => Procedure::STATUS_CANCELLED,
                     'previous_status' => Procedure::STATUS_PENDING,

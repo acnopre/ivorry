@@ -17,7 +17,12 @@
         @foreach ($claims as $claim)
         <tr>
             <td>{{ \Carbon\Carbon::parse($claim->availment_date)->format('F d, Y') }}</td>
-            <td>{{ $claim->member->first_name }} {{ $claim->member->last_name }}</td>
+            <td>
+                {{ $claim->member->first_name }} {{ $claim->member->last_name }}
+                @if($claim->is_vat_exempt)
+                <br><span style="font-weight:bold;font-size:10px;">VAT EXEMPT &mdash; {{ $claim->discount_type }} | ID: {{ $claim->discount_id_number }}</span>
+                @endif
+            </td>
             <td>{{ $claim->member->account->company_name }}</td>
             <td>{{ $claim->service->name }}</td>
             <td>
@@ -42,7 +47,13 @@
             </td>
 
             <td>₱{{ number_format($claim->clinic_service_fee, 2) }}</td>
-            <td>₱{{ number_format($claim->vat_amount, 2) }}</td>
+            <td>
+                @if($claim->is_vat_exempt)
+                <strong>₱0.00</strong><br><span style="font-size:9px;">EXEMPT</span>
+                @else
+                ₱{{ number_format($claim->vat_amount, 2) }}
+                @endif
+            </td>
             <td>₱{{ number_format($claim->ewt_amount, 2) }}</td>
             <td>₱{{ number_format($claim->net, 2) }}</td>
         </tr>

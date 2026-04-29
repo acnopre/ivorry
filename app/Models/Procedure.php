@@ -23,6 +23,9 @@ class Procedure extends Model
         'applied_fee',
         'adc_number',
         'is_fee_adjusted',
+        'is_vat_exempt',
+        'discount_type',
+        'discount_id_number',
         'adc_number_from',
         'is_migrated',
         'last_updated_by',
@@ -31,6 +34,7 @@ class Procedure extends Model
 
     protected $casts = [
         'availment_date' => 'date',
+        'is_vat_exempt'  => 'boolean',
     ];
 
     public const STATUS_PENDING = 'pending';

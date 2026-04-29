@@ -17,14 +17,16 @@ use App\Models\Surface;
 use App\Models\Unit;
 use App\Models\UnitType;
 use Filament\Forms;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Hidden;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 
@@ -334,6 +336,7 @@ class SearchMember extends Page implements HasActions
                 $this->getQuantityField(),
                 ...$this->getUnitFields(),
                 $this->getAvailmentDateField(),
+                $this->getVatExemptFields(),
             ])
             ->action(function (array $data) {
                 $clinicId = $data['clinic_id'] ?? Auth::user()->clinic->id ?? null;
@@ -605,6 +608,33 @@ class SearchMember extends Page implements HasActions
             ->disabled(!$isCSR)
             ->dehydrated()
             ->required();
+    }
+
+    protected function getVatExemptFields(): Forms\Components\Group
+    {
+        return Forms\Components\Group::make([
+            Toggle::make('is_vat_exempt')
+                ->label('PWD / Senior Citizen (VAT Exempt)')
+                ->helperText('Enable if the member is a PWD or Senior Citizen. VAT will be set to 0%.')
+                ->live()
+                ->default(false)
+                ->visible(fn(Forms\Get $get) => Clinic::find($get('clinic_id'))?->vat_type === 'VAT 12%'),
+
+            Select::make('discount_type')
+                ->label('Discount Type')
+                ->options([
+                    'PWD'            => 'PWD (Person with Disability)',
+                    'Senior Citizen' => 'Senior Citizen',
+                ])
+                ->required()
+                ->visible(fn(Forms\Get $get) => Clinic::find($get('clinic_id'))?->vat_type === 'VAT 12%' && $get('is_vat_exempt')),
+
+            TextInput::make('discount_id_number')
+                ->label('ID Number')
+                ->placeholder('Enter PWD / Senior Citizen ID number')
+                ->required()
+                ->visible(fn(Forms\Get $get) => Clinic::find($get('clinic_id'))?->vat_type === 'VAT 12%' && $get('is_vat_exempt')),
+        ]);
     }
 
     protected function resetUnitFields(callable $set): void

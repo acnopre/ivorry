@@ -320,7 +320,14 @@
                                     @endphp
                                     @foreach($rows as $unit)
                                     <tr class="hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors">
-                                        <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{{ $procedure->service->name ?? '—' }}</td>
+                                        <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">
+                                            {{ $procedure->service->name ?? '—' }}
+                                            @if($procedure->is_vat_exempt)
+                                            <span class="ml-1 inline-flex items-center rounded-full bg-warning-100 px-1.5 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-900/30 dark:text-warning-400">
+                                                VAT Exempt · {{ $procedure->discount_type }}
+                                            </span>
+                                            @endif
+                                        </td>
                                         @if($isCsr)
                                         <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ $procedure->clinic->clinic_name ?? '—' }}</td>
                                         <td class="px-4 py-2 font-mono font-semibold text-indigo-600 dark:text-indigo-400">{{ $procedure->approval_code }}</td>

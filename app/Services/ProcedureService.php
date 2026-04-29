@@ -257,14 +257,17 @@ class ProcedureService
                 if (empty($data[$input])) continue;
                 foreach ($data[$input] as $value) {
                     $procedure = Procedure::create([
-                        'clinic_id'      => $clinicId,
-                        'member_id'      => $member->id,
-                        'service_id'     => $data['service_id'],
-                        'availment_date' => $data['availment_date'] ?? null,
-                        'status'         => $status,
-                        'quantity'       => 1,
-                        'approval_code'  => $approvalCode,
-                        'applied_fee'    => $appliedFee,
+                        'clinic_id'           => $clinicId,
+                        'member_id'           => $member->id,
+                        'service_id'          => $data['service_id'],
+                        'availment_date'      => $data['availment_date'] ?? null,
+                        'status'              => $status,
+                        'quantity'            => 1,
+                        'approval_code'       => $approvalCode,
+                        'applied_fee'         => $appliedFee,
+                        'is_vat_exempt'       => $data['is_vat_exempt'] ?? false,
+                        'discount_type'       => ($data['is_vat_exempt'] ?? false) ? ($data['discount_type'] ?? null) : null,
+                        'discount_id_number'  => ($data['is_vat_exempt'] ?? false) ? ($data['discount_id_number'] ?? null) : null,
                     ]);
 
                     ProcedureUnit::create([
@@ -278,14 +281,17 @@ class ProcedureService
             }
         } else {
             Procedure::create([
-                'clinic_id'      => $clinicId,
-                'member_id'      => $member->id,
-                'service_id'     => $data['service_id'],
-                'availment_date' => $data['availment_date'] ?? null,
-                'status'         => $status,
-                'quantity'       => 1,
-                'approval_code'  => $approvalCode,
-                'applied_fee'    => $appliedFee,
+                'clinic_id'           => $clinicId,
+                'member_id'           => $member->id,
+                'service_id'          => $data['service_id'],
+                'availment_date'      => $data['availment_date'] ?? null,
+                'status'              => $status,
+                'quantity'            => 1,
+                'approval_code'       => $approvalCode,
+                'applied_fee'         => $appliedFee,
+                'is_vat_exempt'       => $data['is_vat_exempt'] ?? false,
+                'discount_type'       => ($data['is_vat_exempt'] ?? false) ? ($data['discount_type'] ?? null) : null,
+                'discount_id_number'  => ($data['is_vat_exempt'] ?? false) ? ($data['discount_id_number'] ?? null) : null,
             ]);
         }
 

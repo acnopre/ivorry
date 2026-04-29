@@ -632,7 +632,7 @@ class SearchClaims extends Page implements HasForms, HasTable
             ->where('status', Procedure::STATUS_VALID)
             ->get()
             ->map(function ($procedure) {
-                $vatRate = $this->parseVatType($procedure->clinic->vat_type ?? null);
+                $vatRate = $procedure->is_vat_exempt ? 0 : $this->parseVatType($procedure->clinic->vat_type ?? null);
                 $ewtRate = $this->parsePercentage($procedure->clinic->withholding_tax ?? null);
                 $serviceFee = $procedure->applied_fee;
                 $vatAmount = $serviceFee * $vatRate;
@@ -664,6 +664,9 @@ class SearchClaims extends Page implements HasForms, HasTable
                 'ewt_amount'         => $p->ewt_amount,
                 'net'                => $p->net,
                 'adc_number_from'    => $p->adc_number_from,
+                'is_vat_exempt'      => $p->is_vat_exempt,
+                'discount_type'      => $p->discount_type,
+                'discount_id_number' => $p->discount_id_number,
             ])->toArray(),
             'clinic_name'    => $clinicDetails?->clinic_name,
             'dentist_name'   => $dentist ? $dentist->first_name . ' ' . $dentist->last_name : '—',
@@ -726,8 +729,8 @@ class SearchClaims extends Page implements HasForms, HasTable
 
                 $serviceFee = $procedure->applied_fee;
 
-                // Percentages
-                $vatRate = $this->parseVatType($procedure->clinic->vat_type ?? null);
+                // Percentages — VAT is 0 if procedure is VAT exempt (PWD/Senior Citizen)
+                $vatRate = $procedure->is_vat_exempt ? 0 : $this->parseVatType($procedure->clinic->vat_type ?? null);
                 $ewtRate = $this->parsePercentage($procedure->clinic->withholding_tax ?? null);
 
                 // Amounts
@@ -795,18 +798,21 @@ class SearchClaims extends Page implements HasForms, HasTable
         $this->dispatch('update-progress', status: 'Creating SOA record...', progress: 70);
 
         // Guard: block if any procedure is already linked to a printing SOA
-        $printingSOA = \App\Models\GeneratedSoa::where('status', 'printing')
-            ->whereHas('procedures', fn($q) => $q->whereIn('procedures.id', $claims->pluck('id')))
-            ->first();
+        // Skip this check when simulation mode is enabled
+        if (!\App\Filament\Pages\PrinterSettings::isSimulating()) {
+            $printingSOA = \App\Models\GeneratedSoa::where('status', 'printing')
+                ->whereHas('procedures', fn($q) => $q->whereIn('procedures.id', $claims->pluck('id')))
+                ->first();
 
-        if ($printingSOA) {
-            $this->dispatch('close-printing');
-            \Filament\Notifications\Notification::make()
-                ->warning()
-                ->title('Print Already In Progress')
-                ->body('These claims are already linked to a SOA that is currently printing. Please wait for it to complete.')
-                ->send();
-            return;
+            if ($printingSOA) {
+                $this->dispatch('close-printing');
+                \Filament\Notifications\Notification::make()
+                    ->warning()
+                    ->title('Print Already In Progress')
+                    ->body('These claims are already linked to a SOA that is currently printing. Please wait for it to complete.')
+                    ->send();
+                return;
+            }
         }
 
         $soa = GeneratedSoa::create([

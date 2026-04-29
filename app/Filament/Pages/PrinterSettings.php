@@ -105,6 +105,24 @@ class PrinterSettings extends Page
 
         return $output;
     }
+    public function clearStuckJobs(): void
+    {
+        $count = \App\Models\GeneratedSoa::where('status', 'printing')->count();
+
+        if ($count === 0) {
+            Notification::make()->title('No Stuck Jobs')->body('There are no SOAs currently stuck in printing status.')->info()->send();
+            return;
+        }
+
+        \App\Models\GeneratedSoa::where('status', 'printing')->update(['status' => 'generated']);
+
+        Notification::make()
+            ->title('Stuck Jobs Cleared')
+            ->body("{$count} SOA(s) reset from 'printing' to 'generated'.")
+            ->success()
+            ->send();
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->check()

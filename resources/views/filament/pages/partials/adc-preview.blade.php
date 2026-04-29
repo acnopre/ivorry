@@ -46,9 +46,19 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-white/5">
                     @foreach($previewData['claims'] as $claim)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-white/5">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/5 {{ $claim['is_vat_exempt'] ? 'bg-warning-50 dark:bg-warning-900/10' : '' }}">
                         <td class="px-3 py-2">{{ \Carbon\Carbon::parse($claim['availment_date'])->format('M d, Y') }}</td>
-                        <td class="px-3 py-2 font-medium">{{ $claim['member_name'] }}</td>
+                        <td class="px-3 py-2">
+                            <div class="font-medium">{{ $claim['member_name'] }}</div>
+                            @if($claim['is_vat_exempt'])
+                            <div class="mt-0.5 flex items-center gap-1">
+                                <span class="inline-flex items-center rounded-full bg-warning-100 px-1.5 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-900/30 dark:text-warning-400">
+                                    VAT Exempt &middot; {{ $claim['discount_type'] }}
+                                </span>
+                                <span class="text-xs text-gray-400 dark:text-gray-500">ID: {{ $claim['discount_id_number'] }}</span>
+                            </div>
+                            @endif
+                        </td>
                         <td class="px-3 py-2">{{ $claim['company_name'] }}</td>
                         <td class="px-3 py-2">{{ $claim['service_name'] }}</td>
                         <td class="px-3 py-2 text-gray-500">{{ $claim['units'] ?: '—' }}</td>
@@ -62,7 +72,10 @@
                         </td>
                         @endif
                         <td class="px-3 py-2 text-right">&#8369;{{ number_format($claim['clinic_service_fee'], 2) }}</td>
-                        <td class="px-3 py-2 text-right">&#8369;{{ number_format($claim['vat_amount'], 2) }}</td>
+                        <td class="px-3 py-2 text-right {{ $claim['is_vat_exempt'] ? 'text-warning-600 dark:text-warning-400 font-semibold' : '' }}">
+                            &#8369;{{ number_format($claim['vat_amount'], 2) }}
+                            @if($claim['is_vat_exempt'])<div class="text-xs font-normal text-warning-500">Exempt</div>@endif
+                        </td>
                         <td class="px-3 py-2 text-right">&#8369;{{ number_format($claim['ewt_amount'], 2) }}</td>
                         <td class="px-3 py-2 text-right font-medium">&#8369;{{ number_format($claim['net'], 2) }}</td>
                     </tr>

@@ -17,14 +17,29 @@
                         {{ $cronStatus['is_running'] ? 'Scheduler is running' : 'Scheduler not detected' }}
                     </p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ $cronStatus['last_ping'] ? 'Last heartbeat: ' . \Carbon\Carbon::parse($cronStatus['last_ping'])->diffForHumans() : 'No heartbeat received yet — cron may not be configured.' }}
+                        {{ $cronStatus['last_ping'] ? 'Last heartbeat: ' . \Carbon\Carbon::parse($cronStatus['last_ping'])->diffForHumans() : 'No heartbeat received yet.' }}
                     </p>
                 </div>
             </div>
-            <div class="text-xs text-gray-400 dark:text-gray-500">
-                Changes take effect on the next scheduler cycle. Managed by <strong>Supervisor</strong>.
+            <div class="flex items-center gap-3">
+                <x-filament::button wire:click="pingNow" size="sm" color="gray" icon="heroicon-m-signal">
+                    Ping Now
+                </x-filament::button>
             </div>
         </div>
+
+        {{-- Server setup instructions if not running --}}
+        @if(!$cronStatus['is_running'])
+        <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900 px-6 py-4 space-y-2">
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <x-heroicon-o-command-line class="h-4 w-4" />
+                Ensure the scheduler is running on the server
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Add this cron entry via <code class="bg-gray-100 dark:bg-white/10 px-1 rounded">crontab -e</code>:</p>
+            <pre class="text-xs bg-gray-100 dark:bg-white/5 rounded-lg px-4 py-3 text-gray-700 dark:text-gray-300 overflow-x-auto">* * * * * cd /var/www/html/ivory/current && php artisan schedule:run >> /dev/null 2>&1</pre>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Or if using Supervisor with <code class="bg-gray-100 dark:bg-white/10 px-1 rounded">schedule:work</code>, ensure the process is running.</p>
+        </div>
+        @endif
 
         {{-- Tasks --}}
         @php $tasks = \App\Models\ScheduleSetting::all(); @endphp

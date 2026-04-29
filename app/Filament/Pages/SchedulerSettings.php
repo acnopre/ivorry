@@ -29,6 +29,13 @@ class SchedulerSettings extends Page
             ->toArray();
     }
 
+    public function pingNow(): void
+    {
+        \Illuminate\Support\Facades\Artisan::call('scheduler:heartbeat');
+        $this->dispatch('$refresh');
+        Notification::make()->title('Heartbeat sent.')->success()->send();
+    }
+
     public function getCronStatusProperty(): array
     {
         $lastRun = \Illuminate\Support\Facades\Cache::get('scheduler_last_ping');

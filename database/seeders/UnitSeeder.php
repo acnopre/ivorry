@@ -71,8 +71,6 @@ class UnitSeeder extends Seeder
                 'ROOT FRAGMENT'
             ],
             'Canal' => [
-                'SUPERNUMERARY',
-                'ROOT FRAGMENT',
                 'CENTRAL',
                 'BUCCAL',
                 'PALATAL',

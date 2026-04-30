@@ -72,6 +72,11 @@ class ImportDocumentation extends Page
                     ->label('Clinic Template')
                     ->icon('heroicon-o-table-cells')
                     ->action(fn() => $this->downloadTemplate('clinic')),
+
+                Action::make('downloadClinicBarangay')
+                    ->label('Download Import Clinic with Barangay')
+                    ->icon('heroicon-o-table-cells')
+                    ->action(fn() => $this->downloadFile('clinic_barangay')),
             ])
             ->label('Download Templates')
             ->icon('heroicon-o-arrow-down-tray')
@@ -114,6 +119,10 @@ class ImportDocumentation extends Page
             'procedure' => [
                 'path' => storage_path('app/templates/import-procedure-template.xlsx'),
                 'name' => 'import-procedure-template.xlsx',
+            ],
+            'clinic_barangay' => [
+                'path' => public_path('templates/import_clinic_with_barangay.zip'),
+                'name' => 'import_clinic_with_barangay.zip',
             ],
         ];
 

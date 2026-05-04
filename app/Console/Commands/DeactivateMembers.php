@@ -16,15 +16,21 @@ class DeactivateMembers extends Command
         $byInactiveDate = Member::where('status', 'ACTIVE')
             ->whereNotNull('inactive_date')
             ->whereDate('inactive_date', '<=', now())
-            ->update(['status' => 'INACTIVE']);
+            ->update([
+                'status'        => 'INACTIVE',
+            ]);
 
         // 2. Deactivate members whose expiration_date has passed (MEMBER coverage type)
-        //    Only applies when account coverage_period_type = MEMBER (member has own expiration_date)
+        // Uses '<' so members have full access through their expiration date
+        // e.g. expiration Apr 30 - deactivated on May 1
         $byExpiration = Member::where('status', 'ACTIVE')
             ->whereNotNull('expiration_date')
-            ->whereDate('expiration_date', '<', now()->startOfDay())
+            ->whereDate('expiration_date', '<', now())
             ->whereHas('account', fn($q) => $q->where('coverage_period_type', 'MEMBER'))
-            ->update(['status' => 'INACTIVE']);
+            ->update([
+                'status'        => 'INACTIVE',
+                'inactive_date' => now()->toDateString(),
+            ]);
 
         $this->info("Deactivated {$byInactiveDate} member(s) by inactive_date.");
         $this->info("Deactivated {$byExpiration} member(s) by expiration_date.");

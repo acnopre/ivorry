@@ -17,7 +17,7 @@ class DeactivateMembers extends Command
             ->whereNotNull('inactive_date')
             ->whereDate('inactive_date', '<=', now())
             ->update([
-                'status'        => 'INACTIVE',
+                'status' => 'INACTIVE',
             ]);
 
         // 2. Deactivate members whose expiration_date has passed (MEMBER coverage type)
@@ -28,7 +28,7 @@ class DeactivateMembers extends Command
             ->whereDate('expiration_date', '<', now())
             ->whereHas('account', fn($q) => $q->where('coverage_period_type', 'MEMBER'))
             ->update([
-                'status'        => 'INACTIVE',
+                'status' => 'INACTIVE',
                 'inactive_date' => now()->toDateString(),
             ]);
 

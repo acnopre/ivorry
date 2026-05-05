@@ -233,6 +233,10 @@ class SearchMember extends Page implements HasActions
         $basicFields = ['service_id', 'quantity', 'availment_date'];
         $hasUnits = count(array_diff(array_keys($data), $basicFields)) > 0;
 
+        // Determine if service is unlimited
+        $quantityInfo = ServiceQuantityService::getQuantityInfo($member, $data['service_id']);
+        $isServiceUnlimited = $quantityInfo['is_unlimited'] ?? false;
+
         // For Fixed MBL type, always create single procedure regardless of unlimited status
         if ($account->mbl_type === 'Fixed') {
             $procedure = Procedure::create([

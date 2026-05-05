@@ -26,7 +26,6 @@
         $accColor = match($accStatus) { 'active' => 'success', 'expired' => 'danger', default => 'gray' };
         $procedures = \App\Models\Procedure::with(['units.unitType', 'service', 'clinic'])
         ->where('member_id', $member->id)
-        ->when(auth()->user()->hasRole('Dentist'), fn($q) => $q->whereHas('service', fn($s) => $s->where('type', '!=', 'special')))
         ->orderByDesc('updated_at')
         ->get();
         $isShared = strtoupper($member->account?->plan_type ?? '') === 'SHARED';

@@ -535,7 +535,7 @@ class ViewAccount extends ViewRecord
                                                         'success' => fn($state): bool => $state === 'ALL_PRINCIPAL',
                                                         'warning' => fn($state): bool => $state === 'ALL_DEPENDENT',
                                                     ])
-                                                    ->formatStateUsing(fn($state) => match($state) {
+                                                    ->formatStateUsing(fn($state) => match ($state) {
                                                         'ALL_PRINCIPAL' => 'All Principal',
                                                         'ALL_DEPENDENT' => 'All Dependent',
                                                         default         => 'Default',
@@ -644,7 +644,7 @@ class ViewAccount extends ViewRecord
                             ->visible(
                                 fn(Account $record) => $record->endorsement_type === 'AMENDMENT'
                                     &&  $record->endorsement_status === 'PENDING'
-                                    && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::ACCOUNT_MANAGER)
+                                    && auth()->user()?->hasAnyRole(Role::SUPER_ADMIN, Role::UPPER_MANAGEMENT, Role::MIDDLE_MANAGEMENT, Role::ACCOUNT_MANAGER)
                                     && $amendmentAccount != null
                             )
                             ->schema([
@@ -725,7 +725,7 @@ class ViewAccount extends ViewRecord
                                                     ->label('MBL Amount')
                                                     ->money('PHP')
                                                     ->default($amendmentAccount?->mbl_amount)
-                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'mbl_amount', $this->record->mbl_amount ? '₱'.number_format($this->record->mbl_amount, 2) : null, $amendmentAccount?->mbl_amount ? '₱'.number_format($amendmentAccount->mbl_amount, 2) : null))
+                                                    ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'mbl_amount', $this->record->mbl_amount ? '₱' . number_format($this->record->mbl_amount, 2) : null, $amendmentAccount?->mbl_amount ? '₱' . number_format($amendmentAccount->mbl_amount, 2) : null))
                                                     ->visible(fn() => $amendmentAccount?->mbl_type === 'Fixed'),
                                             ]),
                                         Grid::make(3)
@@ -842,7 +842,7 @@ class ViewAccount extends ViewRecord
                                                         'success' => fn($state): bool => $state === 'ALL_PRINCIPAL',
                                                         'warning' => fn($state): bool => $state === 'ALL_DEPENDENT',
                                                     ])
-                                                    ->formatStateUsing(fn($state) => match($state) {
+                                                    ->formatStateUsing(fn($state) => match ($state) {
                                                         'ALL_PRINCIPAL' => 'All Principal',
                                                         'ALL_DEPENDENT' => 'All Dependent',
                                                         default         => 'Default',

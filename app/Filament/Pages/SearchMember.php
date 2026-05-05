@@ -515,10 +515,19 @@ class SearchMember extends Page implements HasActions
             ->minValue(1)
             ->default(1)
             ->required()
-            ->live()
-            ->afterStateUpdated(function (callable $set) {
+            ->live(onBlur: false)
+            ->afterStateUpdated(function ($state, callable $set, callable $get) {
                 $set('surface', []);
                 $set('canal', []);
+
+                // Real-time max validation feedback
+                $max = $this->getMaxQuantity($get);
+                if ((int) $state > $max) {
+                    $set('quantity', $max);
+                }
+                if ((int) $state < 1) {
+                    $set('quantity', 1);
+                }
             })
             ->visible(fn(callable $get) => $this->shouldShowQuantityField($get))
             ->disabled(fn(callable $get) => $this->isUnitType($get, 'Session'))
@@ -526,7 +535,9 @@ class SearchMember extends Page implements HasActions
             ->maxValue(fn(callable $get) => $this->getMaxQuantity($get))
             ->helperText(fn(callable $get) => $this->getQuantityHelperText($get))
             ->validationMessages([
-                'max' => 'Quantity cannot exceed the maximum allowed per date.',
+                'min'     => 'Quantity must be at least 1.',
+                'max'     => 'Quantity cannot exceed the maximum allowed per date.',
+                'integer' => 'Quantity must be a whole number.',
             ]);
     }
 
@@ -557,8 +568,13 @@ class SearchMember extends Page implements HasActions
                 ->live()
                 ->required(fn(callable $get) => $this->isUnitType($get, $typeName) && filled($get('quantity')))
                 ->visible(fn(callable $get) => $this->isUnitType($get, $typeName) && filled($get('quantity')))
-                ->helperText(fn(callable $get) => "Select up to {$get('quantity')} {$label}(s)")
+                ->helperText(fn(callable $get) => "Select exactly {$get('quantity')} {$label}(s)")
+                ->minItems(fn(callable $get) => (int) ($get('quantity') ?? 1))
                 ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0))
+                ->validationMessages([
+                    'min_items' => "You must select exactly :min {$label}(s) to match the quantity.",
+                    'max_items' => "You cannot select more than :max {$label}(s).",
+                ])
         ];
     }
 
@@ -579,8 +595,13 @@ class SearchMember extends Page implements HasActions
                 ->live()
                 ->required()
                 ->visible(fn(callable $get) => $this->isUnitType($get, 'Surface') && filled($get('quantity')))
-                ->helperText(fn(callable $get) => "Select up to {$get('quantity')} surface(s)")
-                ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
+                ->helperText(fn(callable $get) => "Select exactly {$get('quantity')} surface(s)")
+                ->minItems(fn(callable $get) => (int) ($get('quantity') ?? 1))
+                ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0))
+                ->validationMessages([
+                    'min_items' => 'You must select exactly :min surface(s) to match the quantity.',
+                    'max_items' => 'You cannot select more than :max surface(s).',
+                ]),
 
             Forms\Components\Select::make('tooth_canal')
                 ->label('Tooth')
@@ -596,8 +617,13 @@ class SearchMember extends Page implements HasActions
                 ->live()
                 ->required()
                 ->visible(fn(callable $get) => $this->isUnitType($get, 'Canal') && filled($get('quantity')))
-                ->helperText(fn(callable $get) => "Select up to {$get('quantity')} canal(s)")
-                ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0)),
+                ->helperText(fn(callable $get) => "Select exactly {$get('quantity')} canal(s)")
+                ->minItems(fn(callable $get) => (int) ($get('quantity') ?? 1))
+                ->maxItems(fn(callable $get) => (int) ($get('quantity') ?? 0))
+                ->validationMessages([
+                    'min_items' => 'You must select exactly :min canal(s) to match the quantity.',
+                    'max_items' => 'You cannot select more than :max canal(s).',
+                ]),
         ];
     }
 

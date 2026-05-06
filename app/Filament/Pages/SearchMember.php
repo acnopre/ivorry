@@ -29,6 +29,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class SearchMember extends Page implements HasActions
 {
@@ -329,8 +330,11 @@ class SearchMember extends Page implements HasActions
             ->modalHeading('Add Procedure')
             ->modalWidth('lg')
             ->fillForm(fn() => [
-                'clinic_id' => Auth::user()->clinic->id ?? null,
-                'availment_date' => now()->format('Y-m-d'),
+                'clinic_id'           => Auth::user()->clinic->id ?? null,
+                'availment_date'      => now()->format('Y-m-d'),
+                'is_vat_exempt'       => Cache::get("vat_exempt_member_{$this->selectedMemberId}.is_vat_exempt", false),
+                'discount_type'       => Cache::get("vat_exempt_member_{$this->selectedMemberId}.discount_type"),
+                'discount_id_number'  => Cache::get("vat_exempt_member_{$this->selectedMemberId}.discount_id_number"),
             ])
             ->form([
                 $this->getClinicField(),
@@ -394,6 +398,18 @@ class SearchMember extends Page implements HasActions
         }
 
         $this->approvalCode = ProcedureService::create($member, array_merge($data, ['applied_fee' => $appliedFee]), $clinicId, $isCSR);
+
+        // Cache VAT exempt info per member for 30 days
+        if (!empty($data['is_vat_exempt'])) {
+            Cache::put("vat_exempt_member_{$this->selectedMemberId}.is_vat_exempt", true, now()->addDays(30));
+            Cache::put("vat_exempt_member_{$this->selectedMemberId}.discount_type", $data['discount_type'] ?? null, now()->addDays(30));
+            Cache::put("vat_exempt_member_{$this->selectedMemberId}.discount_id_number", $data['discount_id_number'] ?? null, now()->addDays(30));
+        } else {
+            Cache::forget("vat_exempt_member_{$this->selectedMemberId}.is_vat_exempt");
+            Cache::forget("vat_exempt_member_{$this->selectedMemberId}.discount_type");
+            Cache::forget("vat_exempt_member_{$this->selectedMemberId}.discount_id_number");
+        }
+
         $this->showApprovalModal = true;
         $this->search();
     }

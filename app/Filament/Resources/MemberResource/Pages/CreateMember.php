@@ -75,7 +75,8 @@ class CreateMember extends CreateRecord
 
     protected function createSharedFamily(array $data, Account $account): void
     {
-        $cardNumber = $data['shared_card_number'] ?? null;
+        $cardNumber   = $data['shared_card_number'] ?? null;
+        $coverageType = $account->coverage_type ?? 'DEFAULT';
 
         if (! $cardNumber) {
             Notification::make()->title('Card number is required.')->danger()->send();
@@ -91,63 +92,116 @@ class CreateMember extends CreateRecord
             return;
         }
 
-        $existsPrincipal = Member::where('card_number', $cardNumber)
-            ->where('account_id', $account->id)
-            ->where('member_type', 'PRINCIPAL')
-            ->whereNull('deleted_at')
-            ->exists();
-        if ($existsPrincipal) {
-            Notification::make()->title('A principal with this card number already exists in this account.')->danger()->send();
-            return;
-        }
+        $sharedStatus = (!empty($account->expiration_date) && \Carbon\Carbon::parse($account->expiration_date)->lt(today()))
+            ? 'INACTIVE' : 'ACTIVE';
 
         DB::beginTransaction();
         try {
-            $principalUser = static::createUserForMember($data['principal_first_name'], $data['principal_last_name'], $data['principal_email'] ?? null);
+            $count = 0;
 
-            // For SHARED, use account expiration_date to determine status
-            $sharedStatus = (!empty($account->expiration_date) && \Carbon\Carbon::parse($account->expiration_date)->lt(today()))
-                ? 'INACTIVE' : 'ACTIVE';
+            if ($coverageType === 'ALL_PRINCIPAL') {
+                // All members are PRINCIPAL
+                foreach ($data['dependents'] ?? [] as $dep) {
+                    if (empty($dep['first_name']) || empty($dep['last_name'])) continue;
+                    $user = static::createUserForMember($dep['first_name'], $dep['last_name'], $dep['email'] ?? null);
+                    Member::create([
+                        'account_id'  => $account->id,
+                        'card_number' => $cardNumber,
+                        'first_name'  => $dep['first_name'],
+                        'last_name'   => $dep['last_name'],
+                        'middle_name' => $dep['middle_name'] ?? null,
+                        'suffix'      => $dep['suffix'] ?? null,
+                        'member_type' => 'PRINCIPAL',
+                        'birthdate'   => $dep['birthdate'] ?? null,
+                        'gender'      => $dep['gender'] ?? null,
+                        'email'       => $dep['email'] ?? null,
+                        'phone'       => $dep['phone'] ?? null,
+                        'status'      => $sharedStatus,
+                        'user_id'     => $user->id,
+                        'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+                    ]);
+                    $count++;
+                }
+                $summary = "{$count} principal(s) added with card {$cardNumber}.";
 
-            Member::create([
-                'account_id'  => $account->id,
-                'card_number' => $cardNumber,
-                'first_name'  => $data['principal_first_name'],
-                'last_name'   => $data['principal_last_name'],
-                'middle_name' => $data['principal_middle_name'] ?? null,
-                'suffix'      => $data['principal_suffix'] ?? null,
-                'member_type' => 'PRINCIPAL',
-                'birthdate'   => $data['principal_birthdate'] ?? null,
-                'gender'      => $data['principal_gender'] ?? null,
-                'email'       => $data['principal_email'] ?? null,
-                'phone'       => $data['principal_phone'] ?? null,
-                'status'      => $sharedStatus,
-                'user_id'     => $principalUser->id,
-                'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
-            ]);
+            } elseif ($coverageType === 'ALL_DEPENDENT') {
+                // All members are DEPENDENT
+                foreach ($data['dependents'] ?? [] as $dep) {
+                    if (empty($dep['first_name']) || empty($dep['last_name'])) continue;
+                    $user = static::createUserForMember($dep['first_name'], $dep['last_name'], $dep['email'] ?? null);
+                    Member::create([
+                        'account_id'  => $account->id,
+                        'card_number' => $cardNumber,
+                        'first_name'  => $dep['first_name'],
+                        'last_name'   => $dep['last_name'],
+                        'middle_name' => $dep['middle_name'] ?? null,
+                        'suffix'      => $dep['suffix'] ?? null,
+                        'member_type' => 'DEPENDENT',
+                        'birthdate'   => $dep['birthdate'] ?? null,
+                        'gender'      => $dep['gender'] ?? null,
+                        'email'       => $dep['email'] ?? null,
+                        'phone'       => $dep['phone'] ?? null,
+                        'status'      => $sharedStatus,
+                        'user_id'     => $user->id,
+                        'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+                    ]);
+                    $count++;
+                }
+                $summary = "{$count} dependent(s) added with card {$cardNumber}.";
 
-            $depCount = 0;
-            foreach ($data['dependents'] ?? [] as $dep) {
-                if (empty($dep['first_name']) || empty($dep['last_name'])) continue;
+            } else {
+                // DEFAULT: 1 principal + dependents
+                $existsPrincipal = Member::where('card_number', $cardNumber)
+                    ->where('account_id', $account->id)
+                    ->where('member_type', 'PRINCIPAL')
+                    ->whereNull('deleted_at')
+                    ->exists();
+                if ($existsPrincipal) {
+                    Notification::make()->title('A principal with this card number already exists in this account.')->danger()->send();
+                    return;
+                }
 
-                $depUser = static::createUserForMember($dep['first_name'], $dep['last_name'], $dep['email'] ?? null);
+                $principalUser = static::createUserForMember($data['principal_first_name'], $data['principal_last_name'], $data['principal_email'] ?? null);
                 Member::create([
                     'account_id'  => $account->id,
                     'card_number' => $cardNumber,
-                    'first_name'  => $dep['first_name'],
-                    'last_name'   => $dep['last_name'],
-                    'middle_name' => $dep['middle_name'] ?? null,
-                    'suffix'      => $dep['suffix'] ?? null,
-                    'member_type' => 'DEPENDENT',
-                    'birthdate'   => $dep['birthdate'] ?? null,
-                    'gender'      => $dep['gender'] ?? null,
-                    'email'       => $dep['email'] ?? null,
-                    'phone'       => $dep['phone'] ?? null,
+                    'first_name'  => $data['principal_first_name'],
+                    'last_name'   => $data['principal_last_name'],
+                    'middle_name' => $data['principal_middle_name'] ?? null,
+                    'suffix'      => $data['principal_suffix'] ?? null,
+                    'member_type' => 'PRINCIPAL',
+                    'birthdate'   => $data['principal_birthdate'] ?? null,
+                    'gender'      => $data['principal_gender'] ?? null,
+                    'email'       => $data['principal_email'] ?? null,
+                    'phone'       => $data['principal_phone'] ?? null,
                     'status'      => $sharedStatus,
-                    'user_id'     => $depUser->id,
+                    'user_id'     => $principalUser->id,
                     'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
                 ]);
-                $depCount++;
+
+                $depCount = 0;
+                foreach ($data['dependents'] ?? [] as $dep) {
+                    if (empty($dep['first_name']) || empty($dep['last_name'])) continue;
+                    $depUser = static::createUserForMember($dep['first_name'], $dep['last_name'], $dep['email'] ?? null);
+                    Member::create([
+                        'account_id'  => $account->id,
+                        'card_number' => $cardNumber,
+                        'first_name'  => $dep['first_name'],
+                        'last_name'   => $dep['last_name'],
+                        'middle_name' => $dep['middle_name'] ?? null,
+                        'suffix'      => $dep['suffix'] ?? null,
+                        'member_type' => 'DEPENDENT',
+                        'birthdate'   => $dep['birthdate'] ?? null,
+                        'gender'      => $dep['gender'] ?? null,
+                        'email'       => $dep['email'] ?? null,
+                        'phone'       => $dep['phone'] ?? null,
+                        'status'      => $sharedStatus,
+                        'user_id'     => $depUser->id,
+                        'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+                    ]);
+                    $depCount++;
+                }
+                $summary = "1 principal + {$depCount} dependent(s) added with card {$cardNumber}.";
             }
 
             MemberService::initializeForCard($cardNumber, $account->id);
@@ -155,10 +209,12 @@ class CreateMember extends CreateRecord
             DB::commit();
 
             Notification::make()
-                ->title('Family created successfully')
-                ->body("1 principal + {$depCount} dependent(s) added with card {$cardNumber}.")
+                ->title('Members created successfully')
+                ->body($summary)
                 ->success()
                 ->send();
+
+            $this->redirect($this->getResource()::getUrl('index'));
 
             $this->redirect($this->getResource()::getUrl('index'));
         } catch (\Exception $e) {

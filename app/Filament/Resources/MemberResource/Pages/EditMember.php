@@ -18,47 +18,87 @@ class EditMember extends EditRecord
     {
         $data['use_coc_number'] = ! empty($data['coc_number']);
 
-        // For SHARED accounts, populate the principal + dependents virtual fields
-        $member  = $this->record;
-        $account = $member->account;
+        $member       = $this->record;
+        $account      = $member->account;
+        $coverageType = $account?->coverage_type ?? 'DEFAULT';
 
         if ($account && strtoupper($account->plan_type) === 'SHARED') {
             $cardNumber = $member->card_number;
+            $data['shared_card_number'] = $cardNumber;
 
-            $principal = \App\Models\Member::where('account_id', $account->id)
-                ->where('card_number', $cardNumber)
-                ->where('member_type', 'PRINCIPAL')
-                ->first();
+            if ($coverageType === 'ALL_PRINCIPAL') {
+                // Load all principals sharing this card
+                $members = Member::where('account_id', $account->id)
+                    ->where('card_number', $cardNumber)
+                    ->where('member_type', 'PRINCIPAL')
+                    ->get();
 
-            $dependents = \App\Models\Member::where('account_id', $account->id)
-                ->where('card_number', $cardNumber)
-                ->where('member_type', 'DEPENDENT')
-                ->get();
+                $data['dependents'] = $members->map(fn($m) => [
+                    'id'          => $m->id,
+                    'first_name'  => $m->first_name,
+                    'last_name'   => $m->last_name,
+                    'middle_name' => $m->middle_name,
+                    'suffix'      => $m->suffix,
+                    'birthdate'   => $m->birthdate,
+                    'gender'      => $m->gender,
+                    'email'       => $m->email,
+                    'phone'       => $m->phone,
+                ])->values()->toArray();
 
-            $data['shared_card_number']    = $cardNumber;
+            } elseif ($coverageType === 'ALL_DEPENDENT') {
+                // Load all dependents sharing this card
+                $members = Member::where('account_id', $account->id)
+                    ->where('card_number', $cardNumber)
+                    ->where('member_type', 'DEPENDENT')
+                    ->get();
 
-            if ($principal) {
-                $data['principal_first_name']  = $principal->first_name;
-                $data['principal_last_name']   = $principal->last_name;
-                $data['principal_middle_name'] = $principal->middle_name;
-                $data['principal_suffix']      = $principal->suffix;
-                $data['principal_birthdate']   = $principal->birthdate;
-                $data['principal_gender']      = $principal->gender;
-                $data['principal_email']       = $principal->email;
-                $data['principal_phone']       = $principal->phone;
+                $data['dependents'] = $members->map(fn($m) => [
+                    'id'          => $m->id,
+                    'first_name'  => $m->first_name,
+                    'last_name'   => $m->last_name,
+                    'middle_name' => $m->middle_name,
+                    'suffix'      => $m->suffix,
+                    'birthdate'   => $m->birthdate,
+                    'gender'      => $m->gender,
+                    'email'       => $m->email,
+                    'phone'       => $m->phone,
+                ])->values()->toArray();
+
+            } else {
+                // DEFAULT: principal + dependents
+                $principal = Member::where('account_id', $account->id)
+                    ->where('card_number', $cardNumber)
+                    ->where('member_type', 'PRINCIPAL')
+                    ->first();
+
+                $dependents = Member::where('account_id', $account->id)
+                    ->where('card_number', $cardNumber)
+                    ->where('member_type', 'DEPENDENT')
+                    ->get();
+
+                if ($principal) {
+                    $data['principal_first_name']  = $principal->first_name;
+                    $data['principal_last_name']   = $principal->last_name;
+                    $data['principal_middle_name'] = $principal->middle_name;
+                    $data['principal_suffix']      = $principal->suffix;
+                    $data['principal_birthdate']   = $principal->birthdate;
+                    $data['principal_gender']      = $principal->gender;
+                    $data['principal_email']       = $principal->email;
+                    $data['principal_phone']       = $principal->phone;
+                }
+
+                $data['dependents'] = $dependents->map(fn($dep) => [
+                    'id'          => $dep->id,
+                    'first_name'  => $dep->first_name,
+                    'last_name'   => $dep->last_name,
+                    'middle_name' => $dep->middle_name,
+                    'suffix'      => $dep->suffix,
+                    'birthdate'   => $dep->birthdate,
+                    'gender'      => $dep->gender,
+                    'email'       => $dep->email,
+                    'phone'       => $dep->phone,
+                ])->values()->toArray();
             }
-
-            $data['dependents'] = $dependents->map(fn($dep) => [
-                'id'          => $dep->id,
-                'first_name'  => $dep->first_name,
-                'last_name'   => $dep->last_name,
-                'middle_name' => $dep->middle_name,
-                'suffix'      => $dep->suffix,
-                'birthdate'   => $dep->birthdate,
-                'gender'      => $dep->gender,
-                'email'       => $dep->email,
-                'phone'       => $dep->phone,
-            ])->values()->toArray();
         }
 
         return $data;
@@ -68,70 +108,153 @@ class EditMember extends EditRecord
     {
         unset($data['use_coc_number']);
 
-        $member  = $this->record;
-        $account = $member->account;
+        $member       = $this->record;
+        $account      = $member->account;
+        $coverageType = $account?->coverage_type ?? 'DEFAULT';
 
         if ($account && strtoupper($account->plan_type) === 'SHARED') {
             $cardNumber = $data['shared_card_number'] ?? $member->card_number;
 
-            // Update principal
-            \App\Models\Member::where('account_id', $account->id)
-                ->where('card_number', $member->card_number)
-                ->where('member_type', 'PRINCIPAL')
-                ->update([
-                    'card_number'  => $cardNumber,
-                    'first_name'   => $data['principal_first_name'] ?? null,
-                    'last_name'    => $data['principal_last_name'] ?? null,
-                    'middle_name'  => $data['principal_middle_name'] ?? null,
-                    'suffix'       => $data['principal_suffix'] ?? null,
-                    'birthdate'    => $data['principal_birthdate'] ?? null,
-                    'gender'       => $data['principal_gender'] ?? null,
-                    'email'        => $data['principal_email'] ?? null,
-                    'phone'        => $data['principal_phone'] ?? null,
-                ]);
+            if ($coverageType === 'ALL_PRINCIPAL') {
+                // Update/create all as PRINCIPAL
+                foreach ($data['dependents'] ?? [] as $dep) {
+                    if (! empty($dep['id'])) {
+                        Member::where('id', $dep['id'])->update([
+                            'card_number'  => $cardNumber,
+                            'first_name'   => $dep['first_name'] ?? null,
+                            'last_name'    => $dep['last_name'] ?? null,
+                            'middle_name'  => $dep['middle_name'] ?? null,
+                            'suffix'       => $dep['suffix'] ?? null,
+                            'birthdate'    => $dep['birthdate'] ?? null,
+                            'gender'       => $dep['gender'] ?? null,
+                            'email'        => $dep['email'] ?? null,
+                            'phone'        => $dep['phone'] ?? null,
+                        ]);
+                    } else {
+                        $user = CreateMember::createUserForMember(
+                            $dep['first_name'] ?? 'Unknown',
+                            $dep['last_name'] ?? 'Unknown',
+                            $dep['email'] ?? null
+                        );
+                        Member::create([
+                            'account_id'  => $account->id,
+                            'card_number' => $cardNumber,
+                            'first_name'  => $dep['first_name'] ?? null,
+                            'last_name'   => $dep['last_name'] ?? null,
+                            'middle_name' => $dep['middle_name'] ?? null,
+                            'suffix'      => $dep['suffix'] ?? null,
+                            'member_type' => 'PRINCIPAL',
+                            'birthdate'   => $dep['birthdate'] ?? null,
+                            'gender'      => $dep['gender'] ?? null,
+                            'email'       => $dep['email'] ?? null,
+                            'phone'       => $dep['phone'] ?? null,
+                            'status'      => 'ACTIVE',
+                            'user_id'     => $user->id,
+                            'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+                        ]);
+                        MemberService::initializeForCard($cardNumber, $account->id);
+                    }
+                }
 
-            // Update dependents — match by id if present, create new ones otherwise
-            foreach ($data['dependents'] ?? [] as $dep) {
-                if (! empty($dep['id'])) {
-                    \App\Models\Member::where('id', $dep['id'])->update([
+            } elseif ($coverageType === 'ALL_DEPENDENT') {
+                // Update/create all as DEPENDENT
+                foreach ($data['dependents'] ?? [] as $dep) {
+                    if (! empty($dep['id'])) {
+                        Member::where('id', $dep['id'])->update([
+                            'card_number'  => $cardNumber,
+                            'first_name'   => $dep['first_name'] ?? null,
+                            'last_name'    => $dep['last_name'] ?? null,
+                            'middle_name'  => $dep['middle_name'] ?? null,
+                            'suffix'       => $dep['suffix'] ?? null,
+                            'birthdate'    => $dep['birthdate'] ?? null,
+                            'gender'       => $dep['gender'] ?? null,
+                            'email'        => $dep['email'] ?? null,
+                            'phone'        => $dep['phone'] ?? null,
+                        ]);
+                    } else {
+                        $user = CreateMember::createUserForMember(
+                            $dep['first_name'] ?? 'Unknown',
+                            $dep['last_name'] ?? 'Unknown',
+                            $dep['email'] ?? null
+                        );
+                        Member::create([
+                            'account_id'  => $account->id,
+                            'card_number' => $cardNumber,
+                            'first_name'  => $dep['first_name'] ?? null,
+                            'last_name'   => $dep['last_name'] ?? null,
+                            'middle_name' => $dep['middle_name'] ?? null,
+                            'suffix'      => $dep['suffix'] ?? null,
+                            'member_type' => 'DEPENDENT',
+                            'birthdate'   => $dep['birthdate'] ?? null,
+                            'gender'      => $dep['gender'] ?? null,
+                            'email'       => $dep['email'] ?? null,
+                            'phone'       => $dep['phone'] ?? null,
+                            'status'      => 'ACTIVE',
+                            'user_id'     => $user->id,
+                            'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+                        ]);
+                        MemberService::initializeForCard($cardNumber, $account->id);
+                    }
+                }
+
+            } else {
+                // DEFAULT: update principal + dependents
+                Member::where('account_id', $account->id)
+                    ->where('card_number', $member->card_number)
+                    ->where('member_type', 'PRINCIPAL')
+                    ->update([
                         'card_number'  => $cardNumber,
-                        'first_name'   => $dep['first_name'] ?? null,
-                        'last_name'    => $dep['last_name'] ?? null,
-                        'middle_name'  => $dep['middle_name'] ?? null,
-                        'suffix'       => $dep['suffix'] ?? null,
-                        'birthdate'    => $dep['birthdate'] ?? null,
-                        'gender'       => $dep['gender'] ?? null,
-                        'email'        => $dep['email'] ?? null,
-                        'phone'        => $dep['phone'] ?? null,
+                        'first_name'   => $data['principal_first_name'] ?? null,
+                        'last_name'    => $data['principal_last_name'] ?? null,
+                        'middle_name'  => $data['principal_middle_name'] ?? null,
+                        'suffix'       => $data['principal_suffix'] ?? null,
+                        'birthdate'    => $data['principal_birthdate'] ?? null,
+                        'gender'       => $data['principal_gender'] ?? null,
+                        'email'        => $data['principal_email'] ?? null,
+                        'phone'        => $data['principal_phone'] ?? null,
                     ]);
-                } else {
-                    // New dependent added via repeater
-                    $depUser = CreateMember::createUserForMember(
-                        $dep['first_name'] ?? 'Unknown',
-                        $dep['last_name'] ?? 'Unknown',
-                        $dep['email'] ?? null
-                    );
-                    Member::create([
-                        'account_id'  => $account->id,
-                        'card_number' => $cardNumber,
-                        'first_name'  => $dep['first_name'] ?? null,
-                        'last_name'   => $dep['last_name'] ?? null,
-                        'middle_name' => $dep['middle_name'] ?? null,
-                        'suffix'      => $dep['suffix'] ?? null,
-                        'member_type' => 'DEPENDENT',
-                        'birthdate'   => $dep['birthdate'] ?? null,
-                        'gender'      => $dep['gender'] ?? null,
-                        'email'       => $dep['email'] ?? null,
-                        'phone'       => $dep['phone'] ?? null,
-                        'status'      => 'ACTIVE',
-                        'user_id'     => $depUser->id,
-                        'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
-                    ]);
-                    MemberService::initializeForCard($cardNumber, $account->id);
+
+                foreach ($data['dependents'] ?? [] as $dep) {
+                    if (! empty($dep['id'])) {
+                        Member::where('id', $dep['id'])->update([
+                            'card_number'  => $cardNumber,
+                            'first_name'   => $dep['first_name'] ?? null,
+                            'last_name'    => $dep['last_name'] ?? null,
+                            'middle_name'  => $dep['middle_name'] ?? null,
+                            'suffix'       => $dep['suffix'] ?? null,
+                            'birthdate'    => $dep['birthdate'] ?? null,
+                            'gender'       => $dep['gender'] ?? null,
+                            'email'        => $dep['email'] ?? null,
+                            'phone'        => $dep['phone'] ?? null,
+                        ]);
+                    } else {
+                        $depUser = CreateMember::createUserForMember(
+                            $dep['first_name'] ?? 'Unknown',
+                            $dep['last_name'] ?? 'Unknown',
+                            $dep['email'] ?? null
+                        );
+                        Member::create([
+                            'account_id'  => $account->id,
+                            'card_number' => $cardNumber,
+                            'first_name'  => $dep['first_name'] ?? null,
+                            'last_name'   => $dep['last_name'] ?? null,
+                            'middle_name' => $dep['middle_name'] ?? null,
+                            'suffix'      => $dep['suffix'] ?? null,
+                            'member_type' => 'DEPENDENT',
+                            'birthdate'   => $dep['birthdate'] ?? null,
+                            'gender'      => $dep['gender'] ?? null,
+                            'email'       => $dep['email'] ?? null,
+                            'phone'       => $dep['phone'] ?? null,
+                            'status'      => 'ACTIVE',
+                            'user_id'     => $depUser->id,
+                            'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+                        ]);
+                        MemberService::initializeForCard($cardNumber, $account->id);
+                    }
                 }
             }
 
-            // Prevent Filament from trying to save virtual fields onto the record
+            // Strip virtual fields so Filament doesn't try to save them
             foreach ([
                 'shared_card_number', 'principal_first_name', 'principal_last_name',
                 'principal_middle_name', 'principal_suffix', 'principal_birthdate',

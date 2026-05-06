@@ -380,7 +380,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'This account only allows DEPENDENT members. PRINCIPAL is not allowed.';
         }
 
-        if (strtoupper($account->plan_type) === 'SHARED' && strtoupper($row['member_type']) === 'PRINCIPAL') {
+        if (strtoupper($account->plan_type) === 'SHARED'
+            && ($account->coverage_type ?? 'DEFAULT') === 'DEFAULT'
+            && strtoupper($row['member_type']) === 'PRINCIPAL') {
             $existingPrincipal = Member::withTrashed()
                 ->where('account_id', $account->id)
                 ->where('member_type', 'PRINCIPAL')

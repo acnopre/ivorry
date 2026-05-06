@@ -98,11 +98,10 @@ class TestDataGenerator extends Page implements HasForms
                             ])
                             ->default('DEFAULT')
                             ->required()
-                            ->inline()
-                            ->visible(fn(Forms\Get $get) => $get('plan_type') === 'INDIVIDUAL'),
+                            ->inline(),
 
                         Forms\Components\Radio::make('coverage_type')
-                            ->label('Coverage Type')
+                            ->label('Coverage Type (Account/Member Period)')
                             ->options([
                                 'RANDOM'  => 'Random (mix of Account & Member)',
                                 'ACCOUNT' => 'Account only',
@@ -140,8 +139,8 @@ class TestDataGenerator extends Page implements HasForms
             $mblType      = $mblTypes[array_rand($mblTypes)];
             $planType     = $selectedPlan === 'RANDOM' ? $planTypes[array_rand($planTypes)] : $selectedPlan;
             $coverageType = $selectedCoverage === 'RANDOM' ? $coverageTypes[array_rand($coverageTypes)] : $selectedCoverage;
-            // account_coverage_type only applies to INDIVIDUAL
-            $memberCoverageType = $planType === 'INDIVIDUAL' ? $selectedMemberCoverage : 'DEFAULT';
+            // account_coverage_type applies to all plan types
+            $memberCoverageType = $selectedMemberCoverage;
             $rows[] = [
                 'company_name'         => 'Test Company ' . strtoupper(Str::random(6)),
                 'policy_code'          => 'POL-' . strtoupper(Str::random(8)),
@@ -215,10 +214,8 @@ class TestDataGenerator extends Page implements HasForms
                 $firstName  = $firstNames[array_rand($firstNames)];
                 $lastName   = $lastNames[array_rand($lastNames)];
 
-                // Determine member_type based on coverage type
-                if ($planType === 'SHARED') {
-                    $memberType = $j === 0 ? 'PRINCIPAL' : 'DEPENDENT';
-                } elseif ($memberCoverageType === 'ALL_PRINCIPAL') {
+                // Determine member_type based on coverage type (applies to all plan types)
+                if ($memberCoverageType === 'ALL_PRINCIPAL') {
                     $memberType = 'PRINCIPAL';
                 } elseif ($memberCoverageType === 'ALL_DEPENDENT') {
                     $memberType = 'DEPENDENT';

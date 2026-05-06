@@ -105,12 +105,12 @@ class MemberResource extends Resource
                             ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
                         Select::make('member_type')
-                            ->options([
-                                'PRINCIPAL' => 'Principal',
-                                'DEPENDENT' => 'Dependent',
-                            ])
+                            ->options(fn(callable $get) => static::getMemberTypeOptions($get('account_id')))
                             ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED')
-                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED')
+                            ->reactive()
+                            ->afterStateUpdated(fn() => null)
+                            ->helperText(fn(callable $get) => static::getMemberTypeHelperText($get('account_id'))),
 
                         Select::make('status')
                             ->options([
@@ -138,15 +138,21 @@ class MemberResource extends Resource
                             ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
                     ])->columns(2),
 
-                // === SHARED: Principal Section ===
-                Section::make('Principal Member')
+                // === SHARED: Card Number (all coverage types) ===
+                Section::make('Card Number')
                     ->schema([
                         TextInput::make('shared_card_number')
-                            ->label('Card Number')
+                            ->label('Shared Card Number')
                             ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED')
                             ->rule('alpha_num')
                             ->validationMessages(['alpha_num' => 'Card number must be alphanumeric only. No spaces or special characters allowed.'])
                             ->extraInputAttributes(['oninput' => 'this.value = this.value.replace(/[^a-zA-Z0-9]/g, "")']),
+                    ])
+                    ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+
+                // === SHARED DEFAULT: Principal Member ===
+                Section::make('Principal Member')
+                    ->schema([
                         Grid::make(2)->schema([
                             TextInput::make('principal_first_name')->label('First Name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
                             TextInput::make('principal_last_name')->label('Last Name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
@@ -159,9 +165,12 @@ class MemberResource extends Resource
                             TextInput::make('principal_phone')->label('Phone')->tel(),
                         ]),
                     ])
-                    ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+                    ->visible(fn(callable $get) =>
+                        static::getAccountPlanType($get('account_id')) === 'SHARED'
+                        && static::getAccountCoverageType($get('account_id')) === 'DEFAULT'
+                    ),
 
-                // === SHARED: Dependents Section ===
+                // === SHARED DEFAULT: Dependents ===
                 Section::make('Dependents')
                     ->schema([
                         Forms\Components\Repeater::make('dependents')
@@ -183,7 +192,66 @@ class MemberResource extends Resource
                             ->itemLabel(fn(array $state) => ($state['first_name'] ?? '') . ' ' . ($state['last_name'] ?? '') ?: 'New Dependent')
                             ->addActionLabel('Add Dependent'),
                     ])
-                    ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+                    ->visible(fn(callable $get) =>
+                        static::getAccountPlanType($get('account_id')) === 'SHARED'
+                        && static::getAccountCoverageType($get('account_id')) === 'DEFAULT'
+                    ),
+
+                // === SHARED ALL_PRINCIPAL: Multiple Principals ===
+                Section::make('Principal Members')
+                    ->description('This account only allows Principal members.')
+                    ->schema([
+                        Forms\Components\Repeater::make('dependents')
+                            ->label('')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    TextInput::make('first_name')->label('First Name')->required(),
+                                    TextInput::make('last_name')->label('Last Name')->required(),
+                                    TextInput::make('middle_name')->label('Middle Name'),
+                                    TextInput::make('suffix')->label('Suffix'),
+                                    DatePicker::make('birthdate')->label('Birthdate')->native(false),
+                                    Select::make('gender')->label('Gender')
+                                        ->options(['male' => 'Male', 'female' => 'Female'])->native(false),
+                                    TextInput::make('email')->label('Email')->email(),
+                                    TextInput::make('phone')->label('Phone')->tel(),
+                                ]),
+                            ])
+                            ->collapsible()
+                            ->itemLabel(fn(array $state) => ($state['first_name'] ?? '') . ' ' . ($state['last_name'] ?? '') ?: 'New Principal')
+                            ->addActionLabel('Add Principal'),
+                    ])
+                    ->visible(fn(callable $get) =>
+                        static::getAccountPlanType($get('account_id')) === 'SHARED'
+                        && static::getAccountCoverageType($get('account_id')) === 'ALL_PRINCIPAL'
+                    ),
+
+                // === SHARED ALL_DEPENDENT: Multiple Dependents ===
+                Section::make('Dependent Members')
+                    ->description('This account only allows Dependent members.')
+                    ->schema([
+                        Forms\Components\Repeater::make('dependents')
+                            ->label('')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    TextInput::make('first_name')->label('First Name')->required(),
+                                    TextInput::make('last_name')->label('Last Name')->required(),
+                                    TextInput::make('middle_name')->label('Middle Name'),
+                                    TextInput::make('suffix')->label('Suffix'),
+                                    DatePicker::make('birthdate')->label('Birthdate')->native(false),
+                                    Select::make('gender')->label('Gender')
+                                        ->options(['male' => 'Male', 'female' => 'Female'])->native(false),
+                                    TextInput::make('email')->label('Email')->email(),
+                                    TextInput::make('phone')->label('Phone')->tel(),
+                                ]),
+                            ])
+                            ->collapsible()
+                            ->itemLabel(fn(array $state) => ($state['first_name'] ?? '') . ' ' . ($state['last_name'] ?? '') ?: 'New Dependent')
+                            ->addActionLabel('Add Dependent'),
+                    ])
+                    ->visible(fn(callable $get) =>
+                        static::getAccountPlanType($get('account_id')) === 'SHARED'
+                        && static::getAccountCoverageType($get('account_id')) === 'ALL_DEPENDENT'
+                    ),
 
                 // === Contact Details (INDIVIDUAL only) ===
                 Section::make('Contact Details')
@@ -229,6 +297,33 @@ class MemberResource extends Resource
         return Account::where('id', $accountId)->value('plan_type');
     }
 
+    public static function getAccountCoverageType(?string $accountId): ?string
+    {
+        if (! $accountId) return null;
+        return Account::where('id', $accountId)->value('coverage_type') ?? 'DEFAULT';
+    }
+
+    public static function getMemberTypeOptions(?string $accountId): array
+    {
+        $coverageType = static::getAccountCoverageType($accountId);
+
+        return match ($coverageType) {
+            'ALL_PRINCIPAL' => ['PRINCIPAL' => 'Principal'],
+            'ALL_DEPENDENT' => ['DEPENDENT' => 'Dependent'],
+            default         => ['PRINCIPAL' => 'Principal', 'DEPENDENT' => 'Dependent'],
+        };
+    }
+
+    public static function getMemberTypeHelperText(?string $accountId): ?string
+    {
+        $coverageType = static::getAccountCoverageType($accountId);
+
+        return match ($coverageType) {
+            'ALL_PRINCIPAL' => 'This account only allows Principal members.',
+            'ALL_DEPENDENT' => 'This account only allows Dependent members.',
+            default         => null,
+        };
+    }
     public static function table(Table $table): Table
     {
         return $table

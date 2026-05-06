@@ -4,114 +4,153 @@ namespace Database\Seeders;
 
 use App\Models\Account;
 use App\Models\Member;
+use App\Models\MemberService;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class MemberSeeder extends Seeder
 {
     public function run(): void
     {
-        $memberUsers = [
-            'member@example.com' => [
-                'company' => 'Demo Healthcare Corp',
-                'policy' => 'DEMO-2024-001',
-                'first_name' => 'Juliana',
-                'last_name' => 'Saw',
-            ],
-            'ivorry.member@example.com' => [
-                'company' => 'Ivorry Healthcare Inc',
-                'policy' => 'IVORRY-2024-001',
-                'first_name' => 'Ivorry',
-                'last_name' => 'Member',
-            ],
-        ];
+        // INDIVIDUAL / DEFAULT — principal + dependents
+        $this->seedIndividual('POL-MEDICARE', [
+            ['first_name' => 'Juliana',  'last_name' => 'Santos',  'type' => 'PRINCIPAL', 'email' => 'member@example.com'],
+            ['first_name' => 'Marco',    'last_name' => 'Santos',  'type' => 'DEPENDENT', 'email' => null],
+            ['first_name' => 'Lia',      'last_name' => 'Santos',  'type' => 'DEPENDENT', 'email' => null],
+        ]);
 
-        foreach ($memberUsers as $email => $data) {
-            $user = User::where('email', $email)->first();
+        // INDIVIDUAL / ALL_PRINCIPAL — principals only
+        $this->seedIndividual('POL-CAREPLUS', [
+            ['first_name' => 'Ivorry',   'last_name' => 'Reyes',   'type' => 'PRINCIPAL', 'email' => 'ivorry.member@example.com'],
+            ['first_name' => 'Dante',    'last_name' => 'Cruz',    'type' => 'PRINCIPAL', 'email' => null],
+        ]);
 
-            if (!$user) continue;
+        // INDIVIDUAL / ALL_DEPENDENT — dependents only
+        $this->seedIndividual('POL-WELLLIFE', [
+            ['first_name' => 'Sofia',    'last_name' => 'Lim',     'type' => 'DEPENDENT', 'email' => null],
+            ['first_name' => 'Noel',     'last_name' => 'Lim',     'type' => 'DEPENDENT', 'email' => null],
+        ]);
 
-            $account = Account::firstOrCreate(
-                ['policy_code' => $data['policy']],
-                [
-                    'company_name' => $data['company'],
-                    'hip_id' => 1,
-                    'effective_date' => now(),
-                    'expiration_date' => now()->addYear(),
-                    'account_status' => 'active',
-                    'plan_type' => 'INDIVIDUAL',
-                    'coverage_period_type' => 'ACCOUNT',
-                    'mbl_type' => 'Fixed',
-                    'endorsement_status' => 'APPROVED',
-                    'mbl_amount' => 50000,
-                ]
-            );
+        // SHARED / DEFAULT — principal + dependents per card
+        $this->seedSharedFamily('POL-GLOBAL', 'CARD-GLOBAL01', [
+            ['first_name' => 'Ramon',    'last_name' => 'Dela Cruz', 'type' => 'PRINCIPAL', 'email' => null],
+            ['first_name' => 'Ana',      'last_name' => 'Dela Cruz', 'type' => 'DEPENDENT', 'email' => null],
+            ['first_name' => 'Jose',     'last_name' => 'Dela Cruz', 'type' => 'DEPENDENT', 'email' => null],
+        ]);
+        $this->seedSharedFamily('POL-GLOBAL', 'CARD-GLOBAL02', [
+            ['first_name' => 'Carla',    'last_name' => 'Tan',     'type' => 'PRINCIPAL', 'email' => null],
+            ['first_name' => 'Luis',     'last_name' => 'Tan',     'type' => 'DEPENDENT', 'email' => null],
+        ]);
 
-            if (!$user->member) {
-                Member::create([
-                    'account_id' => $account->id,
-                    'user_id' => $user->id,
-                    'first_name' => $data['first_name'],
-                    'last_name' => $data['last_name'],
-                    'member_type' => 'Principal',
-                    'card_number' => 'CARD-' . strtoupper(substr($data['first_name'], 0, 3)) . '-' . rand(1000, 9999),
-                    'birthdate' => now()->subYears(30),
-                    'gender' => 'Female',
-                    'email' => $email,
-                    'effective_date' => now(),
-                    'expiration_date' => now()->addYear(),
-                    'status' => 'active',
-                ]);
-            }
+        // SHARED / ALL_PRINCIPAL — principals only per card
+        $this->seedSharedFamily('POL-PRIMECARE', 'CARD-PRIME01', [
+            ['first_name' => 'Eduardo',  'last_name' => 'Flores',  'type' => 'PRINCIPAL', 'email' => null],
+        ]);
+        $this->seedSharedFamily('POL-PRIMECARE', 'CARD-PRIME02', [
+            ['first_name' => 'Maricel',  'last_name' => 'Bautista', 'type' => 'PRINCIPAL', 'email' => null],
+        ]);
 
-            // Attach services to account if not already attached
-            if (DB::table('account_service')->where('account_id', $account->id)->count() === 0) {
-                $this->attachServices($account->id);
-            }
+        // SHARED / ALL_DEPENDENT — dependents only per card
+        $this->seedSharedFamily('POL-SUNSHIELD', 'CARD-SUN01', [
+            ['first_name' => 'Trisha',   'last_name' => 'Gomez',   'type' => 'DEPENDENT', 'email' => null],
+            ['first_name' => 'Kevin',    'last_name' => 'Gomez',   'type' => 'DEPENDENT', 'email' => null],
+        ]);
+    }
 
-            $this->command->info("✅ Member data created for {$email}");
+    private function seedIndividual(string $policyCode, array $members): void
+    {
+        $account = Account::where('policy_code', $policyCode)->first();
+
+        if (! $account) {
+            $this->command->warn("Account {$policyCode} not found — skipping.");
+            return;
+        }
+
+        foreach ($members as $data) {
+            $cardNumber = 'CARD-' . strtoupper(Str::random(8));
+            $user = $this->findOrCreateUser($data['first_name'], $data['last_name'], $data['email']);
+
+            if ($user->member) continue;
+
+            $member = Member::create([
+                'account_id'      => $account->id,
+                'user_id'         => $user->id,
+                'first_name'      => $data['first_name'],
+                'last_name'       => $data['last_name'],
+                'member_type'     => $data['type'],
+                'card_number'     => $cardNumber,
+                'birthdate'       => now()->subYears(rand(25, 50)),
+                'gender'          => collect(['Male', 'Female'])->random(),
+                'email'           => $data['email'],
+                'effective_date'  => $account->effective_date,
+                'expiration_date' => $account->expiration_date,
+                'status'          => 'ACTIVE',
+                'mbl_balance'     => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
+            ]);
+
+            MemberService::initializeForCard($cardNumber, $account->id);
+
+            $this->command->info("  ✅ {$data['type']} {$data['first_name']} {$data['last_name']} → {$policyCode}");
         }
     }
 
-    private function attachServices(int $accountId): void
+    private function seedSharedFamily(string $policyCode, string $cardNumber, array $members): void
     {
-        $basicServices = DB::table('services')->where('type', 'basic')->pluck('id');
-        $enhancementServices = DB::table('services')->where('type', 'enhancement')->pluck('id');
-        $specialServices = DB::table('services')->where('type', 'special')->pluck('id');
+        $account = Account::where('policy_code', $policyCode)->first();
 
-        foreach ($basicServices as $serviceId) {
-            DB::table('account_service')->insert([
-                'account_id' => $accountId,
-                'service_id' => $serviceId,
-                'is_unlimited' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        if (! $account) {
+            $this->command->warn("Account {$policyCode} not found — skipping.");
+            return;
         }
 
-        foreach ($enhancementServices as $serviceId) {
-            DB::table('account_service')->insert([
-                'account_id' => $accountId,
-                'service_id' => $serviceId,
-                'default_quantity' => 3,
-                'quantity' => 3,
-                'is_unlimited' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
+        $initialized = false;
+
+        foreach ($members as $data) {
+            $user = $this->findOrCreateUser($data['first_name'], $data['last_name'], $data['email']);
+
+            if ($user->member) continue;
+
+            Member::create([
+                'account_id'      => $account->id,
+                'user_id'         => $user->id,
+                'first_name'      => $data['first_name'],
+                'last_name'       => $data['last_name'],
+                'member_type'     => $data['type'],
+                'card_number'     => $cardNumber,
+                'birthdate'       => now()->subYears(rand(25, 50)),
+                'gender'          => collect(['Male', 'Female'])->random(),
+                'email'           => $data['email'],
+                'effective_date'  => $account->effective_date,
+                'expiration_date' => $account->expiration_date,
+                'status'          => 'ACTIVE',
+                'mbl_balance'     => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
             ]);
+
+            $this->command->info("  ✅ {$data['type']} {$data['first_name']} {$data['last_name']} → {$policyCode} [{$cardNumber}]");
         }
 
-        foreach ($specialServices as $serviceId) {
-            DB::table('account_service')->insert([
-                'account_id' => $accountId,
-                'service_id' => $serviceId,
-                'default_quantity' => 2,
-                'quantity' => 2,
-                'is_unlimited' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        if (Member::where('card_number', $cardNumber)->where('account_id', $account->id)->exists()) {
+            MemberService::initializeForCard($cardNumber, $account->id);
         }
+    }
+
+    private function findOrCreateUser(string $firstName, string $lastName, ?string $email): User
+    {
+        if ($email && $user = User::where('email', $email)->first()) {
+            return $user;
+        }
+
+        $generatedEmail = $email ?? strtolower($firstName . '.' . $lastName . '.' . Str::random(4)) . '@example.com';
+
+        return User::firstOrCreate(
+            ['email' => $generatedEmail],
+            [
+                'name'                 => "{$firstName} {$lastName}",
+                'password'             => Hash::make('password'),
+                'must_change_password' => true,
+            ]
+        )->tap(fn($u) => $u->wasRecentlyCreated && $u->assignRole('Member'));
     }
 }

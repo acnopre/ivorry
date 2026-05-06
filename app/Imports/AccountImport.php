@@ -379,8 +379,8 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Invalid coverage type. Accepted values are: ACCOUNT or MEMBER';
         }
 
-        // Validate account_coverage_type if provided (only applies to INDIVIDUAL)
-        if (!empty($row['account_coverage_type']) && strtoupper($row['plan_type']) === 'INDIVIDUAL') {
+        // Validate account_coverage_type if provided (applies to INDIVIDUAL and SHARED)
+        if (!empty($row['account_coverage_type'])) {
             if (!in_array(strtoupper($row['account_coverage_type']), ['DEFAULT', 'ALL_PRINCIPAL', 'ALL_DEPENDENT'])) {
                 return 'Invalid account_coverage_type. Accepted values are: DEFAULT, ALL_PRINCIPAL, or ALL_DEPENDENT';
             }
@@ -410,7 +410,7 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
     private function resolveMemberCoverageType(array $row, string $existing = 'DEFAULT'): string
     {
-        if (!empty($row['account_coverage_type']) && strtoupper($row['plan_type'] ?? '') === 'INDIVIDUAL') {
+        if (!empty($row['account_coverage_type'])) {
             return strtoupper($row['account_coverage_type']);
         }
         return $existing;

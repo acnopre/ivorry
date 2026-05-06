@@ -849,6 +849,10 @@ class ViewAccount extends ViewRecord
                                                     })
                                                     ->visible(fn($record) => $record->plan_type === 'INDIVIDUAL'),
 
+                                                TextEntry::make('coverage_period_type')
+                                                    ->label('Coverage Period Type')
+                                                    ->badge(),
+
                                                 TextEntry::make('mbl_type')
                                                     ->label('MBL Type')
                                                     ->badge()
@@ -915,6 +919,21 @@ class ViewAccount extends ViewRecord
 
                                                 TextEntry::make('remarks')
                                                     ->label('Remarks')
+                                                    ->visible(fn($record) => filled($record->remarks)),
+
+                                                TextEntry::make('coverage_type')
+                                                    ->label('Member Coverage')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'gray'    => fn($state): bool => $state === 'DEFAULT',
+                                                        'success' => fn($state): bool => $state === 'ALL_PRINCIPAL',
+                                                        'warning' => fn($state): bool => $state === 'ALL_DEPENDENT',
+                                                    ])
+                                                    ->formatStateUsing(fn($state) => match ($state) {
+                                                        'ALL_PRINCIPAL' => 'All Principal',
+                                                        'ALL_DEPENDENT' => 'All Dependent',
+                                                        default         => 'Default',
+                                                    }),
 
                                             ]),
                                     ])

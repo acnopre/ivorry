@@ -125,10 +125,14 @@ class SearchMember extends Page implements HasActions
             ->when($this->first_name, fn($q) => $q->where('first_name', 'like', "%{$this->first_name}%"))
             ->when($this->last_name, fn($q) => $q->where('last_name', 'like', "%{$this->last_name}%"));
 
-        // Check if current user's clinic is 'SPECIFIC ACCOUNT'
+        // Check if current user's clinic is 'SPECIFIC ACCOUNT' or 'SPECIFIC HIP'
         $clinic = Clinic::where('user_id', Auth::id())->first();
-        if ($clinic && $clinic->accreditation_status === 'SPECIFIC ACCOUNT') {
-            $query->where('account_id', $clinic->account_id);
+        if ($clinic) {
+            if ($clinic->accreditation_status === 'SPECIFIC ACCOUNT' && $clinic->account_id) {
+                $query->where('account_id', $clinic->account_id);
+            } elseif ($clinic->accreditation_status === 'SPECIFIC HIP' && $clinic->hip_id) {
+                $query->whereHas('account', fn($q) => $q->where('hip_id', $clinic->hip_id));
+            }
         }
 
         $results = Auth::user()->hasRole('Dentist') ? $query->limit(1)->get() : $query->get();
@@ -377,9 +381,22 @@ class SearchMember extends Page implements HasActions
 
     private function saveProcedureWithData(array $data, int $clinicId): void
     {
-        $member = Member::find($this->selectedMemberId);
-        $isCSR  = Auth::user()->hasRole('CSR');
+        $member  = Member::find($this->selectedMemberId);
+        $account = $member->account;
+        $isCSR   = Auth::user()->hasRole('CSR');
 
+        // Validate clinic accreditation against member's account
+        $clinic = Clinic::find($clinicId);
+        if ($clinic) {
+            if ($clinic->accreditation_status === 'SPECIFIC ACCOUNT' && $clinic->account_id !== $account->id) {
+                Notification::make()->title('Clinic Not Accredited')->body('This clinic is accredited for a specific account that does not match this member.')->danger()->send();
+                return;
+            }
+            if ($clinic->accreditation_status === 'SPECIFIC HIP' && $clinic->hip_id !== $account->hip_id) {
+                Notification::make()->title('Clinic Not Accredited')->body('This clinic is accredited for a specific HIP that does not match this member.')->danger()->send();
+                return;
+            }
+        }
         if ($error = ProcedureService::validateBusinessRules($data, $member->id, $clinicId, $isCSR)) {
             if ($isCSR) {
                 $this->csrOverrideWarning   = $error;
@@ -435,9 +452,28 @@ class SearchMember extends Page implements HasActions
 
     protected function getClinicField(): Forms\Components\Select
     {
+        $member  = $this->selectedMemberId ? Member::find($this->selectedMemberId) : null;
+        $account = $member?->account;
+
+        $clinicQuery = Clinic::query();
+
+        if ($account) {
+            $clinicQuery->where(function ($q) use ($account) {
+                $q->whereNotIn('accreditation_status', ['SPECIFIC ACCOUNT', 'SPECIFIC HIP'])
+                  ->orWhere(function ($q2) use ($account) {
+                      $q2->where('accreditation_status', 'SPECIFIC ACCOUNT')
+                         ->where('account_id', $account->id);
+                  })
+                  ->orWhere(function ($q2) use ($account) {
+                      $q2->where('accreditation_status', 'SPECIFIC HIP')
+                         ->where('hip_id', $account->hip_id);
+                  });
+            });
+        }
+
         return Forms\Components\Select::make('clinic_id')
             ->label('Clinic')
-            ->options(Clinic::pluck('clinic_name', 'id'))
+            ->options($clinicQuery->pluck('clinic_name', 'id'))
             ->native(false)
             ->searchable()
             ->dehydrated()

@@ -276,6 +276,15 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
             }
         }
 
+        // --- Required service fees for basic and enhancement types ---
+        $services = Service::whereIn('type', ['basic', 'enhancement'])->get();
+        foreach ($services as $service) {
+            $fee = $row[$service->slug] ?? null;
+            if ($fee === null || $fee === '' || !is_numeric($fee)) {
+                return "Service fee for '{$service->name}' ({$service->type}) is required.";
+            }
+        }
+
         return null;
     }
 
@@ -302,10 +311,10 @@ class ClinicImport implements ToCollection, WithChunkReading, WithHeadingRow, Sk
     {
         $pivotData = [];
         foreach ($serviceColumns as $serviceName) {
-            $fee = $row[$serviceName] ?? 0;
+            $fee = $row[$serviceName] ?? null;
             $service = $services->firstWhere('slug', $serviceName);
-            if ($service && $fee > 0) {
-                $pivotData[$service->id] = ['fee' => $fee];
+            if ($service && $fee !== null && $fee !== '' && is_numeric($fee)) {
+                $pivotData[$service->id] = ['fee' => (float)$fee];
             }
         }
 

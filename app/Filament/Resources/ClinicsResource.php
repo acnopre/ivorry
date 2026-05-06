@@ -392,6 +392,8 @@ class ClinicsResource extends Resource
                     ->label('Fee')
                     ->numeric()
                     ->prefix('₱')
+                    ->required(in_array($type, ['basic', 'enhancement']))
+                    ->minValue(0)
                     ->disabled($record !== null) // editable during creation, disabled during edit
                     ->columnSpan($record ? 3 : 8)
                     ->formatStateUsing(function ($state, $record) use ($service) {

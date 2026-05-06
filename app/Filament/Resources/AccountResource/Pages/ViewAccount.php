@@ -612,7 +612,7 @@ class ViewAccount extends ViewRecord
 
 
                                                 TextEntry::make('renewal_expiration_date')
-                                                    ->label('Expiration Date')
+                                                    ->label('Valid Until')
                                                     ->date('M d, Y')
                                                     ->icon('heroicon-m-calendar-days')
                                                     ->default($renewalRecord?->expiration_date),
@@ -771,7 +771,7 @@ class ViewAccount extends ViewRecord
                                                     ->helperText(fn() => $this->amendmentChangedFrom($amendmentAccount, 'effective_date', $this->record->effective_date ? \Carbon\Carbon::parse($this->record->effective_date)->format('M d, Y') : null, $amendmentAccount?->effective_date ? \Carbon\Carbon::parse($amendmentAccount->effective_date)->format('M d, Y') : null)),
 
                                                 TextEntry::make('expiration_date_amendment')
-                                                    ->label('Expiration Date')
+                                                    ->label('Valid Until')
                                                     ->date('M d, Y')
                                                     ->icon('heroicon-m-calendar-days')
                                                     ->default($amendmentAccount?->expiration_date)
@@ -912,7 +912,7 @@ class ViewAccount extends ViewRecord
 
 
                                                 TextEntry::make('expiration_date')
-                                                    ->label('Expiration Date')
+                                                    ->label('Valid Until')
                                                     ->date('M d, Y')
                                                     ->icon('heroicon-m-calendar-days'),
 

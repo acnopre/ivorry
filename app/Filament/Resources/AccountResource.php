@@ -620,7 +620,7 @@ class AccountResource extends Resource
                     ->date(),
 
                 TextColumn::make('expiration_date')
-                    ->label('Expiration')
+                    ->label('Valid Until')
                     ->date(),
 
                 TextColumn::make('created_at')

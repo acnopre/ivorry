@@ -86,23 +86,26 @@ class ProcedureService
                 return 'Member cannot have procedures in different clinics on the same date.';
             }
 
-            // Max 3 procedures (service + unit combinations) per day per clinic
-            $proceduresToday = Procedure::forMember($memberId)
-                ->where('clinic_id', $clinicId)
-                ->where('availment_date', $availmentDate)
-                ->whereNotIn('status', [Procedure::STATUS_CANCELLED])
-                ->count();
+            // Max 3 distinct services per day per clinic (not applicable for CSR)
+            if (!$isCSR) {
+                $servicesToday = Procedure::forMember($memberId)
+                    ->where('clinic_id', $clinicId)
+                    ->where('availment_date', $availmentDate)
+                    ->whereNotIn('status', [Procedure::STATUS_CANCELLED, Procedure::STATUS_VALID])
+                    ->distinct('service_id')
+                    ->count('service_id');
 
-            // Count how many new procedure records this submission will add
-            $newCount = 0;
-            foreach (self::UNIT_INPUTS as $input) {
-                if (!empty($data[$input])) $newCount += count((array) $data[$input]);
-            }
-            $newCount = max($newCount, 1);
+                $isNewService = !Procedure::forMember($memberId)
+                    ->where('clinic_id', $clinicId)
+                    ->where('availment_date', $availmentDate)
+                    ->where('service_id', $data['service_id'])
+                    ->whereNotIn('status', [Procedure::STATUS_CANCELLED, Procedure::STATUS_VALID])
+                    ->exists();
 
-            if (($proceduresToday + $newCount) > 3) {
-                $remaining = max(3 - $proceduresToday, 0);
-                return "Maximum of 3 procedures per day per clinic has been reached. Already has {$proceduresToday} procedure(s) today at this clinic, {$remaining} slot(s) remaining.";
+                if ($isNewService && $servicesToday >= 3) {
+                    $remaining = max(3 - $servicesToday, 0);
+                    return "Maximum of 3 services per day per clinic has been reached. Already has {$servicesToday} service(s) today at this clinic, {$remaining} slot(s) remaining.";
+                }
             }
         }
 
@@ -268,7 +271,10 @@ class ProcedureService
 
         $hasUnits = false;
         foreach (self::UNIT_INPUTS as $input) {
-            if (!empty($data[$input])) { $hasUnits = true; break; }
+            if (!empty($data[$input])) {
+                $hasUnits = true;
+                break;
+            }
         }
 
         if ($hasUnits) {

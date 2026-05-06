@@ -115,9 +115,12 @@ class SearchClaims extends Page implements HasForms, HasTable
                             ->placeholder('Any Status'),
                         Forms\Components\DatePicker::make('availment_from')
                             ->required()
+                            ->native(false)
                             ->label('Availment From'),
                         Forms\Components\DatePicker::make('availment_to')
                             ->required()
+                            ->native(false)
+                            ->maxDate(now())
                             ->label('Availment To'),
                     ]),
                 ])

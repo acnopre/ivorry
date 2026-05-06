@@ -57,6 +57,11 @@ class CreateMember extends CreateRecord
             $data['mbl_balance'] = $account->mbl_amount;
         }
 
+        // Auto-set INACTIVE if expiration_date is in the past (before today)
+        if (!empty($data['expiration_date']) && \Carbon\Carbon::parse($data['expiration_date'])->lt(today())) {
+            $data['status'] = 'INACTIVE';
+        }
+
         return $data;
     }
 
@@ -99,6 +104,11 @@ class CreateMember extends CreateRecord
         DB::beginTransaction();
         try {
             $principalUser = static::createUserForMember($data['principal_first_name'], $data['principal_last_name'], $data['principal_email'] ?? null);
+
+            // For SHARED, use account expiration_date to determine status
+            $sharedStatus = (!empty($account->expiration_date) && \Carbon\Carbon::parse($account->expiration_date)->lt(today()))
+                ? 'INACTIVE' : 'ACTIVE';
+
             Member::create([
                 'account_id'  => $account->id,
                 'card_number' => $cardNumber,
@@ -111,7 +121,7 @@ class CreateMember extends CreateRecord
                 'gender'      => $data['principal_gender'] ?? null,
                 'email'       => $data['principal_email'] ?? null,
                 'phone'       => $data['principal_phone'] ?? null,
-                'status'      => 'ACTIVE',
+                'status'      => $sharedStatus,
                 'user_id'     => $principalUser->id,
                 'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
             ]);
@@ -133,7 +143,7 @@ class CreateMember extends CreateRecord
                     'gender'      => $dep['gender'] ?? null,
                     'email'       => $dep['email'] ?? null,
                     'phone'       => $dep['phone'] ?? null,
-                    'status'      => 'ACTIVE',
+                    'status'      => $sharedStatus,
                     'user_id'     => $depUser->id,
                     'mbl_balance' => $account->mbl_type === 'Fixed' ? $account->mbl_amount : null,
                 ]);

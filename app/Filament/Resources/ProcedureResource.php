@@ -131,7 +131,7 @@ class ProcedureResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn($state) => match($state) {
+                    ->formatStateUsing(fn($state) => match ($state) {
                         'pending'   => 'Pending',
                         'signed'    => 'Signed',
                         'valid'     => 'Valid',
@@ -162,10 +162,10 @@ class ProcedureResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('applied_fee')
-                    ->label('Applied Fee')
-                    ->money('PHP')
-                    ->sortable(),
+                // Tables\Columns\TextColumn::make('applied_fee')
+                //     ->label('Applied Fee')
+                //     ->money('PHP')
+                //     ->sortable(),
 
                 Tables\Columns\TextColumn::make('lastUpdatedBy.name')
                     ->label('Last Updated By')
@@ -196,9 +196,10 @@ class ProcedureResource extends Resource
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn($record) => auth()->user()->hasRole('CSR')
-                        ? in_array($record->status, [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN])
-                        : $record->status === Procedure::STATUS_PENDING
+                    ->visible(
+                        fn($record) => auth()->user()->hasRole('CSR')
+                            ? in_array($record->status, [Procedure::STATUS_PENDING, Procedure::STATUS_SIGN])
+                            : $record->status === Procedure::STATUS_PENDING
                     )
                     ->modalHeading('Cancel Procedure')
                     ->modalDescription('Please provide a reason for cancelling this procedure.')
@@ -235,57 +236,57 @@ class ProcedureResource extends Resource
                     }),
 
                 // ✏️ EDIT FEE
-                Tables\Actions\Action::make('edit_fee')
-                    ->label('Request Fee Edit')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->color('warning')
-                    ->visible(fn($record) =>
-                        in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
-                        && ! $record->hasPendingFeeAdjustment()
-                    )
-                    ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
-                    ->form([
-                        Forms\Components\TextInput::make('current_fee')
-                            ->label('Current Fee')
-                            ->prefix('₱')
-                            ->disabled(),
-                        Forms\Components\TextInput::make('proposed_fee')
-                            ->label('Proposed Fee')
-                            ->numeric()
-                            ->prefix('₱')
-                            ->required()
-                            ->minValue(0),
-                        Forms\Components\Textarea::make('reason')
-                            ->label('Reason / Justification')
-                            ->required()
-                            ->rows(3),
-                    ])
-                    ->action(function (Procedure $record, array $data) {
-                        \App\Models\FeeAdjustmentRequest::create([
-                            'procedure_id' => $record->id,
-                            'current_fee' => $record->applied_fee,
-                            'proposed_fee' => $data['proposed_fee'],
-                            'reason' => $data['reason'],
-                            'requested_by' => auth()->id(),
-                        ]);
+                // Tables\Actions\Action::make('edit_fee')
+                //     ->label('Request Fee Edit')
+                //     ->icon('heroicon-o-currency-dollar')
+                //     ->color('warning')
+                //     ->visible(fn($record) =>
+                //         in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
+                //         && ! $record->hasPendingFeeAdjustment()
+                //     )
+                //     ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
+                //     ->form([
+                //         Forms\Components\TextInput::make('current_fee')
+                //             ->label('Current Fee')
+                //             ->prefix('₱')
+                //             ->disabled(),
+                //         Forms\Components\TextInput::make('proposed_fee')
+                //             ->label('Proposed Fee')
+                //             ->numeric()
+                //             ->prefix('₱')
+                //             ->required()
+                //             ->minValue(0),
+                //         Forms\Components\Textarea::make('reason')
+                //             ->label('Reason / Justification')
+                //             ->required()
+                //             ->rows(3),
+                //     ])
+                //     ->action(function (Procedure $record, array $data) {
+                //         \App\Models\FeeAdjustmentRequest::create([
+                //             'procedure_id' => $record->id,
+                //             'current_fee' => $record->applied_fee,
+                //             'proposed_fee' => $data['proposed_fee'],
+                //             'reason' => $data['reason'],
+                //             'requested_by' => auth()->id(),
+                //         ]);
 
-                        $approvers = User::permission('claims.approve-fee')->get();
-                        $feeApprovalsUrl = \App\Filament\Pages\FeeAdjustmentApprovals::getUrl();
-                        foreach ($approvers as $approver) {
-                            Notification::make()
-                                ->title('New Fee Adjustment Request')
-                                ->body('A fee adjustment was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
-                                ->warning()
-                                ->actions([NotificationAction::make('view')->label('Review Request')->url($feeApprovalsUrl)])
-                                ->sendToDatabase($approver);
-                        }
+                //         $approvers = User::permission('claims.approve-fee')->get();
+                //         $feeApprovalsUrl = \App\Filament\Pages\FeeAdjustmentApprovals::getUrl();
+                //         foreach ($approvers as $approver) {
+                //             Notification::make()
+                //                 ->title('New Fee Adjustment Request')
+                //                 ->body('A fee adjustment was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
+                //                 ->warning()
+                //                 ->actions([NotificationAction::make('view')->label('Review Request')->url($feeApprovalsUrl)])
+                //                 ->sendToDatabase($approver);
+                //         }
 
-                        Notification::make()
-                            ->title('Fee Adjustment Requested')
-                            ->body('Your request has been submitted for approval.')
-                            ->success()
-                            ->send();
-                    }),
+                //         Notification::make()
+                //             ->title('Fee Adjustment Requested')
+                //             ->body('Your request has been submitted for approval.')
+                //             ->success()
+                //             ->send();
+                //     }),
 
                 // ✅ SIGN PROCEDURE
                 Tables\Actions\Action::make('sign')

@@ -231,6 +231,7 @@
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Service</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Type</th>
                                         <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Qty</th>
+                                        <th class="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Remarks</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
@@ -240,6 +241,9 @@
                                     $qty = $item->quantity;
                                     $defaultQty = $item->default_quantity;
                                     $unlimited = $item->is_unlimited;
+                                    $remarks = \App\Models\AccountService::where('account_id', $member->account->id)
+                                        ->where('service_id', $item->service_id)
+                                        ->value('remarks');
                                     @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                         <td class="px-4 py-2 font-medium text-gray-800 dark:text-gray-100">{{ $svc->name ?? '—' }}</td>
@@ -257,6 +261,7 @@
                                             {{ $qty }}/{{ $defaultQty }}
                                             @endif
                                         </td>
+                                        <td class="px-4 py-2 text-gray-500 dark:text-gray-400">{{ $remarks ?: '—' }}</td>
                                     </tr>
                                     @endforeach
                                 </tbody>

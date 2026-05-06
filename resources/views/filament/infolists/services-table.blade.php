@@ -9,6 +9,9 @@
         ->where('account_id', $account->id)
         ->with('service')
         ->get();
+
+    $accountServiceRemarks = \App\Models\AccountService::where('account_id', $account->id)
+        ->pluck('remarks', 'service_id');
 @endphp
 
 @if($services->isEmpty())
@@ -27,6 +30,7 @@
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service Name</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qty (Current/Default)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Remarks</th>
                 </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -42,6 +46,7 @@
                                 {{ $ms->quantity }}/{{ $ms->default_quantity }}
                             @endif
                         </td>
+                        <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $accountServiceRemarks[$ms->service_id] ?? '—' }}</td>
                     </tr>
                 @endforeach
             </tbody>

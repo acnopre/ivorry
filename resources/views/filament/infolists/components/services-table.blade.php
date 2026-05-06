@@ -61,7 +61,7 @@
                             </div>
                             @if ($service->pivot->remarks)
                             <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {{ $service->pivot->remarks }}
+                                Remarks: {{ $service->pivot->remarks }}
                             </div>
                             @endif
                         </td>
@@ -78,7 +78,7 @@
                             @endif
                         </td>
 
-                        <td class="px-6 py-4 text-center">
+                        <td class="px-6 py-4 text-center whitespace-nowrap">
                             @if ($service->pivot->is_unlimited)
                             <x-filament::badge color="success">
                                 Unlimited

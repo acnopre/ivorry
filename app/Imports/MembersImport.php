@@ -290,8 +290,8 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Required fields: first_name, last_name, member_type, card_number';
         }
 
-        if (!preg_match('/^[a-zA-Z0-9]+$/u', $row['card_number'])) {
-            return 'Invalid card_number. Only letters and numbers are allowed (after cleaning, value was empty or invalid)';
+        if (!preg_match('/^[a-zA-Z0-9]+$/', $row['card_number'])) {
+            return 'Invalid card_number. Only letters and numbers are allowed. No spaces, hyphens, slashes, or special characters.';
         }
 
         if (!in_array(strtoupper($row['member_type']), ['PRINCIPAL', 'DEPENDENT'])) {

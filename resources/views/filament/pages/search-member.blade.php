@@ -314,7 +314,7 @@
                                     $isOwnProcedure = $userClinicId && $userClinicId === $procedure->clinic_id;
                                     $showCancel = $isCsr
                                     ? in_array($procedure->status, ['pending', 'signed'])
-                                    : ($procedure->status === 'pending' && $isOwnProcedure);
+                                    : ($procedure->status === 'pending' || $procedure->status === 'signed' && $isOwnProcedure);
                                     $rows = $procedure->units->isEmpty() ? [null] : $procedure->units;
                                     @endphp
                                     @foreach($rows as $unit)

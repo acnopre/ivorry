@@ -55,6 +55,9 @@ class MemberResource extends Resource
                                     ->required(fn(callable $get) => ! $get('use_coc_number'))
                                     ->hidden(fn(callable $get) => $get('use_coc_number'))
                                     ->dehydrated(true)
+                                    ->rule('alpha_num')
+                                    ->validationMessages(['alpha_num' => 'Card number must be alphanumeric only. No spaces or special characters allowed.'])
+                                    ->extraInputAttributes(['oninput' => 'this.value = this.value.replace(/[^a-zA-Z0-9]/g, "")'])
                                     ->unique(
                                         table: 'members',
                                         column: 'card_number',
@@ -140,7 +143,10 @@ class MemberResource extends Resource
                     ->schema([
                         TextInput::make('shared_card_number')
                             ->label('Card Number')
-                            ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
+                            ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED')
+                            ->rule('alpha_num')
+                            ->validationMessages(['alpha_num' => 'Card number must be alphanumeric only. No spaces or special characters allowed.'])
+                            ->extraInputAttributes(['oninput' => 'this.value = this.value.replace(/[^a-zA-Z0-9]/g, "")']),
                         Grid::make(2)->schema([
                             TextInput::make('principal_first_name')->label('First Name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
                             TextInput::make('principal_last_name')->label('Last Name')->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),

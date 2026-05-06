@@ -85,6 +85,25 @@ class ProcedureService
             if ($existsInDifferentClinic) {
                 return 'Member cannot have procedures in different clinics on the same date.';
             }
+
+            // Max 3 procedures (service + unit combinations) per day per clinic
+            $proceduresToday = Procedure::forMember($memberId)
+                ->where('clinic_id', $clinicId)
+                ->where('availment_date', $availmentDate)
+                ->whereNotIn('status', [Procedure::STATUS_CANCELLED])
+                ->count();
+
+            // Count how many new procedure records this submission will add
+            $newCount = 0;
+            foreach (self::UNIT_INPUTS as $input) {
+                if (!empty($data[$input])) $newCount += count((array) $data[$input]);
+            }
+            $newCount = max($newCount, 1);
+
+            if (($proceduresToday + $newCount) > 3) {
+                $remaining = max(3 - $proceduresToday, 0);
+                return "Maximum of 3 procedures per day per clinic has been reached. Already has {$proceduresToday} procedure(s) today at this clinic, {$remaining} slot(s) remaining.";
+            }
         }
 
         // Extract unit IDs

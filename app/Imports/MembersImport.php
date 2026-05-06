@@ -90,6 +90,17 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             $row['status'] = 'INACTIVE';
         }
 
+        // If expiration_date is in the past (before today), reject the row
+        if (!empty($row['expiration_date'])) {
+            $expirationDate = is_numeric($row['expiration_date'])
+                ? Date::excelToDateTimeObject($row['expiration_date'])
+                : new \DateTime($row['expiration_date']);
+            if ($expirationDate < new \DateTime('today')) {
+                $this->logError($row, 'Expiration date is in the past. Member cannot be imported with a past expiration date.');
+                return null;
+            }
+        }
+
         DB::beginTransaction();
         try {
             $restored = false;

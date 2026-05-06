@@ -367,8 +367,45 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Invalid gender. Only Male or Female is accepted';
         }
 
-        if (strtoupper($account->coverage_period_type) === 'MEMBER' && (empty($row['effective_date']) || empty($row['expiration_date']))) {
-            return 'Effective date and expiration date are required when account coverage type is MEMBER';
+        if (strtoupper($account->coverage_period_type) === 'MEMBER') {
+            // MEMBER coverage: effective_date and expiration_date are required
+            if (empty($row['effective_date']) || empty($row['expiration_date'])) {
+                return 'Effective date and expiration date are required when account coverage type is MEMBER.';
+            }
+
+            // Validate expiration_date is not in the past
+            try {
+                $expirationDate = is_numeric($row['expiration_date'])
+                    ? Date::excelToDateTimeObject((float) $row['expiration_date'])
+                    : new \DateTime($row['expiration_date']);
+                $today = new \DateTime('today');
+                if ($expirationDate < $today) {
+                    return 'Expiration date is in the past. Member cannot be imported with a past expiration date.';
+                }
+            } catch (\Exception $e) {
+                return 'Invalid expiration date format.';
+            }
+
+            // Validate effective_date format
+            try {
+                if (is_numeric($row['effective_date'])) {
+                    Date::excelToDateTimeObject((float) $row['effective_date']);
+                } else {
+                    new \DateTime($row['effective_date']);
+                }
+            } catch (\Exception $e) {
+                return 'Invalid effective date format.';
+            }
+        }
+
+        if (strtoupper($account->coverage_period_type) === 'ACCOUNT') {
+            // ACCOUNT coverage: effective_date and expiration_date must NOT be provided
+            if (!empty($row['effective_date'])) {
+                return 'Effective date should not be provided when account coverage type is ACCOUNT. The account dates apply.';
+            }
+            if (!empty($row['expiration_date'])) {
+                return 'Expiration date should not be provided when account coverage type is ACCOUNT. The account dates apply.';
+            }
         }
 
         // Validate member_type against account coverage_type

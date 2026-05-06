@@ -15,7 +15,7 @@ class CancelPendingProcedures extends Command
     {
         $procedures = Procedure::with(['member.account', 'units'])
             ->where('status', Procedure::STATUS_PENDING)
-            ->whereDate('availment_date', '<', today())
+            ->whereDate('availment_date', '<=', today())
             ->get();
 
         $count  = 0;

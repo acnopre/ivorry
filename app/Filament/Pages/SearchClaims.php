@@ -116,11 +116,19 @@ class SearchClaims extends Page implements HasForms, HasTable
                         Forms\Components\DatePicker::make('availment_from')
                             ->required()
                             ->native(false)
-                            ->label('Availment From'),
+                            ->label('Availment From')
+                            ->live()
+                            ->maxDate(fn(Forms\Get $get) => $get('availment_to') ?: null)
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if ($state) {
+                                    $set('availment_to', today()->format('Y-m-d'));
+                                }
+                            }),
                         Forms\Components\DatePicker::make('availment_to')
                             ->required()
                             ->native(false)
                             ->maxDate(now())
+                            ->minDate(fn(Forms\Get $get) => $get('availment_from') ?: null)
                             ->label('Availment To'),
                     ]),
                 ])
@@ -249,60 +257,138 @@ class SearchClaims extends Page implements HasForms, HasTable
                         'cancelled' => 'danger',
                         default     => 'gray',
                     }),
+
+                Tables\Columns\TextColumn::make('pending_requests')
+                    ->label('Request Pending')
+                    ->getStateUsing(function (Procedure $record) {
+                        $tags = [];
+                        if ($record->hasPendingFeeAdjustment()) {
+                            $tags[] = 'Fee Adjustment';
+                        }
+                        if ($record->hasPendingAvailmentDateEdit()) {
+                            $tags[] = 'Availment Date Edit';
+                        }
+                        return ! empty($tags) ? implode(', ', $tags) : null;
+                    })
+                    ->badge()
+                    ->color('warning')
+                    ->placeholder('—'),
             ])
             ->actions([
-                Tables\Actions\Action::make('edit_fee')
-                    ->label('Request Fee Edit')
-                    ->icon('heroicon-o-pencil-square')
-                    ->color('warning')
-                    ->visible(fn(Procedure $record) =>
-                        (auth()->user()->can('claims.valid') || auth()->user()->can('claims.request-fee'))
-                        && in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
-                        && ! $record->hasPendingFeeAdjustment()
-                    )
-                    ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
-                    ->form([
-                        Forms\Components\TextInput::make('current_fee')
-                            ->label('Current Fee')
-                            ->prefix('₱')
-                            ->disabled(),
-                        Forms\Components\TextInput::make('proposed_fee')
-                            ->label('Proposed Fee')
-                            ->numeric()
-                            ->prefix('₱')
-                            ->required()
-                            ->minValue(0),
-                        Forms\Components\Textarea::make('reason')
-                            ->label('Reason / Justification')
-                            ->required()
-                            ->rows(3),
-                    ])
-                    ->action(function (Procedure $record, array $data) {
-                        \App\Models\FeeAdjustmentRequest::create([
-                            'procedure_id' => $record->id,
-                            'current_fee' => $record->applied_fee,
-                            'proposed_fee' => $data['proposed_fee'],
-                            'reason' => $data['reason'],
-                            'requested_by' => auth()->id(),
-                        ]);
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('edit_fee')
+                        ->label('Request Fee Edit')
+                        ->icon('heroicon-o-banknotes')
+                        ->color('warning')
+                        ->visible(fn(Procedure $record) =>
+                            (auth()->user()->can('claims.valid') || auth()->user()->can('claims.request-fee'))
+                            && in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
+                            && ! $record->hasPendingFeeAdjustment()
+                        )
+                        ->fillForm(fn(Procedure $record) => ['current_fee' => $record->applied_fee])
+                        ->form([
+                            Forms\Components\TextInput::make('current_fee')
+                                ->label('Current Fee')
+                                ->prefix('₱')
+                                ->disabled(),
+                            Forms\Components\TextInput::make('proposed_fee')
+                                ->label('Proposed Fee')
+                                ->numeric()
+                                ->prefix('₱')
+                                ->required()
+                                ->minValue(0),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Reason / Justification')
+                                ->required()
+                                ->rows(3),
+                        ])
+                        ->action(function (Procedure $record, array $data) {
+                            \App\Models\FeeAdjustmentRequest::create([
+                                'procedure_id' => $record->id,
+                                'current_fee' => $record->applied_fee,
+                                'proposed_fee' => $data['proposed_fee'],
+                                'reason' => $data['reason'],
+                                'requested_by' => auth()->id(),
+                            ]);
 
-                        $approvers = User::permission('claims.approve-fee')->get();
-                        $feeApprovalsUrl = \App\Filament\Pages\FeeAdjustmentApprovals::getUrl();
-                        foreach ($approvers as $approver) {
+                            $approvers = User::permission('claims.approve-fee')->get();
+                            $feeApprovalsUrl = \App\Filament\Pages\FeeAdjustmentApprovals::getUrl();
+                            foreach ($approvers as $approver) {
+                                Notification::make()
+                                    ->title('New Fee Adjustment Request')
+                                    ->body('A fee adjustment was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
+                                    ->warning()
+                                    ->actions([NotificationAction::make('view')->label('Review Request')->url($feeApprovalsUrl)])
+                                    ->sendToDatabase($approver);
+                            }
+
                             Notification::make()
-                                ->title('New Fee Adjustment Request')
-                                ->body('A fee adjustment was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
-                                ->warning()
-                                ->actions([NotificationAction::make('view')->label('Review Request')->url($feeApprovalsUrl)])
-                                ->sendToDatabase($approver);
-                        }
+                                ->title('Fee Adjustment Requested')
+                                ->body('Your request has been submitted for approval.')
+                                ->success()
+                                ->send();
+                        }),
 
-                        Notification::make()
-                            ->title('Fee Adjustment Requested')
-                            ->body('Your request has been submitted for approval.')
-                            ->success()
-                            ->send();
-                    }),
+                    Tables\Actions\Action::make('edit_availment_date')
+                        ->label('Request Date Edit')
+                        ->icon('heroicon-o-calendar-days')
+                        ->color('info')
+                        ->visible(fn(Procedure $record) =>
+                            (auth()->user()->can('claims.valid') || auth()->user()->can('claims.request-fee'))
+                            && in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
+                            && ! $record->hasPendingAvailmentDateEdit()
+                        )
+                        ->fillForm(fn(Procedure $record) => ['current_date' => $record->availment_date?->format('Y-m-d')])
+                        ->form([
+                            Forms\Components\DatePicker::make('current_date')
+                                ->label('Current Availment Date')
+                                ->disabled()
+                                ->native(false),
+                            Forms\Components\DatePicker::make('proposed_date')
+                                ->label('Proposed Availment Date')
+                                ->required()
+                                ->native(false)
+                                ->maxDate(today()),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Reason / Justification')
+                                ->required()
+                                ->rows(3),
+                        ])
+                        ->action(function (Procedure $record, array $data) {
+                            \App\Models\AvailmentDateEditRequest::create([
+                                'procedure_id' => $record->id,
+                                'current_date'  => $record->availment_date,
+                                'proposed_date' => $data['proposed_date'],
+                                'reason'        => $data['reason'],
+                                'requested_by'  => auth()->id(),
+                            ]);
+
+                            $approvers = User::permission('claims.approve-availment-date')->get();
+                            $url = \App\Filament\Pages\AvailmentDateEditApprovals::getUrl();
+                            foreach ($approvers as $approver) {
+                                Notification::make()
+                                    ->title('New Availment Date Edit Request')
+                                    ->body('An availment date edit was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
+                                    ->warning()
+                                    ->actions([NotificationAction::make('view')->label('Review Request')->url($url)])
+                                    ->sendToDatabase($approver);
+                            }
+
+                            Notification::make()
+                                ->title('Availment Date Edit Requested')
+                                ->body('Your request has been submitted for approval.')
+                                ->success()
+                                ->send();
+                        }),
+                ])
+                ->label('Requests')
+                ->icon('heroicon-o-ellipsis-vertical')
+                ->color('gray')
+                ->button()
+                ->visible(fn(Procedure $record) =>
+                    (auth()->user()->can('claims.valid') || auth()->user()->can('claims.request-fee'))
+                    && in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
+                ),
                 Tables\Actions\Action::make('request_validation')
                     ->label('Request Validation')
                     ->icon('heroicon-o-arrow-up-circle')

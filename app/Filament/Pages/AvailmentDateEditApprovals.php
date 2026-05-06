@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\FeeAdjustmentRequest;
+use App\Models\AvailmentDateEditRequest;
 use App\Models\Procedure;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -15,21 +15,22 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 
-class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
+class AvailmentDateEditApprovals extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
     use InteractsWithTable;
 
-    protected static ?string $title = 'Fee Adjustment Approvals';
-    protected static string $view = 'filament.pages.fee-adjustment-approvals';
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
+    protected static ?string $title = 'Date Edit Approvals';
+    protected static string $view = 'filament.pages.availment-date-edit-approvals';
+    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationGroup = 'Claims Management';
-    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationLabel = 'Date Edit Approvals';
+    protected static ?int $navigationSort = 4;
 
     public function table(Table $table): Table
     {
         return $table
-            ->query(FeeAdjustmentRequest::query()->with(['procedure.member', 'procedure.clinic', 'procedure.service', 'requestedBy', 'reviewedBy']))
+            ->query(AvailmentDateEditRequest::query()->with(['procedure.member', 'procedure.clinic', 'procedure.service', 'requestedBy', 'reviewedBy']))
             ->columns([
                 Tables\Columns\TextColumn::make('procedure.approval_code')
                     ->label('Approval Code')
@@ -44,12 +45,12 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('procedure.service.name')
                     ->label('Service')
                     ->limit(20),
-                Tables\Columns\TextColumn::make('current_fee')
-                    ->label('Current Fee')
-                    ->money('PHP'),
-                Tables\Columns\TextColumn::make('proposed_fee')
-                    ->label('Proposed Fee')
-                    ->money('PHP'),
+                Tables\Columns\TextColumn::make('current_date')
+                    ->label('Current Date')
+                    ->date('M d, Y'),
+                Tables\Columns\TextColumn::make('proposed_date')
+                    ->label('Proposed Date')
+                    ->date('M d, Y'),
                 Tables\Columns\TextColumn::make('reason')
                     ->label('Reason')
                     ->limit(30)
@@ -64,9 +65,10 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                     ->badge()
                     ->formatStateUsing(fn($state) => ucfirst($state))
                     ->color(fn(string $state) => match ($state) {
-                        'pending' => 'warning',
+                        'pending'  => 'warning',
                         'approved' => 'success',
                         'rejected' => 'danger',
+                        default    => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('reviewedBy.name')
                     ->label('Reviewed By')
@@ -75,7 +77,7 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'pending' => 'Pending',
+                        'pending'  => 'Pending',
                         'approved' => 'Approved',
                         'rejected' => 'Rejected',
                     ])
@@ -88,50 +90,34 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                     ->color('success')
                     ->visible(fn($record) => $record->status === 'pending')
                     ->requiresConfirmation()
-                    ->modalHeading('Approve Fee Adjustment')
-                    ->modalDescription(fn($record) => "Approve fee change from ₱" . number_format($record->current_fee, 2) . " to ₱" . number_format($record->proposed_fee, 2) . "?")
-                    ->action(function (FeeAdjustmentRequest $record) {
+                    ->modalHeading('Approve Date Edit')
+                    ->modalDescription(fn($record) => 'Approve date change from ' . $record->current_date?->format('M d, Y') . ' to ' . $record->proposed_date?->format('M d, Y') . '?')
+                    ->action(function (AvailmentDateEditRequest $record) {
                         $record->update([
-                            'status' => 'approved',
+                            'status'      => 'approved',
                             'reviewed_by' => auth()->id(),
                             'reviewed_at' => now(),
                         ]);
 
                         $record->procedure->update([
-                            'applied_fee' => $record->proposed_fee,
-                            'is_fee_adjusted' => true,
-                            'last_updated_by' => auth()->id(),
+                            'availment_date' => $record->proposed_date,
                         ]);
 
-                        $approvalCode = $record->procedure->approval_code ?? '—';
-                        $newFee = '₱' . number_format($record->proposed_fee, 2);
+                        $approvalCode  = $record->procedure->approval_code ?? '—';
+                        $proposedDate  = $record->proposed_date?->format('M d, Y');
 
                         if ($record->requestedBy) {
                             Notification::make()
-                                ->title('Fee Adjustment Approved')
-                                ->body("Your fee adjustment request for approval code {$approvalCode} has been approved. New fee: {$newFee}")
+                                ->title('Availment Date Edit Approved')
+                                ->body("Your availment date edit request for approval code {$approvalCode} has been approved. New date: {$proposedDate}")
                                 ->success()
-                                ->actions([NotificationAction::make('view')->label('View Approvals')->url(FeeAdjustmentApprovals::getUrl())])
+                                ->actions([NotificationAction::make('view')->label('View Approvals')->url(AvailmentDateEditApprovals::getUrl())])
                                 ->sendToDatabase($record->requestedBy);
                         }
 
-                        $clinicUser = $record->procedure->clinic?->user;
-                        if ($clinicUser && $clinicUser->id !== ($record->requestedBy?->id)) {
-                            $clinicUrl = $clinicUser->hasRole('Dentist')
-                                ? ClinicProfile::getUrl()
-                                : \App\Filament\Resources\ClinicsResource::getUrl('edit', ['record' => $record->procedure->clinic]);
-
-                            Notification::make()
-                                ->title('Service Fee Adjusted')
-                                ->body("The applied fee for approval code {$approvalCode} at your clinic has been adjusted to {$newFee}.")
-                                ->success()
-                                ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicUrl)])
-                                ->sendToDatabase($clinicUser);
-                        }
-
                         Notification::make()
-                            ->title('Fee Adjustment Approved')
-                            ->body("Applied fee has been updated to {$newFee}")
+                            ->title('Availment Date Edit Approved')
+                            ->body("Availment date updated to {$proposedDate}")
                             ->success()
                             ->send();
                     }),
@@ -148,42 +134,28 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                             ->rows(3),
                     ])
                     ->requiresConfirmation()
-                    ->modalHeading('Reject Fee Adjustment')
-                    ->action(function (FeeAdjustmentRequest $record, array $data) {
+                    ->modalHeading('Reject Date Edit')
+                    ->action(function (AvailmentDateEditRequest $record, array $data) {
                         $record->update([
-                            'status' => 'rejected',
-                            'reviewed_by' => auth()->id(),
+                            'status'         => 'rejected',
+                            'reviewed_by'    => auth()->id(),
                             'review_remarks' => $data['review_remarks'],
-                            'reviewed_at' => now(),
+                            'reviewed_at'    => now(),
                         ]);
 
                         $approvalCode = $record->procedure->approval_code ?? '—';
 
                         if ($record->requestedBy) {
                             Notification::make()
-                                ->title('Fee Adjustment Rejected')
-                                ->body("Your fee adjustment request for approval code {$approvalCode} was rejected. Reason: {$data['review_remarks']}")
+                                ->title('Availment Date Edit Rejected')
+                                ->body("Your availment date edit request for approval code {$approvalCode} was rejected. Reason: {$data['review_remarks']}")
                                 ->danger()
-                                ->actions([NotificationAction::make('view')->label('View Approvals')->url(FeeAdjustmentApprovals::getUrl())])
+                                ->actions([NotificationAction::make('view')->label('View Approvals')->url(AvailmentDateEditApprovals::getUrl())])
                                 ->sendToDatabase($record->requestedBy);
                         }
 
-                        $clinicUser = $record->procedure->clinic?->user;
-                        if ($clinicUser && $clinicUser->id !== ($record->requestedBy?->id)) {
-                            $clinicUrl = $clinicUser->hasRole('Dentist')
-                                ? ClinicProfile::getUrl()
-                                : \App\Filament\Resources\ClinicsResource::getUrl('edit', ['record' => $record->procedure->clinic]);
-
-                            Notification::make()
-                                ->title('Fee Adjustment Rejected')
-                                ->body("A fee adjustment request for approval code {$approvalCode} at your clinic was rejected. Reason: {$data['review_remarks']}")
-                                ->danger()
-                                ->actions([NotificationAction::make('view')->label('View Clinic')->url($clinicUrl)])
-                                ->sendToDatabase($clinicUser);
-                        }
-
                         Notification::make()
-                            ->title('Fee Adjustment Rejected')
+                            ->title('Availment Date Edit Rejected')
                             ->danger()
                             ->send();
                     }),
@@ -193,17 +165,17 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->check() && auth()->user()->can('claims.approve-fee');
+        return auth()->check() && auth()->user()->can('claims.approve-availment-date');
     }
 
     public static function canAccess(): bool
     {
-        return auth()->user()->can('claims.approve-fee');
+        return auth()->user()->can('claims.approve-availment-date');
     }
 
     public static function getNavigationBadge(): ?string
     {
-        $count = \App\Models\FeeAdjustmentRequest::where('status', 'pending')->count();
+        $count = \App\Models\AvailmentDateEditRequest::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
     }
 

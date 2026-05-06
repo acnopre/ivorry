@@ -52,6 +52,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'fee.approval',
             'claims.approve-fee',
             'claims.request-fee',
+            'claims.approve-availment-date',
             'claims.request-validation',
 
             // Accounts

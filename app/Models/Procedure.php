@@ -156,6 +156,16 @@ class Procedure extends Model
         return $this->feeAdjustmentRequests()->where('status', 'pending')->exists();
     }
 
+    public function availmentDateEditRequests()
+    {
+        return $this->hasMany(AvailmentDateEditRequest::class);
+    }
+
+    public function hasPendingAvailmentDateEdit(): bool
+    {
+        return $this->availmentDateEditRequests()->where('status', 'pending')->exists();
+    }
+
     public function generatedSoas()
     {
         return $this->belongsToMany(GeneratedSoa::class, 'generated_soa_procedure')

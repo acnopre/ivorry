@@ -55,6 +55,10 @@ class SearchMember extends Page implements HasActions
     public bool $showCancelModal = false;
     public ?int $cancelProcedureId = null;
     public ?string $cancelReason = null;
+    public bool $showCsrOverrideModal = false;
+    public ?string $csrOverrideWarning = null;
+    public array $csrPendingData = [];
+    public ?int $csrPendingClinicId = null;
 
     public function mount(): void
     {
@@ -373,14 +377,29 @@ class SearchMember extends Page implements HasActions
 
     private function saveProcedureWithData(array $data, int $clinicId): void
     {
-        $member  = Member::find($this->selectedMemberId);
-        $account = $member->account;
-        $isCSR   = Auth::user()->hasRole('CSR');
+        $member = Member::find($this->selectedMemberId);
+        $isCSR  = Auth::user()->hasRole('CSR');
 
         if ($error = ProcedureService::validateBusinessRules($data, $member->id, $clinicId, $isCSR)) {
+            if ($isCSR) {
+                $this->csrOverrideWarning   = $error;
+                $this->csrPendingData       = $data;
+                $this->csrPendingClinicId   = $clinicId;
+                $this->showCsrOverrideModal = true;
+                return;
+            }
             Notification::make()->title('Validation Error')->body($error)->danger()->send();
             return;
         }
+
+        $this->proceedWithProcedure($data, $clinicId);
+    }
+
+    private function proceedWithProcedure(array $data, int $clinicId): void
+    {
+        $member  = Member::find($this->selectedMemberId);
+        $account = $member->account;
+        $isCSR   = Auth::user()->hasRole('CSR');
 
         $appliedFee = $data['applied_fee'] ?? ClinicService::where('clinic_id', $clinicId)
             ->where('service_id', $data['service_id'])->value('fee') ?? 0;
@@ -745,6 +764,23 @@ class SearchMember extends Page implements HasActions
         return "Max per date: {$maxPerDate}";
     }
 
+
+    public function confirmCsrOverride(): void
+    {
+        $this->showCsrOverrideModal = false;
+        $this->proceedWithProcedure($this->csrPendingData, $this->csrPendingClinicId);
+        $this->csrPendingData     = [];
+        $this->csrPendingClinicId = null;
+        $this->csrOverrideWarning = null;
+    }
+
+    public function cancelCsrOverride(): void
+    {
+        $this->showCsrOverrideModal = false;
+        $this->csrPendingData       = [];
+        $this->csrPendingClinicId   = null;
+        $this->csrOverrideWarning   = null;
+    }
 
     public function openCancelModal(int $procedureId): void
     {

@@ -378,6 +378,22 @@
 
     <x-filament-actions::modals />
 
+    {{-- CSR Override Confirmation Modal --}}
+    <div x-data x-show="$wire.showCsrOverrideModal" x-cloak x-on:keydown.escape.window="$wire.cancelCsrOverride()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div class="flex items-center gap-2 mb-3">
+                <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-warning-500 shrink-0" />
+                <h2 class="text-base font-bold text-gray-900 dark:text-white">Validation Warning</h2>
+            </div>
+            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">{{ $csrOverrideWarning }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">As CSR, you may override this restriction. Do you want to proceed?</p>
+            <div class="flex justify-end gap-2">
+                <x-filament::button color="gray" wire:click="cancelCsrOverride">No, Cancel</x-filament::button>
+                <x-filament::button color="warning" wire:click="confirmCsrOverride">Yes, Proceed</x-filament::button>
+            </div>
+        </div>
+    </div>
+
     {{-- Cancel Modal --}}
     <div x-data x-show="$wire.showCancelModal" x-cloak x-trap.noscroll @click.away="$wire.showCancelModal = false" x-on:keydown.escape.window="$wire.showCancelModal = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-full max-w-md">

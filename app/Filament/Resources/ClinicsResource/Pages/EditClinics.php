@@ -140,7 +140,7 @@ class EditClinics extends EditRecord
                     'must_change_password' => true,
                 ]);
                 $user->assignRole('Dentist');
-                $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+                // $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
                 $clinic->update(['user_id' => $user->id]);
             } else {
                 $oldEmail = $clinic->user->email;
@@ -156,7 +156,7 @@ class EditClinics extends EditRecord
                             'password' => Hash::make($plainPassword),
                             'must_change_password' => true,
                         ]);
-                        $clinic->user->notify(new SendGeneratedPassword($plainPassword));
+                        // $clinic->user->notify(new SendGeneratedPassword($plainPassword));
                     } catch (\Throwable $e) {
                         Notification::make()->danger()->title('Email updated but failed to send credentials.')->body($e->getMessage())->send();
                     }

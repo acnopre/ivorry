@@ -55,7 +55,7 @@ class CreateClinics extends CreateRecord
     {
         // Handle owner dentist user creation
         $ownerDentist = $this->record->dentists()->where('is_owner', true)->first();
-        
+
         if ($ownerDentist && !$this->record->user_id) {
             $plainPassword = Str::random(12);
 
@@ -68,9 +68,9 @@ class CreateClinics extends CreateRecord
 
             $user->assignRole('Dentist');
 
-            if (!empty($this->record->clinic_email)) {
-                $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
-            }
+            // if (!empty($this->record->clinic_email)) {
+            //     $user->notify(new \App\Notifications\SendGeneratedPassword($plainPassword));
+            // }
 
             $this->record->update(['user_id' => $user->id]);
         }

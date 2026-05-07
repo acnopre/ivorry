@@ -420,11 +420,46 @@ class ViewAccount extends ViewRecord
                         'approved_by' => auth()->id(),
                     ]);
 
-                    // Reset member service quantities for all plan types
-                    MemberService::where('account_id', $record->id)->delete();
-                    $record->members->pluck('card_number')->unique()->filter()->each(
-                        fn($cardNumber) => MemberService::initializeForCard($cardNumber, $record->id)
-                    );
+                    // Update member service quantities preserving usage (used = default_quantity - quantity)
+                    $newServiceMap = $amendment->services->keyBy('service_id');
+
+                    // For services removed in the amendment, delete member service rows
+                    $newServiceIds = $newServiceMap->keys()->toArray();
+                    MemberService::where('account_id', $record->id)
+                        ->whereNotIn('service_id', $newServiceIds)
+                        ->delete();
+
+                    // For each new/changed service, upsert preserving usage
+                    $record->load('members');
+                    $record->members->pluck('card_number')->unique()->filter()->each(function ($cardNumber) use ($record, $newServiceMap) {
+                        foreach ($newServiceMap as $serviceId => $srv) {
+                            $newDefault = (int) ($srv->default_quantity ?? 0);
+                            $isUnlimited = (bool) $srv->is_unlimited;
+
+                            $existing = MemberService::where('card_number', $cardNumber)
+                                ->where('account_id', $record->id)
+                                ->where('service_id', $serviceId)
+                                ->first();
+
+                            if ($existing) {
+                                $used = max(0, (int) ($existing->default_quantity ?? 0) - (int) ($existing->quantity ?? 0));
+                                $existing->update([
+                                    'default_quantity' => $isUnlimited ? 0 : $newDefault,
+                                    'quantity'         => $isUnlimited ? 0 : ($newDefault - $used),
+                                    'is_unlimited'     => $isUnlimited,
+                                ]);
+                            } else {
+                                MemberService::create([
+                                    'card_number'     => $cardNumber,
+                                    'account_id'      => $record->id,
+                                    'service_id'      => $serviceId,
+                                    'default_quantity' => $isUnlimited ? 0 : $newDefault,
+                                    'quantity'        => $isUnlimited ? 0 : $newDefault,
+                                    'is_unlimited'    => $isUnlimited,
+                                ]);
+                            }
+                        }
+                    });
 
                     Notification::make()
                         ->title('Account amendment approved successfully.')

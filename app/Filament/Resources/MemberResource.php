@@ -126,7 +126,7 @@ class MemberResource extends Resource
 
                         DatePicker::make('inactive_date')
                             ->label('Inactive Date')
-                            ->visible(fn(callable $get) => $get('status') === 'INACTIVE' && static::getAccountPlanType($get('account_id')) !== 'SHARED'),
+                            ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),
 
                         DatePicker::make('birthdate')
                             ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) !== 'SHARED'),

@@ -108,7 +108,7 @@ class Account extends Model
 
     public function autoExpire()
     {
-        if ($this->expiration_date && now()->greaterThan($this->expiration_date)) {
+        if ($this->expiration_date && today()->gt($this->expiration_date)) {
 
             // Always deactivate any active members on an expired account
             $this->members()

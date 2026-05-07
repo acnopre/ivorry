@@ -175,6 +175,9 @@ class AccountResource extends Resource
                                 ->afterStateUpdated(function ($state, callable $set) {
                                     if ($state) {
                                         $expiration = Carbon::parse($state)->addYear()->subDay();
+                                        if ($expiration->lt(today())) {
+                                            $expiration = Carbon::today();
+                                        }
                                         $set('expiration_date', $expiration->format('Y-m-d'));
                                     }
                                 }),
@@ -182,6 +185,7 @@ class AccountResource extends Resource
                             DatePicker::make('expiration_date')
                                 ->label('Valid Until')
                                 ->native(false)
+                                ->minDate(today())
                                 ->dehydrated(true),
 
                             Select::make('endorsement_type')

@@ -34,7 +34,7 @@ class ActivateAccounts extends Command
     {
         $expired = Account::where('account_status', 'active')
             ->whereNotNull('expiration_date')
-            ->whereDate('expiration_date', '<', now()->startOfDay())
+            ->whereDate('expiration_date', '<', today())
             ->whereDoesntHave('renewals', fn($q) => $q->where('status', 'APPROVED_PENDING_EFFECTIVE'))
             ->get();
 

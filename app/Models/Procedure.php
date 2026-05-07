@@ -176,6 +176,37 @@ class Procedure extends Model
         return $this->statusEditRequests()->where('status', 'pending')->exists();
     }
 
+    /**
+     * Cancel all pending edit requests for a collection of procedure IDs and notify requesters.
+     */
+    public static function cancelPendingRequests(\Illuminate\Support\Collection $procedureIds): void
+    {
+        $requestTypes = [
+            \App\Models\FeeAdjustmentRequest::class      => 'Fee Adjustment',
+            \App\Models\AvailmentDateEditRequest::class  => 'Availment Date Edit',
+            \App\Models\StatusEditRequest::class         => 'Status Edit',
+        ];
+
+        foreach ($requestTypes as $model => $label) {
+            $pending = $model::whereIn('procedure_id', $procedureIds)
+                ->where('status', 'pending')
+                ->with(['requestedBy', 'procedure'])
+                ->get();
+
+            foreach ($pending as $request) {
+                $request->update(['status' => 'cancelled']);
+
+                if ($request->requestedBy) {
+                    \Filament\Notifications\Notification::make()
+                        ->title("{$label} Request Cancelled")
+                        ->body("Your {$label} request for approval code " . ($request->procedure->approval_code ?? '—') . ' was automatically cancelled because the procedure has been processed.')
+                        ->warning()
+                        ->sendToDatabase($request->requestedBy);
+                }
+            }
+        }
+    }
+
     public function generatedSoas()
     {
         return $this->belongsToMany(GeneratedSoa::class, 'generated_soa_procedure')

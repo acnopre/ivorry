@@ -254,8 +254,10 @@ class GeneratedSoaResource extends Resource
                         $record->increment('print_count');
 
                         if (\App\Filament\Pages\PrinterSettings::isSimulating()) {
+                            $procedureIds = $record->procedures->pluck('id');
                             $record->update(['status' => 'processed']);
-                            Procedure::whereIn('id', $record->procedures->pluck('id'))->update(['status' => 'processed']);
+                            Procedure::whereIn('id', $procedureIds)->update(['status' => 'processed']);
+                            Procedure::cancelPendingRequests($procedureIds);
                             DB::table('print_logs')->insert([
                                 'user_id'     => auth()->id(),
                                 'document_id' => $record->id,

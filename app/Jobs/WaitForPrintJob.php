@@ -76,10 +76,13 @@ class WaitForPrintJob implements ShouldQueue
 
     private function markProcessed(GeneratedSoa $soa): void
     {
+        $procedureIds = $soa->procedures->pluck('id');
+
         $soa->update(['status' => 'processed']);
 
-        Procedure::whereIn('id', $soa->procedures->pluck('id'))
-            ->update(['status' => 'processed']);
+        Procedure::whereIn('id', $procedureIds)->update(['status' => 'processed']);
+
+        Procedure::cancelPendingRequests($procedureIds);
 
         Log::info('Print job completed — marked processed', [
             'job' => $this->jobId,

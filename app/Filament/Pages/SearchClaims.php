@@ -1279,6 +1279,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 'duplicate_file_path' => $duplicatePath,
             ]);
             Procedure::whereIn('id', $claims->pluck('id'))->update(['status' => 'processed']);
+            Procedure::cancelPendingRequests($claims->pluck('id'));
             DB::table('print_logs')->insert([
                 'user_id'     => auth()->id(),
                 'document_id' => $soa->id,

@@ -69,10 +69,13 @@ class CheckPrintJobs extends Command
         $soa = GeneratedSoa::with('procedures')->find($log->document_id);
         if (!$soa) return;
 
+        $procedureIds = $soa->procedures->pluck('id');
+
         $soa->update(['status' => 'processed']);
 
-        Procedure::whereIn('id', $soa->procedures->pluck('id'))
-            ->update(['status' => 'processed']);
+        Procedure::whereIn('id', $procedureIds)->update(['status' => 'processed']);
+
+        Procedure::cancelPendingRequests($procedureIds);
 
         $this->info("Job {$log->cups_job_id} completed — SOA #{$log->document_id} marked processed.");
     }

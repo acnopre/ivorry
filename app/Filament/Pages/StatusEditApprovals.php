@@ -104,9 +104,10 @@ class StatusEditApprovals extends Page implements HasForms, HasTable
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'pending'  => 'Pending',
-                        'approved' => 'Approved',
-                        'rejected' => 'Rejected',
+                        'pending'   => 'Pending',
+                        'approved'  => 'Approved',
+                        'rejected'  => 'Rejected',
+                        'cancelled' => 'Cancelled',
                     ])
                     ->default('pending'),
             ])

@@ -64,9 +64,11 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
                     ->badge()
                     ->formatStateUsing(fn($state) => ucfirst($state))
                     ->color(fn(string $state) => match ($state) {
-                        'pending' => 'warning',
-                        'approved' => 'success',
-                        'rejected' => 'danger',
+                        'pending'   => 'warning',
+                        'approved'  => 'success',
+                        'rejected'  => 'danger',
+                        'cancelled' => 'gray',
+                        default     => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('reviewedBy.name')
                     ->label('Reviewed By')
@@ -75,9 +77,10 @@ class FeeAdjustmentApprovals extends Page implements HasForms, HasTable
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'pending' => 'Pending',
-                        'approved' => 'Approved',
-                        'rejected' => 'Rejected',
+                        'pending'   => 'Pending',
+                        'approved'  => 'Approved',
+                        'rejected'  => 'Rejected',
+                        'cancelled' => 'Cancelled',
                     ])
                     ->default('pending'),
             ])

@@ -16,10 +16,40 @@ class CreateAccount extends CreateRecord
     protected static string $resource = AccountResource::class;
 
     protected array $servicesData = [];
+    public bool $confirmedExpired = false;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->servicesData = $data['services'] ?? [];
+
+        // Check if expiration_date is in the past
+        if (! $this->confirmedExpired && ! empty($data['expiration_date'])) {
+            if (Carbon::parse($data['expiration_date'])->lt(today())) {
+                $this->confirmedExpired = false;
+
+                Notification::make()
+                    ->title('Account is Already Expired')
+                    ->body('The expiration date you entered is in the past. This account will be marked as expired. Do you still want to proceed?')
+                    ->warning()
+                    ->persistent()
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('confirm')
+                            ->label('Yes, Add Anyway')
+                            ->button()
+                            ->color('warning')
+                            ->dispatch('confirmExpiredAccount'),
+                        \Filament\Notifications\Actions\Action::make('cancel')
+                            ->label('Cancel')
+                            ->color('gray')
+                            ->close(),
+                    ])
+                    ->send();
+
+                throw new Halt();
+            }
+        }
+
+        $this->confirmedExpired = false;
 
         if (isset($data['mbl_type']) && $data['mbl_type'] === 'Fixed' && isset($data['mbl_amount'])) {
             $data['mbl_balance'] = $data['mbl_amount'];
@@ -30,6 +60,13 @@ class CreateAccount extends CreateRecord
         $data['created_by'] = auth()->id();
 
         return $data;
+    }
+
+    #[\Livewire\Attributes\On('confirmExpiredAccount')]
+    public function confirmExpiredAccount(): void
+    {
+        $this->confirmedExpired = true;
+        $this->create();
     }
 
     protected function afterCreate(): void

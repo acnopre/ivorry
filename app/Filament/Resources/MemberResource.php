@@ -272,21 +272,18 @@ class MemberResource extends Resource
                             ->label('Effective Date')
                             ->reactive()
                             ->native(false)
-                            ->minDate(today())
                             ->afterStateUpdated(function ($state, callable $set) {
                                 if ($state) {
-                                    $expiration = \Carbon\Carbon::parse($state)->addYear()->subDay();
-                                    if ($expiration->lt(today())) {
-                                        $expiration = \Carbon\Carbon::today();
-                                    }
-                                    $set('expiration_date', $expiration->format('Y-m-d'));
+                                    $set(
+                                        'expiration_date',
+                                        \Carbon\Carbon::parse($state)->addYear()->subDay()->format('Y-m-d')
+                                    );
                                 }
                             }),
 
                         DatePicker::make('expiration_date')
                             ->label('Valid Until')
-                            ->native(false)
-                            ->minDate(today()),
+                            ->native(false),
                     ])
                     ->columns(2)
                     ->visible(

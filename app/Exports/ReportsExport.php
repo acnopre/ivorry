@@ -53,11 +53,11 @@ class ReportsExport extends DefaultValueBinder implements FromQuery, WithHeading
     public function headings(): array
     {
         return match ($this->type) {
-            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Number', 'Gender', 'Status', 'Source', 'Account Effective Date', 'Account Expiration Date', 'Inactive Date', 'Date Added'],
+            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Number', 'Gender', 'Status', 'Source', 'Account Effective Date', 'Account Valid Until', 'Inactive Date', 'Date Added'],
             'dentists' => ['Clinic Name', 'Dentist Name', 'Specialization', 'Status', 'Date Added'],
             'clinics' => ['Clinic Name', 'Registered Name', 'Address', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
             'procedures' => ['Availment Date', 'Member Name', 'Account', 'HIP', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Approval Code', 'Status', 'Date Added'],
-            'accounts' => ['Account Name', 'Policy Code', 'HIP', 'Effective Date', 'Expiration Date', 'Plan Type', 'Coverage Period Type', 'Account Status', 'Date Created'],
+            'accounts' => ['Account Name', 'Policy Code', 'HIP', 'Effective Date', 'Valid Until Date', 'Plan Type', 'Coverage Period Type', 'Account Status', 'Date Created'],
             default => [],
         };
     }

@@ -31,7 +31,7 @@
             </div>
 
             <div>
-                <p class="font-semibold text-gray-700 dark:text-gray-300">Expiration Date</p>
+                <p class="font-semibold text-gray-700 dark:text-gray-300">Valid Until Date</p>
                 <p class="text-gray-900 dark:text-white">
                     {{ $account->expiration_date?->format('M d, Y') ?? 'N/A' }}
                 </p>
@@ -93,23 +93,23 @@
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ $ms->service->name ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             @php
-                                $typeColor = match(strtolower($ms->service->type ?? '')) {
-                                    'basic' => 'success',
-                                    'enhancement' => 'info',
-                                    'special' => 'warning',
-                                    default => 'gray',
-                                };
+                            $typeColor = match(strtolower($ms->service->type ?? '')) {
+                            'basic' => 'success',
+                            'enhancement' => 'info',
+                            'special' => 'warning',
+                            default => 'gray',
+                            };
                             @endphp
                             <x-filament::badge :color="$typeColor" size="sm">{{ ucfirst($ms->service->type ?? '') }}</x-filament::badge>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $ms->service->unit_type ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap font-mono font-semibold">
                             @if($ms->is_unlimited)
-                                <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
+                            <x-filament::badge color="success" size="sm">Unlimited</x-filament::badge>
                             @elseif($ms->quantity == 0)
-                                <span class="text-danger-600 dark:text-danger-400">{{ $ms->quantity }}/{{ $ms->default_quantity }}</span>
+                            <span class="text-danger-600 dark:text-danger-400">{{ $ms->quantity }}/{{ $ms->default_quantity }}</span>
                             @else
-                                {{ $ms->quantity }}/{{ $ms->default_quantity }}
+                            {{ $ms->quantity }}/{{ $ms->default_quantity }}
                             @endif
                         </td>
                     </tr>
@@ -158,20 +158,20 @@
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ $procedure->dentist_name ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             @php
-                                $procColor = match($procedure->status) {
-                                    'pending'   => 'warning',
-                                    'signed'    => 'info',
-                                    'valid'     => 'success',
-                                    'invalid'   => 'danger',
-                                    'returned'  => 'gray',
-                                    'processed' => 'primary',
-                                    'cancelled' => 'danger',
-                                    default     => 'gray',
-                                };
-                                $procLabel = match($procedure->status) {
-                                    'invalid' => 'Rejected',
-                                    default   => ucfirst($procedure->status),
-                                };
+                            $procColor = match($procedure->status) {
+                            'pending' => 'warning',
+                            'signed' => 'info',
+                            'valid' => 'success',
+                            'invalid' => 'danger',
+                            'returned' => 'gray',
+                            'processed' => 'primary',
+                            'cancelled' => 'danger',
+                            default => 'gray',
+                            };
+                            $procLabel = match($procedure->status) {
+                            'invalid' => 'Rejected',
+                            default => ucfirst($procedure->status),
+                            };
                             @endphp
                             <x-filament::badge :color="$procColor" size="sm">{{ $procLabel }}</x-filament::badge>
                         </td>

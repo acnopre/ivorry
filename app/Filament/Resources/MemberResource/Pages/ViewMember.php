@@ -31,11 +31,12 @@ class ViewMember extends ViewRecord
                                         'inactive' => 'danger',
                                         default    => 'gray',
                                     })
-                                    ->helperText(fn($record) =>
+                                    ->helperText(
+                                        fn($record) =>
                                         $record->renewal_id
                                             ? '🔄 Staged for renewal — will activate on ' . \Carbon\Carbon::parse(
                                                 \App\Models\AccountRenewal::find($record->renewal_id)?->effective_date
-                                              )->format('M d, Y')
+                                            )->format('M d, Y')
                                             : null
                                     ),
                             ]),
@@ -63,7 +64,7 @@ class ViewMember extends ViewRecord
                         Grid::make(3)
                             ->schema([
                                 TextEntry::make('account.effective_date')->date()->label('Account Effective Date'),
-                                TextEntry::make('account.expiration_date')->date()->label('Account Expiration Date'),
+                                TextEntry::make('account.expiration_date')->date()->label('Account Valid Until'),
                                 TextEntry::make('account.account_status')
                                     ->label('Account Status')
                                     ->badge()
@@ -74,7 +75,8 @@ class ViewMember extends ViewRecord
                                         'inactive' => 'warning',
                                         default    => 'gray',
                                     })
-                                    ->helperText(fn($record) =>
+                                    ->helperText(
+                                        fn($record) =>
                                         $record->account?->renewals()
                                             ->where('status', 'APPROVED_PENDING_EFFECTIVE')
                                             ->exists()
@@ -82,7 +84,7 @@ class ViewMember extends ViewRecord
                                                 $record->account->renewals()
                                                     ->where('status', 'APPROVED_PENDING_EFFECTIVE')
                                                     ->value('effective_date')
-                                              )->format('M d, Y')
+                                            )->format('M d, Y')
                                             : null
                                     ),
                             ]),

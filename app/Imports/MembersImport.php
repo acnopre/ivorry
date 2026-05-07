@@ -417,9 +417,11 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'This account only allows DEPENDENT members. PRINCIPAL is not allowed.';
         }
 
-        if (strtoupper($account->plan_type) === 'SHARED'
+        if (
+            strtoupper($account->plan_type) === 'SHARED'
             && ($account->coverage_type ?? 'DEFAULT') === 'DEFAULT'
-            && strtoupper($row['member_type']) === 'PRINCIPAL') {
+            && strtoupper($row['member_type']) === 'PRINCIPAL'
+        ) {
             $existingPrincipal = Member::withTrashed()
                 ->where('account_id', $account->id)
                 ->where('member_type', 'PRINCIPAL')
@@ -427,15 +429,19 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 ->whereNull('deleted_at')
                 ->first();
 
-            if ($existingPrincipal &&
-                !($existingPrincipal->first_name === $row['first_name'] && $existingPrincipal->last_name === $row['last_name'])) {
+            if (
+                $existingPrincipal &&
+                !($existingPrincipal->first_name === $row['first_name'] && $existingPrincipal->last_name === $row['last_name'])
+            ) {
                 return 'Card number ' . $row['card_number'] . ' already has a PRINCIPAL: ' . $existingPrincipal->first_name . ' ' . $existingPrincipal->last_name;
             }
         }
 
-        if (strtoupper($row['member_type']) === 'DEPENDENT'
+        if (
+            strtoupper($row['member_type']) === 'DEPENDENT'
             && ($account->coverage_type ?? 'DEFAULT') === 'DEFAULT'
-            && !Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()) {
+            && !Member::withTrashed()->where('account_id', $account->id)->where('member_type', 'PRINCIPAL')->exists()
+        ) {
             return 'Cannot add DEPENDENT member without a PRINCIPAL member in the account';
         }
 
@@ -464,7 +470,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
         $changes = [];
         $compare = ["card_number", "member_type", "status", "inactive_date", "effective_date", "expiration_date", "birthdate", "gender", "email", "phone", "middle_name", "suffix"];
         $dateFields = ["birthdate", "inactive_date", "effective_date", "expiration_date"];
-        $labels = ["card_number" => "Card Number", "member_type" => "Member Type", "status" => "Status", "inactive_date" => "Inactive Date", "effective_date" => "Effective Date", "expiration_date" => "Expiration Date", "birthdate" => "Birthdate", "gender" => "Gender", "email" => "Email", "phone" => "Phone", "middle_name" => "Middle Name", "suffix" => "Suffix"];
+        $labels = ["card_number" => "Card Number", "member_type" => "Member Type", "status" => "Status", "inactive_date" => "Inactive Date", "effective_date" => "Effective Date", "expiration_date" => "Valid Until", "birthdate" => "Birthdate", "gender" => "Gender", "email" => "Email", "phone" => "Phone", "middle_name" => "Middle Name", "suffix" => "Suffix"];
         foreach ($compare as $field) {
             $oldVal = (string) ($old[$field] ?? "");
             $newVal = (string) ($new[$field] ?? "");

@@ -1,49 +1,47 @@
 @php
 $amendments = \App\Models\AccountAmendment::where('account_id', $record->id)
-    ->where('endorsement_status', 'APPROVED')
-    ->with(['services.service', 'requestedBy', 'approvedBy', 'hip', 'oldHip'])
-    ->orderByDesc('created_at')
-    ->get();
+->where('endorsement_status', 'APPROVED')
+->with(['services.service', 'requestedBy', 'approvedBy', 'hip', 'oldHip'])
+->orderByDesc('created_at')
+->get();
 @endphp
 
 <div class="space-y-4 py-2">
     @forelse($amendments as $amendment)
     @php
-        $fields = [
-            'Company Name'    => [$amendment->old_company_name, $amendment->company_name],
-            'Policy Code'     => [$amendment->old_policy_code, $amendment->policy_code],
-            'HIP'             => [$amendment->oldHip?->name, $amendment->hip?->name],
-            'Card Used'       => [$amendment->old_card_used, $amendment->card_used],
-            'Plan Type'       => [$amendment->old_plan_type, $amendment->plan_type ?? $record->plan_type],
-            'Coverage Type'   => [$amendment->old_coverage_type, $amendment->coverage_type ?? $record->coverage_type],
-            'Coverage Period' => [$amendment->old_coverage_period_type, $amendment->coverage_period_type],
-            'MBL Type'        => [$amendment->old_mbl_type, $amendment->mbl_type],
-            'MBL Amount'      => [
-                $amendment->old_mbl_amount ? '₱'.number_format($amendment->old_mbl_amount, 2) : null,
-                $amendment->mbl_amount ? '₱'.number_format($amendment->mbl_amount, 2) : null,
-            ],
-            'Effective Date'  => [
-                $amendment->old_effective_date ? \Carbon\Carbon::parse($amendment->old_effective_date)->format('M d, Y') : null,
-                $amendment->effective_date ? \Carbon\Carbon::parse($amendment->effective_date)->format('M d, Y') : null,
-            ],
-            'Expiration Date' => [
-                $amendment->old_expiration_date ? \Carbon\Carbon::parse($amendment->old_expiration_date)->format('M d, Y') : null,
-                $amendment->expiration_date ? \Carbon\Carbon::parse($amendment->expiration_date)->format('M d, Y') : null,
-            ],
-        ];
-        $changedFields   = collect($fields)->filter(fn($v) => ($v[0] !== null || $v[1] !== null) && (string)$v[0] !== (string)$v[1]);
-        $unchangedFields = collect($fields)->filter(fn($v) => ($v[0] !== null || $v[1] !== null) && (string)$v[0] === (string)$v[1]);
-        $changedServices = $amendment->services->filter(fn($s) =>
-            (string)$s->old_quantity !== (string)$s->quantity || (bool)$s->old_is_unlimited !== (bool)$s->is_unlimited
-        );
+    $fields = [
+    'Company Name' => [$amendment->old_company_name, $amendment->company_name],
+    'Policy Code' => [$amendment->old_policy_code, $amendment->policy_code],
+    'HIP' => [$amendment->oldHip?->name, $amendment->hip?->name],
+    'Card Used' => [$amendment->old_card_used, $amendment->card_used],
+    'Plan Type' => [$amendment->old_plan_type, $amendment->plan_type ?? $record->plan_type],
+    'Coverage Type' => [$amendment->old_coverage_type, $amendment->coverage_type ?? $record->coverage_type],
+    'Coverage Period' => [$amendment->old_coverage_period_type, $amendment->coverage_period_type],
+    'MBL Type' => [$amendment->old_mbl_type, $amendment->mbl_type],
+    'MBL Amount' => [
+    $amendment->old_mbl_amount ? '₱'.number_format($amendment->old_mbl_amount, 2) : null,
+    $amendment->mbl_amount ? '₱'.number_format($amendment->mbl_amount, 2) : null,
+    ],
+    'Effective Date' => [
+    $amendment->old_effective_date ? \Carbon\Carbon::parse($amendment->old_effective_date)->format('M d, Y') : null,
+    $amendment->effective_date ? \Carbon\Carbon::parse($amendment->effective_date)->format('M d, Y') : null,
+    ],
+    'Valid Until Date' => [
+    $amendment->old_expiration_date ? \Carbon\Carbon::parse($amendment->old_expiration_date)->format('M d, Y') : null,
+    $amendment->expiration_date ? \Carbon\Carbon::parse($amendment->expiration_date)->format('M d, Y') : null,
+    ],
+    ];
+    $changedFields = collect($fields)->filter(fn($v) => ($v[0] !== null || $v[1] !== null) && (string)$v[0] !== (string)$v[1]);
+    $unchangedFields = collect($fields)->filter(fn($v) => ($v[0] !== null || $v[1] !== null) && (string)$v[0] === (string)$v[1]);
+    $changedServices = $amendment->services->filter(fn($s) =>
+    (string)$s->old_quantity !== (string)$s->quantity || (bool)$s->old_is_unlimited !== (bool)$s->is_unlimited
+    );
     @endphp
 
-    <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
-         x-data="{ open: false }">
+    <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900 shadow-sm overflow-hidden" x-data="{ open: false }">
 
         {{-- Header --}}
-        <button type="button" @click="open = !open"
-            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+        <button type="button" @click="open = !open" class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
             <div class="flex items-center gap-3 min-w-0 flex-1">
                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40">
                     <x-heroicon-s-pencil-square class="h-4 w-4 text-primary-600 dark:text-primary-400" />
@@ -152,8 +150,8 @@ $amendments = \App\Models\AccountAmendment::where('account_id', $record->id)
                             <tbody class="divide-y divide-gray-100 dark:divide-white/5 bg-white dark:bg-gray-900">
                                 @foreach($amendment->services as $svc)
                                 @php
-                                    $svcChanged = (string)$svc->old_quantity !== (string)$svc->quantity
-                                        || (bool)$svc->old_is_unlimited !== (bool)$svc->is_unlimited;
+                                $svcChanged = (string)$svc->old_quantity !== (string)$svc->quantity
+                                || (bool)$svc->old_is_unlimited !== (bool)$svc->is_unlimited;
                                 @endphp
                                 <tr class="{{ $svcChanged ? 'bg-warning-50 dark:bg-warning-900/10' : '' }}">
                                     <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
@@ -164,20 +162,20 @@ $amendments = \App\Models\AccountAmendment::where('account_id', $record->id)
                                     </td>
                                     <td class="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
                                         @if($svc->old_is_unlimited)
-                                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 dark:bg-gray-700">Unlimited</span>
+                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 dark:bg-gray-700">Unlimited</span>
                                         @elseif($svc->old_quantity !== null)
-                                            {{ $svc->old_quantity }}
+                                        {{ $svc->old_quantity }}
                                         @else
-                                            <span class="text-gray-300 dark:text-gray-600">—</span>
+                                        <span class="text-gray-300 dark:text-gray-600">—</span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-center">
                                         @if($svc->is_unlimited)
-                                            <span class="inline-flex items-center rounded-full bg-success-100 px-2 py-0.5 font-semibold text-success-700 dark:bg-success-900/30 dark:text-success-400">Unlimited</span>
+                                        <span class="inline-flex items-center rounded-full bg-success-100 px-2 py-0.5 font-semibold text-success-700 dark:bg-success-900/30 dark:text-success-400">Unlimited</span>
                                         @else
-                                            <span class="font-semibold {{ $svcChanged ? 'text-warning-700 dark:text-warning-300' : 'text-gray-900 dark:text-white' }}">
-                                                {{ $svc->quantity ?? 0 }}
-                                            </span>
+                                        <span class="font-semibold {{ $svcChanged ? 'text-warning-700 dark:text-warning-300' : 'text-gray-900 dark:text-white' }}">
+                                            {{ $svc->quantity ?? 0 }}
+                                        </span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ $svc->remarks ?: '—' }}</td>

@@ -50,7 +50,7 @@ class ImportLogItemsRelationManager extends RelationManager
                     ->visible(fn() => $this->ownerRecord->import_type === 'account'),
 
                 Tables\Columns\TextColumn::make('raw_data.expiration_date')
-                    ->label('Expiration Date')
+                    ->label('Valid Until Date')
                     ->placeholder('—')
                     ->formatStateUsing(fn($state) => $state && is_numeric($state)
                         ? \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $state)->format('M d, Y')

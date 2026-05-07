@@ -1,12 +1,10 @@
 <div class="space-y-4 py-2">
     @forelse ($records as $index => $renewal)
 
-    <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
-         x-data="{ open: false }">
+    <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 bg-white dark:bg-gray-900 shadow-sm overflow-hidden" x-data="{ open: false }">
 
         {{-- Header --}}
-        <button type="button" @click="open = !open"
-            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+        <button type="button" @click="open = !open" class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
             <div class="flex items-center gap-3 min-w-0 flex-1">
                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40">
                     <x-heroicon-s-arrow-path class="h-4 w-4 text-primary-600 dark:text-primary-400" />
@@ -57,35 +55,35 @@
                         <div class="rounded-lg px-4 py-3 {{ $renewal['old_effective'] ? 'bg-gray-50 dark:bg-white/5' : 'bg-gray-50 dark:bg-white/5' }}">
                             <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1.5">Effective Date</p>
                             @if($renewal['old_effective'] && $renewal['old_effective'] !== $renewal['new_effective'])
-                                <div class="flex flex-col gap-1">
-                                    <div class="flex items-center gap-2">
-                                        <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400">Before</span>
-                                        <span class="text-xs text-gray-400 dark:text-gray-500 line-through">{{ $renewal['old_effective'] }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">After</span>
-                                        <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">{{ $renewal['new_effective'] ?? '—' }}</span>
-                                    </div>
+                            <div class="flex flex-col gap-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400">Before</span>
+                                    <span class="text-xs text-gray-400 dark:text-gray-500 line-through">{{ $renewal['old_effective'] }}</span>
                                 </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">After</span>
+                                    <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">{{ $renewal['new_effective'] ?? '—' }}</span>
+                                </div>
+                            </div>
                             @else
-                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $renewal['new_effective'] ?? '—' }}</p>
+                            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $renewal['new_effective'] ?? '—' }}</p>
                             @endif
                         </div>
                         <div class="rounded-lg px-4 py-3 bg-gray-50 dark:bg-white/5">
-                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1.5">Expiration Date</p>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1.5">Valid Until</p>
                             @if($renewal['old_expiration'] && $renewal['old_expiration'] !== $renewal['new_expiration'])
-                                <div class="flex flex-col gap-1">
-                                    <div class="flex items-center gap-2">
-                                        <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400">Before</span>
-                                        <span class="text-xs text-gray-400 dark:text-gray-500 line-through">{{ $renewal['old_expiration'] }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">After</span>
-                                        <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">{{ $renewal['new_expiration'] ?? '—' }}</span>
-                                    </div>
+                            <div class="flex flex-col gap-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400">Before</span>
+                                    <span class="text-xs text-gray-400 dark:text-gray-500 line-through">{{ $renewal['old_expiration'] }}</span>
                                 </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">After</span>
+                                    <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">{{ $renewal['new_expiration'] ?? '—' }}</span>
+                                </div>
+                            </div>
                             @else
-                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $renewal['new_expiration'] ?? '—' }}</p>
+                            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $renewal['new_expiration'] ?? '—' }}</p>
                             @endif
                         </div>
                     </div>
@@ -113,9 +111,9 @@
                                     <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ $item['service_name'] }}</td>
                                     <td class="px-4 py-3 text-center">
                                         @if($item['is_unlimited'] ?? false)
-                                            <span class="inline-flex items-center rounded-full bg-success-100 px-2 py-0.5 font-semibold text-success-700 dark:bg-success-900/30 dark:text-success-400">Unlimited</span>
+                                        <span class="inline-flex items-center rounded-full bg-success-100 px-2 py-0.5 font-semibold text-success-700 dark:bg-success-900/30 dark:text-success-400">Unlimited</span>
                                         @else
-                                            <span class="font-semibold text-primary-600 dark:text-primary-400">{{ $item['quantity'] ?? '—' }}</span>
+                                        <span class="font-semibold text-primary-600 dark:text-primary-400">{{ $item['quantity'] ?? '—' }}</span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-500 dark:text-gray-400 italic">{{ $item['remarks'] ?? '—' }}</td>

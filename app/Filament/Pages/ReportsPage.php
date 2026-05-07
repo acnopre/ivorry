@@ -707,7 +707,7 @@ class ReportsPage extends Page implements HasForms, HasTable
                     ->date('M d, Y'),
 
                 Tables\Columns\TextColumn::make('account.expiration_date')
-                    ->label('Account Expiration Date')
+                    ->label('Account Valid Until Date')
                     ->date('M d, Y'),
 
                 Tables\Columns\TextColumn::make('inactive_date')

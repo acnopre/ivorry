@@ -165,9 +165,10 @@ class MemberResource extends Resource
                             TextInput::make('principal_phone')->label('Phone')->tel(),
                         ]),
                     ])
-                    ->visible(fn(callable $get) =>
+                    ->visible(
+                        fn(callable $get) =>
                         static::getAccountPlanType($get('account_id')) === 'SHARED'
-                        && static::getAccountCoverageType($get('account_id')) === 'DEFAULT'
+                            && static::getAccountCoverageType($get('account_id')) === 'DEFAULT'
                     ),
 
                 // === SHARED DEFAULT: Dependents ===
@@ -192,9 +193,10 @@ class MemberResource extends Resource
                             ->itemLabel(fn(array $state) => ($state['first_name'] ?? '') . ' ' . ($state['last_name'] ?? '') ?: 'New Dependent')
                             ->addActionLabel('Add Dependent'),
                     ])
-                    ->visible(fn(callable $get) =>
+                    ->visible(
+                        fn(callable $get) =>
                         static::getAccountPlanType($get('account_id')) === 'SHARED'
-                        && static::getAccountCoverageType($get('account_id')) === 'DEFAULT'
+                            && static::getAccountCoverageType($get('account_id')) === 'DEFAULT'
                     ),
 
                 // === SHARED ALL_PRINCIPAL: Multiple Principals ===
@@ -220,9 +222,10 @@ class MemberResource extends Resource
                             ->itemLabel(fn(array $state) => ($state['first_name'] ?? '') . ' ' . ($state['last_name'] ?? '') ?: 'New Principal')
                             ->addActionLabel('Add Principal'),
                     ])
-                    ->visible(fn(callable $get) =>
+                    ->visible(
+                        fn(callable $get) =>
                         static::getAccountPlanType($get('account_id')) === 'SHARED'
-                        && static::getAccountCoverageType($get('account_id')) === 'ALL_PRINCIPAL'
+                            && static::getAccountCoverageType($get('account_id')) === 'ALL_PRINCIPAL'
                     ),
 
                 // === SHARED ALL_DEPENDENT: Multiple Dependents ===
@@ -248,9 +251,10 @@ class MemberResource extends Resource
                             ->itemLabel(fn(array $state) => ($state['first_name'] ?? '') . ' ' . ($state['last_name'] ?? '') ?: 'New Dependent')
                             ->addActionLabel('Add Dependent'),
                     ])
-                    ->visible(fn(callable $get) =>
+                    ->visible(
+                        fn(callable $get) =>
                         static::getAccountPlanType($get('account_id')) === 'SHARED'
-                        && static::getAccountCoverageType($get('account_id')) === 'ALL_DEPENDENT'
+                            && static::getAccountCoverageType($get('account_id')) === 'ALL_DEPENDENT'
                     ),
 
                 // === Contact Details (INDIVIDUAL only) ===
@@ -278,7 +282,7 @@ class MemberResource extends Resource
                             }),
 
                         DatePicker::make('expiration_date')
-                            ->label('Expiration Date')
+                            ->label('Valid Until')
                             ->native(false),
                     ])
                     ->columns(2)

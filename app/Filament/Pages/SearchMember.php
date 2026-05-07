@@ -460,14 +460,14 @@ class SearchMember extends Page implements HasActions
         if ($account) {
             $clinicQuery->where(function ($q) use ($account) {
                 $q->whereNotIn('accreditation_status', ['SPECIFIC ACCOUNT', 'SPECIFIC HIP'])
-                  ->orWhere(function ($q2) use ($account) {
-                      $q2->where('accreditation_status', 'SPECIFIC ACCOUNT')
-                         ->where('account_id', $account->id);
-                  })
-                  ->orWhere(function ($q2) use ($account) {
-                      $q2->where('accreditation_status', 'SPECIFIC HIP')
-                         ->where('hip_id', $account->hip_id);
-                  });
+                    ->orWhere(function ($q2) use ($account) {
+                        $q2->where('accreditation_status', 'SPECIFIC ACCOUNT')
+                            ->where('account_id', $account->id);
+                    })
+                    ->orWhere(function ($q2) use ($account) {
+                        $q2->where('accreditation_status', 'SPECIFIC HIP')
+                            ->where('hip_id', $account->hip_id);
+                    });
             });
         }
 
@@ -704,8 +704,6 @@ class SearchMember extends Page implements HasActions
         return Forms\Components\DatePicker::make('availment_date')
             ->label('Availment Date')
             ->default(now())
-            ->minDate($isCSR ? now()->subDays(3) : '2026-02-26')
-            ->maxDate($isCSR ? now()->addDays(5) : now())
             ->disabled(!$isCSR)
             ->dehydrated()
             ->required();

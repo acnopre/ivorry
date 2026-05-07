@@ -31,7 +31,16 @@ class DependentMemberResource extends Resource
                 Forms\Components\TextInput::make('last_name')->required(),
                 Forms\Components\TextInput::make('middle_name'),
                 Forms\Components\TextInput::make('suffix'),
-                Forms\Components\TextInput::make('card_number')->required(),
+                Forms\Components\TextInput::make('card_number')
+                    ->required()
+                    ->unique(
+                        table: 'members',
+                        column: 'card_number',
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn($rule) => $rule
+                            ->whereNull('deleted_at')
+                            ->where('account_id', Auth::user()->member->account_id)
+                    ),
                 Forms\Components\DatePicker::make('birthdate'),
                 Forms\Components\Select::make('gender')
                     ->options(['Male' => 'Male', 'Female' => 'Female', 'Other' => 'Other']),

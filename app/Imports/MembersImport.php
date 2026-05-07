@@ -261,13 +261,16 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 MemberService::initializeForCard($member->card_number, $account->id);
 
                 if (strtoupper($row['status'] ?? 'ACTIVE') === 'ACTIVE' || $pendingRenewal) {
-                    $user = User::create([
-                        'name'     => $row['first_name'] . ' ' . $row['last_name'],
-                        'email'    => $row['email'] ?? null,
-                        'password' => bcrypt('password'),
-                    ]);
+                    $user = !empty($row['email'])
+                        ? User::firstOrCreate(
+                            ['email' => $row['email']],
+                            ['name' => $row['first_name'] . ' ' . $row['last_name'], 'password' => bcrypt('password')]
+                          )
+                        : User::create(['name' => $row['first_name'] . ' ' . $row['last_name'], 'email' => null, 'password' => bcrypt('password')]);
 
-                    $user->assignRole('Member');
+                    if (!$user->hasRole('Member')) {
+                        $user->assignRole('Member');
+                    }
                     $member->update(['user_id' => $user->id]);
                 }
             }
@@ -348,6 +351,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             }
 
             $cardTaken = Member::withTrashed()
+                ->where('account_id', $account->id)
                 ->where('card_number', $row['card_number'])
                 ->where('id', '!=', $targetMember->id)
                 ->exists();
@@ -356,11 +360,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                 return "New card_number '{$row['card_number']}' is already assigned to another member";
             }
         } else {
-            // Block if card_number belongs to a different account
-            $existingMember = Member::withTrashed()->where('card_number', $row['card_number'])->first();
-            if ($existingMember && $existingMember->account_id !== $account->id) {
-                return 'Card number already exists in a different account';
-            }
+            // Allow same card_number across different accounts — scoped by account_id
         }
 
         if (!empty($row['gender']) && !in_array(strtolower($row['gender']), ['male', 'female'])) {

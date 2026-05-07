@@ -45,11 +45,6 @@ class CreateMember extends CreateRecord
         }
         unset($data['use_coc_number']);
 
-        if (! empty($data['email']) && User::where('email', $data['email'])->exists()) {
-            Notification::make()->title('This email is already registered.')->danger()->send();
-            throw new Halt();
-        }
-
         $user = static::createUserForMember($data['first_name'], $data['last_name'], $data['email'] ?? null);
         $data['user_id'] = $user->id;
 
@@ -83,10 +78,7 @@ class CreateMember extends CreateRecord
             return;
         }
 
-        $existsOther = Member::where('card_number', $cardNumber)
-            ->where('account_id', '!=', $account->id)
-            ->whereNull('deleted_at')
-            ->exists();
+        $existsOther = false;
         if ($existsOther) {
             Notification::make()->title('Card number already exists in a different account.')->danger()->send();
             return;
@@ -225,6 +217,13 @@ class CreateMember extends CreateRecord
 
     public static function createUserForMember(string $firstName, string $lastName, ?string $email): User
     {
+        if ($email && ($existing = User::where('email', $email)->first())) {
+            if (!$existing->hasRole('Member')) {
+                $existing->assignRole('Member');
+            }
+            return $existing;
+        }
+
         $plainPassword = Str::random(12);
         $user = User::create([
             'name'     => "{$firstName} {$lastName}",

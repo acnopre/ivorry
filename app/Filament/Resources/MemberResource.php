@@ -62,7 +62,9 @@ class MemberResource extends Resource
                                         table: 'members',
                                         column: 'card_number',
                                         ignoreRecord: true,
-                                        modifyRuleUsing: fn($rule) => $rule->whereNull('deleted_at')
+                                        modifyRuleUsing: fn($rule, callable $get) => $rule
+                                            ->whereNull('deleted_at')
+                                            ->where('account_id', $get('account_id'))
                                     ),
 
                                 TextInput::make('coc_number')
@@ -146,7 +148,16 @@ class MemberResource extends Resource
                             ->required(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED')
                             ->rule('alpha_num')
                             ->validationMessages(['alpha_num' => 'Card number must be alphanumeric only. No spaces or special characters allowed.'])
-                            ->extraInputAttributes(['oninput' => 'this.value = this.value.replace(/[^a-zA-Z0-9]/g, "")']),
+                            ->extraInputAttributes(['oninput' => 'this.value = this.value.replace(/[^a-zA-Z0-9]/g, "")'])
+                            ->unique(
+                                table: 'members',
+                                column: 'card_number',
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn($rule, callable $get) => $rule
+                                    ->whereNull('deleted_at')
+                                    ->where('account_id', $get('account_id'))
+                                    ->where('member_type', 'PRINCIPAL')
+                            ),
                     ])
                     ->visible(fn(callable $get) => static::getAccountPlanType($get('account_id')) === 'SHARED'),
 

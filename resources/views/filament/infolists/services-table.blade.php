@@ -8,7 +8,8 @@
     $services = \App\Models\MemberService::where('card_number', $member->card_number)
         ->where('account_id', $account->id)
         ->with('service')
-        ->get();
+        ->get()
+        ->filter(fn($ms) => $ms->is_unlimited || ($ms->default_quantity ?? 0) > 0);
 
     $accountServiceRemarks = \App\Models\AccountService::where('account_id', $account->id)
         ->pluck('remarks', 'service_id');

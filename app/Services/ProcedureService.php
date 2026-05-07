@@ -33,7 +33,10 @@ class ProcedureService
     {
         $today = now()->startOfDay();
 
-        if ($member->status !== 'ACTIVE' || $member->inactive_date !== null) {
+        if ($member->status !== 'ACTIVE') {
+            return 'Member is not active';
+        }
+        if ($member->inactive_date !== null && \Carbon\Carbon::parse($member->inactive_date)->startOfDay()->lte($today)) {
             return 'Member is not active';
         }
         if ($member->effective_date && $today->lt(\Carbon\Carbon::parse($member->effective_date)->startOfDay())) {

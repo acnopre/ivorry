@@ -214,7 +214,8 @@
                     @endif
 
                     {{-- ── Covered Services ── --}}
-                    @if($filteredServices->isNotEmpty())
+                    @php $displayServices = $filteredServices->filter(fn($ms) => $ms->is_unlimited || ($ms->quantity > 0 || $ms->default_quantity > 0)); @endphp
+                    @if($displayServices->isNotEmpty())
                     <div class="rounded-xl ring-1 ring-gray-950/5 dark:ring-white/10 overflow-hidden">
                         <div class="flex items-center gap-x-2 px-4 py-3 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
                             <x-heroicon-o-list-bullet class="w-4 h-4 text-primary-500" />
@@ -222,7 +223,7 @@
                             @if($isShared)
                             <x-filament::badge color="info" size="sm">Family</x-filament::badge>
                             @endif
-                            <span class="ml-auto text-xs text-gray-500 dark:text-gray-400">{{ $filteredServices->count() }} service(s)</span>
+                            <span class="ml-auto text-xs text-gray-500 dark:text-gray-400">{{ $displayServices->count() }} service(s)</span>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-xs divide-y divide-gray-100 dark:divide-gray-700">
@@ -235,7 +236,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
-                                    @foreach($filteredServices as $item)
+                                    @foreach($displayServices as $item)
                                     @php
                                     $svc = $item->service;
                                     $qty = $item->quantity;

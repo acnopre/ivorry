@@ -455,11 +455,11 @@ class SearchMember extends Page implements HasActions
         $member  = $this->selectedMemberId ? Member::find($this->selectedMemberId) : null;
         $account = $member?->account;
 
-        $clinicQuery = Clinic::query();
+        $clinicQuery = Clinic::query()->whereIn('accreditation_status', ['ACTIVE', 'SILENT', 'SPECIFIC ACCOUNT', 'SPECIFIC HIP']);
 
         if ($account) {
             $clinicQuery->where(function ($q) use ($account) {
-                $q->whereNotIn('accreditation_status', ['SPECIFIC ACCOUNT', 'SPECIFIC HIP'])
+                $q->whereIn('accreditation_status', ['ACTIVE', 'SILENT'])
                     ->orWhere(function ($q2) use ($account) {
                         $q2->where('accreditation_status', 'SPECIFIC ACCOUNT')
                             ->where('account_id', $account->id);

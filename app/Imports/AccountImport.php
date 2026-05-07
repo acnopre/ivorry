@@ -371,6 +371,11 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Missing required fields: Company Name, Policy Code, HIP, Plan Type, and Coverage Type are all required';
         }
 
+        // Reject if company_name already exists (regardless of policy_code)
+        if (Account::where('company_name', $row['company_name'])->exists()) {
+            return "Company name '{$row['company_name']}' already exists. Duplicate company names are not allowed.";
+        }
+
         if (!in_array(strtoupper($row['plan_type']), ['INDIVIDUAL', 'SHARED'])) {
             return 'Invalid plan type. Accepted values are: INDIVIDUAL or SHARED';
         }

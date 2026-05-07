@@ -14,6 +14,29 @@ class AccountStatsWidget extends BaseWidget
         $q = Account::query();
 
         return [
+
+            Stat::make('Total Accounts', Account::count())
+                ->icon('heroicon-o-building-office-2')
+                ->color('primary')
+                ->description('All accounts')
+                ->url(AccountResource::getUrl('index')),
+
+            Stat::make('Active Accounts', Account::where('account_status', 'active')->count())
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->description('Currently active')
+                ->url(AccountResource::getUrl('index') . '?' . http_build_query([
+                    'tableFilters[account_status][values][0]' => 'active',
+                ])),
+
+            Stat::make('Expired Accounts', Account::where('account_status', 'expired')->count())
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->description('Expired accounts')
+                ->url(AccountResource::getUrl('index') . '?' . http_build_query([
+                    'tableFilters[account_status][values][0]' => 'expired',
+                ])),
+
             Stat::make('New Accounts Today', Account::whereDate('created_at', today())->count())
                 ->icon('heroicon-o-sparkles')
                 ->color('success')

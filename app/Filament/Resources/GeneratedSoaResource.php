@@ -217,7 +217,7 @@ class GeneratedSoaResource extends Resource
                             return;
                         }
 
-                        if (!$disk->exists($record->file_path)) {
+                        if (!$record->file_path || !$disk->exists($record->file_path)) {
                             Notification::make()->warning()->title('PDF not found')->body('Original ADC PDF file is missing.')->send();
                             return;
                         }
@@ -315,7 +315,7 @@ class GeneratedSoaResource extends Resource
                     ->button()
                     ->action(function (GeneratedSoa $record) {
                         $disk = Storage::disk('public');
-                        if (!$disk->exists($record->duplicate_file_path)) {
+                        if (!$record->duplicate_file_path || !$disk->exists($record->duplicate_file_path)) {
                             Notification::make()
                                 ->title('PDF file not found.')
                                 ->body('No PDF file was found.')

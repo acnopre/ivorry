@@ -597,8 +597,10 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->label('Generate Return')
                     ->color('warning')
                     ->icon('heroicon-o-check-badge')
-                    ->modalHeading('Generate Return Claims')
-                    ->modalSubmitActionLabel('Print Now')
+                    ->requiresConfirmation()
+                    ->modalHeading('Generate Return PDF')
+                    ->modalDescription('This will generate and download a Return PDF for the filtered claims.')
+                    ->modalSubmitActionLabel('Download')
                     ->visible(function () {
                         if (! $this->hasSearched) {
                             return false;
@@ -629,11 +631,6 @@ class SearchClaims extends Page implements HasForms, HasTable
                                 $q->whereHas('clinic', fn($r) => $r->where('id', '=', $clinic_id))
                             )
                             ->when(
-                                $searchData['status'] ?? null,
-                                fn(Builder $q, $status) =>
-                                $q->where('status', $status)
-                            )
-                            ->when(
                                 isset($searchData['availment_from'], $searchData['availment_to']),
                                 fn(Builder $q) =>
                                 $q->whereBetween('availment_date', [
@@ -644,36 +641,8 @@ class SearchClaims extends Page implements HasForms, HasTable
 
                         return $query->where('status', Procedure::STATUS_RETURN)->exists();
                     })
-                    ->form(function () {
-                        $printers = \App\Services\PrinterService::getAvailablePrinters();
-                        $default  = \App\Services\PrinterService::getPrinter();
-
-                        if (empty($printers)) {
-                            return [
-                                Forms\Components\TextInput::make('printer')
-                                    ->label('Printer Name')
-                                    ->placeholder('e.g. EPSON_L365_Series_8')
-                                    ->required()
-                                    ->helperText('No printers auto-detected. Enter the printer name manually.'),
-                            ];
-                        }
-
-                        return [
-                            Forms\Components\Select::make('printer')
-                                ->label('Select Printer')
-                                ->options(array_combine($printers, $printers))
-                                ->default($default)
-                                ->required()
-                                ->helperText('Choose the network printer to send this return claim to.'),
-                        ];
-                    })
-                    ->action(function (array $data) {
-                        if (empty($data['printer'])) {
-                            Notification::make()->warning()->title('No printer selected.')->send();
-                            return;
-                        }
-                        $this->selectedPrinter = $data['printer'];
-                        $this->generateClaims(Procedure::STATUS_RETURN);
+                    ->action(function () {
+                        return $this->downloadReturnPdf();
                     }),
             ])
             ->defaultSort('availment_date', 'desc')
@@ -772,6 +741,94 @@ class SearchClaims extends Page implements HasForms, HasTable
             'total_ewt'      => $claims->sum('ewt_amount'),
             'total_net'      => $claims->sum('net'),
         ];
+    }
+
+    public function downloadReturnPdf(): mixed
+    {
+        $data = $this->data;
+
+        $claims = Procedure::query()
+            ->with(['member', 'clinic', 'service', 'clinic.services'])
+            ->when($data['member_name'] ?? null, function ($q, $name) {
+                $q->whereHas('member', function ($sub) use ($name) {
+                    $sub->where('first_name', 'like', "%{$name}%")
+                        ->orWhere('last_name', 'like', "%{$name}%")
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                });
+            })
+            ->when($data['approval_code'] ?? null, fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%"))
+            ->when($data['clinic_id'] ?? null, fn($q, $id) => $q->where('clinic_id', $id))
+            ->when(isset($data['availment_from'], $data['availment_to']), fn($q) => $q->whereBetween('availment_date', [$data['availment_from'], $data['availment_to']]))
+            ->where('status', Procedure::STATUS_RETURN)
+            ->get()
+            ->map(function ($procedure) {
+                $serviceFee            = $procedure->applied_fee;
+                $vatRate               = $procedure->is_vat_exempt ? 0 : $this->parseVatType($procedure->clinic->vat_type ?? null);
+                $ewtRate               = $this->parsePercentage($procedure->clinic->withholding_tax ?? null);
+                $vatAmount             = $serviceFee * $vatRate;
+                $ewtAmount             = $serviceFee * $ewtRate;
+                $procedure->clinic_service_fee = $serviceFee;
+                $procedure->vat_rate           = $vatRate;
+                $procedure->vat_amount         = $vatAmount;
+                $procedure->ewt_rate           = $ewtRate;
+                $procedure->ewt_amount         = $ewtAmount;
+                $procedure->net                = round(($serviceFee + $vatAmount) - $ewtAmount, 2);
+                return $procedure;
+            });
+
+        if ($claims->isEmpty()) {
+            Notification::make()->warning()->title('No return claims found.')->send();
+            return null;
+        }
+
+        $clinicDetails  = Clinic::find($data['clinic_id']);
+        $dentist        = $clinicDetails->dentists->where('is_owner', 1)->first();
+        $preparedBy     = auth()->user()->name ?? 'System Generated';
+        $sequenceNumber = 'RET' . now()->format('YmdHis');
+
+        $totalClinicFee = $claims->sum('clinic_service_fee');
+        $totalVat       = $claims->sum('vat_amount');
+        $totalEwt       = $claims->sum('ewt_amount');
+        $totalNet       = $claims->sum('net');
+
+        $accounts = $claims->groupBy(fn($p) => $p->member->account_id)->map(fn($items) => [
+            'account_id'   => $items->first()->member->account->id,
+            'account_name' => $items->first()->member->account->company_name ?? 'Unknown Account',
+            'hip'          => $items->first()->member->account->hip?->name ?? 'Unknown HIP',
+            'total_rate'   => $items->sum('clinic_service_fee'),
+            'total_vat'    => $items->sum('vat_amount'),
+            'total_ewt'    => $items->sum('ewt_amount'),
+            'total_net'    => $items->sum('net'),
+        ]);
+
+        $pdf = Pdf::loadView('pdf.adc.return', [
+            'claims'         => $claims,
+            'from'           => $data['availment_from'],
+            'to'             => $data['availment_to'],
+            'clinicDetails'  => $clinicDetails,
+            'dentist'        => $dentist,
+            'soa'            => null,
+            'totalClinicFee' => $totalClinicFee,
+            'totalVat'       => $totalVat,
+            'totalEwt'       => $totalEwt,
+            'totalNet'       => $totalNet,
+            'accounts'       => $accounts,
+            'grandTotalRate' => $accounts->sum('total_rate'),
+            'grandTotalVat'  => $accounts->sum('total_vat'),
+            'grandTotalEwt'  => $accounts->sum('total_ewt'),
+            'grandTotalNet'  => $accounts->sum('total_net'),
+            'sequenceNumber' => $sequenceNumber,
+            'preparedBy'     => $preparedBy,
+            'copyLabel'      => 'RETURN',
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'RETURN_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            $filename,
+            ['Content-Type' => 'application/pdf']
+        );
     }
 
     public function generateClaims(string $status)
@@ -956,8 +1013,21 @@ class SearchClaims extends Page implements HasForms, HasTable
         $sequenceNumber = 'ADC' . str_pad($soa->id, 10, '0', STR_PAD_LEFT);
 
         // Views
-        $financeView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_finance' : null;
-        $dentistView = $status == Procedure::STATUS_VALID ? 'pdf.adc.adc_dentist' : null;
+        $financeView = match($status) {
+            Procedure::STATUS_VALID  => 'pdf.adc.adc_finance',
+            Procedure::STATUS_RETURN => 'pdf.adc.return',
+            default                  => null,
+        };
+        $dentistView = match($status) {
+            Procedure::STATUS_VALID  => 'pdf.adc.adc_dentist',
+            Procedure::STATUS_RETURN => 'pdf.adc.return',
+            default                  => null,
+        };
+
+        if (!$financeView || !$dentistView) {
+            Notification::make()->danger()->title('No PDF template for status: ' . $status)->send();
+            return;
+        }
 
         $this->dispatch('update-progress', status: 'Generating finance PDF...', progress: 88);
 

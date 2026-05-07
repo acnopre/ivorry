@@ -363,15 +363,16 @@ class ViewAccount extends ViewRecord
                         ->first();
 
                     $updateData = [
-                        'company_name' => $amendment->company_name,
-                        'policy_code' => $amendment->policy_code,
-                        'hip_id' => $amendment->hip_id,
-                        'card_used' => $amendment->card_used,
+                        'company_name'   => $amendment->company_name,
+                        'policy_code'    => $amendment->policy_code,
+                        'hip_id'         => $amendment->hip_id,
+                        'card_used'      => $amendment->card_used,
                         'effective_date' => $amendment->effective_date,
-                        'expiration_date' => $amendment->expiration_date,
-                        'endorsement_type' => 'AMENDED',
+                        'expiration_date'=> $amendment->expiration_date,
+                        'coverage_type'  => $amendment->coverage_type ?? $record->coverage_type,
+                        'endorsement_type'   => 'AMENDED',
                         'endorsement_status' => 'APPROVED',
-                        'account_status' => 'active'
+                        'account_status'     => 'active',
                     ];
 
                     // Update MBL if changed
@@ -940,6 +941,21 @@ class ViewAccount extends ViewRecord
                                                         'danger' => fn($state) => $state === 'expired',
                                                     ]),
 
+                                                TextEntry::make('coverage_type')
+                                                    ->label('Member Coverage')
+                                                    ->badge()
+                                                    ->colors([
+                                                        'gray'    => fn($state): bool => $state === 'DEFAULT',
+                                                        'success' => fn($state): bool => $state === 'ALL_PRINCIPAL',
+                                                        'warning' => fn($state): bool => $state === 'ALL_DEPENDENT',
+                                                    ])
+                                                    ->formatStateUsing(fn($state) => match ($state) {
+                                                        'ALL_PRINCIPAL' => 'All Principal',
+                                                        'ALL_DEPENDENT' => 'All Dependent',
+                                                        default         => 'Default',
+                                                    }),
+
+
                                                 TextEntry::make('effective_date')
                                                     ->label('Effective Date')
                                                     ->date('M d, Y')
@@ -956,19 +972,6 @@ class ViewAccount extends ViewRecord
                                                     ->label('Remarks')
                                                     ->visible(fn($record) => filled($record->remarks)),
 
-                                                TextEntry::make('coverage_type')
-                                                    ->label('Member Coverage')
-                                                    ->badge()
-                                                    ->colors([
-                                                        'gray'    => fn($state): bool => $state === 'DEFAULT',
-                                                        'success' => fn($state): bool => $state === 'ALL_PRINCIPAL',
-                                                        'warning' => fn($state): bool => $state === 'ALL_DEPENDENT',
-                                                    ])
-                                                    ->formatStateUsing(fn($state) => match ($state) {
-                                                        'ALL_PRINCIPAL' => 'All Principal',
-                                                        'ALL_DEPENDENT' => 'All Dependent',
-                                                        default         => 'Default',
-                                                    }),
 
                                             ]),
                                     ])

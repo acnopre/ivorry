@@ -121,7 +121,7 @@ class ViewMember extends ViewRecord
                         Grid::make(3)
                             ->schema([
                                 TextEntry::make('effective_date')->date()->placeholder('—'),
-                                TextEntry::make('expiration_date')->date()->placeholder('—'),
+                                TextEntry::make('expiration_date')->label('Valid Until Date')->date()->placeholder('—'),
                                 TextEntry::make('inactive_date')->date()->placeholder('—'),
                             ]),
                     ]),

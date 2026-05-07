@@ -37,6 +37,7 @@ class AccountAmendment extends Model
         'old_mbl_amount',
         'old_plan_type',
         'old_coverage_type',
+        'coverage_type',
     ];
 
     public function hip()

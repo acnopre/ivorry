@@ -167,6 +167,7 @@ class EditAccount extends EditRecord
                     'old_mbl_amount'           => $record->getOriginal('mbl_amount'),
                     'old_plan_type'            => $record->getOriginal('plan_type'),
                     'old_coverage_type'        => $record->getOriginal('coverage_type'),
+                    'coverage_type'            => $data['coverage_type'] ?? $record->getOriginal('coverage_type'),
                 ]);
 
                 $record->update([

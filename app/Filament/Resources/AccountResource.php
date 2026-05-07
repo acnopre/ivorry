@@ -119,7 +119,7 @@ class AccountResource extends Resource
                                 ->default('DEFAULT')
                                 ->required()
                                 ->visible(fn(Forms\Get $get) => in_array($get('plan_type'), ['INDIVIDUAL', 'SHARED']))
-                                ->disabled(! $isCreate),
+                                ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
                             Select::make('coverage_period_type')
                                 ->label('Coverage Period Type')

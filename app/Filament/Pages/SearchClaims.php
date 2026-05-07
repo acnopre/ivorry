@@ -42,6 +42,7 @@ class SearchClaims extends Page implements HasForms, HasTable
     public ?array $data = [];
     public bool $hasSearched = false;
     public bool $isResultHasValid = false;
+    public bool $isResultHasReject = false;
     public ?array $previewData = null;
     public ?string $selectedPrinter = null;
 
@@ -71,11 +72,20 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ->send();
 
             $this->hasSearched = false;
+            $this->isResultHasReject = false;
             return;
         }
 
         $this->data = $formData;
         $this->hasSearched = true;
+
+        $q = Procedure::query()
+            ->when($formData['member_name'] ?? null, fn($q, $name) => $q->whereHas('member', fn($r) => $r->where('first_name', 'like', "%{$name}%")->orWhere('last_name', 'like', "%{$name}%")->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"])))
+            ->when($formData['approval_code'] ?? null, fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%"))
+            ->when($formData['clinic_id'] ?? null, fn($q, $id) => $q->where('clinic_id', $id))
+            ->when(!empty($formData['availment_from']) && !empty($formData['availment_to']), fn($q) => $q->whereBetween('availment_date', [$formData['availment_from'], $formData['availment_to']]));
+
+        $this->isResultHasReject = (clone $q)->where('status', Procedure::STATUS_REJECT)->exists();
     }
 
     protected function getFormSchema(): array
@@ -199,7 +209,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                     )
                     ->latest();
                 $this->isResultHasValid = ! (clone $query)
-                    ->where('status', 'VALID')
+                    ->where('status', 'valid')
                     ->exists();
                 return $query;
             })
@@ -601,48 +611,22 @@ class SearchClaims extends Page implements HasForms, HasTable
                     ->modalHeading('Generate Return PDF')
                     ->modalDescription('This will generate and download a Return PDF for the filtered claims.')
                     ->modalSubmitActionLabel('Download')
-                    ->visible(function () {
-                        if (! $this->hasSearched) {
-                            return false;
-                        }
-
-                        $searchData = $this->data;
-
-                        $query = Procedure::query()
-                            ->when(
-                                $searchData['member_name'] ?? null,
-                                fn(Builder $q, $name) =>
-                                $q->whereHas('member', function ($r) use ($name) {
-                                    $r->where(function ($sub) use ($name) {
-                                        $sub->where('first_name', 'like', "%{$name}%")
-                                            ->orWhere('last_name', 'like', "%{$name}%")
-                                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
-                                    });
-                                })
-                            )
-                            ->when(
-                                $searchData['approval_code'] ?? null,
-                                fn(Builder $q, $code) =>
-                                $q->where('approval_code', 'like', "%{$code}%")
-                            )
-                            ->when(
-                                $searchData['clinic_id'] ?? null,
-                                fn(Builder $q, $clinic_id) =>
-                                $q->whereHas('clinic', fn($r) => $r->where('id', '=', $clinic_id))
-                            )
-                            ->when(
-                                isset($searchData['availment_from'], $searchData['availment_to']),
-                                fn(Builder $q) =>
-                                $q->whereBetween('availment_date', [
-                                    $searchData['availment_from'],
-                                    $searchData['availment_to'],
-                                ])
-                            );
-
-                        return $query->where('status', Procedure::STATUS_RETURN)->exists();
-                    })
+                    ->visible(fn() => $this->hasSearched && auth()->user()->can('claims.generate'))
                     ->action(function () {
                         return $this->downloadReturnPdf();
+                    }),
+
+                Tables\Actions\Action::make('generate_reject')
+                    ->label('Generate Reject')
+                    ->color('danger')
+                    ->icon('heroicon-o-x-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading('Generate Reject PDF')
+                    ->modalDescription('This will generate and download a Reject PDF for the filtered claims.')
+                    ->modalSubmitActionLabel('Download')
+                    ->visible(fn() => $this->isResultHasReject && auth()->user()->can('claims.generate'))
+                    ->action(function () {
+                        return $this->downloadRejectPdf();
                     }),
             ])
             ->defaultSort('availment_date', 'desc')
@@ -827,6 +811,92 @@ class SearchClaims extends Page implements HasForms, HasTable
         return response()->streamDownload(
             fn() => print($pdf->output()),
             $filename,
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    public function downloadRejectPdf(): mixed
+    {
+        $data = $this->data;
+
+        $claims = Procedure::query()
+            ->with(['member', 'clinic', 'service', 'clinic.services'])
+            ->when($data['member_name'] ?? null, function ($q, $name) {
+                $q->whereHas('member', function ($sub) use ($name) {
+                    $sub->where('first_name', 'like', "%{$name}%")
+                        ->orWhere('last_name', 'like', "%{$name}%")
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                });
+            })
+            ->when($data['approval_code'] ?? null, fn($q, $code) => $q->where('approval_code', 'like', "%{$code}%"))
+            ->when($data['clinic_id'] ?? null, fn($q, $id) => $q->where('clinic_id', $id))
+            ->when(isset($data['availment_from'], $data['availment_to']), fn($q) => $q->whereBetween('availment_date', [$data['availment_from'], $data['availment_to']]))
+            ->where('status', Procedure::STATUS_REJECT)
+            ->get()
+            ->map(function ($procedure) {
+                $serviceFee            = $procedure->applied_fee;
+                $vatRate               = $procedure->is_vat_exempt ? 0 : $this->parseVatType($procedure->clinic->vat_type ?? null);
+                $ewtRate               = $this->parsePercentage($procedure->clinic->withholding_tax ?? null);
+                $vatAmount             = $serviceFee * $vatRate;
+                $ewtAmount             = $serviceFee * $ewtRate;
+                $procedure->clinic_service_fee = $serviceFee;
+                $procedure->vat_rate           = $vatRate;
+                $procedure->vat_amount         = $vatAmount;
+                $procedure->ewt_rate           = $ewtRate;
+                $procedure->ewt_amount         = $ewtAmount;
+                $procedure->net                = round(($serviceFee + $vatAmount) - $ewtAmount, 2);
+                return $procedure;
+            });
+
+        if ($claims->isEmpty()) {
+            Notification::make()->warning()->title('No rejected claims found.')->send();
+            return null;
+        }
+
+        $clinicDetails  = Clinic::find($data['clinic_id']);
+        $dentist        = $clinicDetails->dentists->where('is_owner', 1)->first();
+        $preparedBy     = auth()->user()->name ?? 'System Generated';
+        $sequenceNumber = 'REJ' . now()->format('YmdHis');
+
+        $totalClinicFee = $claims->sum('clinic_service_fee');
+        $totalVat       = $claims->sum('vat_amount');
+        $totalEwt       = $claims->sum('ewt_amount');
+        $totalNet       = $claims->sum('net');
+
+        $accounts = $claims->groupBy(fn($p) => $p->member->account_id)->map(fn($items) => [
+            'account_id'   => $items->first()->member->account->id,
+            'account_name' => $items->first()->member->account->company_name ?? 'Unknown Account',
+            'hip'          => $items->first()->member->account->hip?->name ?? 'Unknown HIP',
+            'total_rate'   => $items->sum('clinic_service_fee'),
+            'total_vat'    => $items->sum('vat_amount'),
+            'total_ewt'    => $items->sum('ewt_amount'),
+            'total_net'    => $items->sum('net'),
+        ]);
+
+        $pdf = Pdf::loadView('pdf.adc.reject', [
+            'claims'         => $claims,
+            'from'           => $data['availment_from'],
+            'to'             => $data['availment_to'],
+            'clinicDetails'  => $clinicDetails,
+            'dentist'        => $dentist,
+            'soa'            => null,
+            'totalClinicFee' => $totalClinicFee,
+            'totalVat'       => $totalVat,
+            'totalEwt'       => $totalEwt,
+            'totalNet'       => $totalNet,
+            'accounts'       => $accounts,
+            'grandTotalRate' => $accounts->sum('total_rate'),
+            'grandTotalVat'  => $accounts->sum('total_vat'),
+            'grandTotalEwt'  => $accounts->sum('total_ewt'),
+            'grandTotalNet'  => $accounts->sum('total_net'),
+            'sequenceNumber' => $sequenceNumber,
+            'preparedBy'     => $preparedBy,
+            'copyLabel'      => 'REJECTED',
+        ])->setPaper('a4', 'landscape');
+
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            'REJECT_' . now()->format('Y-m-d_His') . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }

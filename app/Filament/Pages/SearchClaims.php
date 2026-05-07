@@ -278,6 +278,9 @@ class SearchClaims extends Page implements HasForms, HasTable
                         if ($record->hasPendingAvailmentDateEdit()) {
                             $tags[] = 'Availment Date Edit';
                         }
+                        if ($record->hasPendingStatusEdit()) {
+                            $tags[] = 'Status Edit';
+                        }
                         return ! empty($tags) ? implode(', ', $tags) : null;
                     })
                     ->badge()
@@ -286,6 +289,64 @@ class SearchClaims extends Page implements HasForms, HasTable
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('edit_status')
+                        ->label('Request Status Edit')
+                        ->icon('heroicon-o-arrow-path-rounded-square')
+                        ->color('warning')
+                        ->visible(fn(Procedure $record) =>
+                            (auth()->user()->can('claims.valid') || auth()->user()->can('claims.request-fee'))
+                            && ! $record->hasPendingStatusEdit()
+                        )
+                        ->fillForm(fn(Procedure $record) => ['current_status' => $record->status])
+                        ->form([
+                            Forms\Components\TextInput::make('current_status')
+                                ->label('Current Status')
+                                ->formatStateUsing(fn($state) => ucfirst($state))
+                                ->disabled(),
+                            Forms\Components\Select::make('proposed_status')
+                                ->label('Proposed Status')
+                                ->options([
+                                    'pending'   => 'Pending',
+                                    'signed'    => 'Signed',
+                                    'valid'     => 'Valid',
+                                    'invalid'   => 'Rejected',
+                                    'returned'  => 'Returned',
+                                    'cancelled' => 'Cancelled',
+                                ])
+                                ->required()
+                                ->native(false),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Reason / Justification')
+                                ->required()
+                                ->rows(3),
+                        ])
+                        ->action(function (Procedure $record, array $data) {
+                            \App\Models\StatusEditRequest::create([
+                                'procedure_id'    => $record->id,
+                                'current_status'  => $record->status,
+                                'proposed_status' => $data['proposed_status'],
+                                'reason'          => $data['reason'],
+                                'requested_by'    => auth()->id(),
+                            ]);
+
+                            $approvers = User::permission('claims.approve-status')->get();
+                            $url = \App\Filament\Pages\StatusEditApprovals::getUrl();
+                            foreach ($approvers as $approver) {
+                                Notification::make()
+                                    ->title('New Status Edit Request')
+                                    ->body('A status edit was requested for approval code ' . ($record->approval_code ?? '—') . ' by ' . auth()->user()->name)
+                                    ->warning()
+                                    ->actions([NotificationAction::make('view')->label('Review Request')->url($url)])
+                                    ->sendToDatabase($approver);
+                            }
+
+                            Notification::make()
+                                ->title('Status Edit Requested')
+                                ->body('Your request has been submitted for approval.')
+                                ->success()
+                                ->send();
+                        }),
+
                     Tables\Actions\Action::make('edit_fee')
                         ->label('Request Fee Edit')
                         ->icon('heroicon-o-banknotes')
@@ -397,7 +458,7 @@ class SearchClaims extends Page implements HasForms, HasTable
                 ->button()
                 ->visible(fn(Procedure $record) =>
                     (auth()->user()->can('claims.valid') || auth()->user()->can('claims.request-fee'))
-                    && in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING])
+                    && in_array($record->status, [Procedure::STATUS_SIGN, Procedure::STATUS_PENDING, Procedure::STATUS_VALID, Procedure::STATUS_REJECT, Procedure::STATUS_RETURN])
                 ),
                 Tables\Actions\Action::make('request_validation')
                     ->label('Request Validation')

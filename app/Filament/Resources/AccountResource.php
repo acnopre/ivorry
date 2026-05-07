@@ -71,6 +71,13 @@ class AccountResource extends Resource
                                 ->label('Company Name')
                                 ->required()
                                 ->maxLength(255)
+                                ->unique(
+                                    table: 'accounts',
+                                    column: 'company_name',
+                                    ignoreRecord: true,
+                                    modifyRuleUsing: fn($rule) => $rule->whereNull('deleted_at')
+                                )
+                                ->validationMessages(['unique' => 'This company name is already registered.'])
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
 

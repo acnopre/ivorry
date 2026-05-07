@@ -183,7 +183,7 @@ class ProcedureResource extends Resource
                     ->label('Status')
                     ->options([
                         'pending'   => 'Pending',
-                        'sign'      => 'Signed',
+                        'signed'      => 'Signed',
                         'valid'     => 'Valid',
                         'rejected'  => 'Rejected',
                         'returned'  => 'Returned',

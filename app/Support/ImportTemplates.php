@@ -57,6 +57,7 @@ class ImportTemplates
     {
         return [
             'account_name'    => 'Sample Company ABC',
+            'hip'             => 'Sample HIP',
             'first_name'      => 'Juan',
             'last_name'       => 'Dela Cruz',
             'middle_name'     => 'Santos',

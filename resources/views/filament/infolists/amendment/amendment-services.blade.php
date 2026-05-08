@@ -5,9 +5,7 @@ $tabs = [
 ];
 
 
-$visibleServicesCount = $amendment_services->services
-->filter(fn($service) => ($service->quantity != 0 || $service->is_unlimited))
-->count();
+$visibleServicesCount = $amendment_services->services->count();
 @endphp
 <div x-data="{ activeTab: 'amendment_services' }" class="w-full">
     {{-- Full-Width Tab Headers (Uses standard Filament styles for look and feel) --}}

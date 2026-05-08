@@ -56,10 +56,11 @@ class ViewMember extends ViewRecord
 
                 Section::make('Account Information')
                     ->schema([
-                        Grid::make(2)
+                        Grid::make(3)
                             ->schema([
                                 TextEntry::make('account.company_name')->label('Company Name'),
                                 TextEntry::make('account.policy_code')->label('Policy Code'),
+                                TextEntry::make('account.hip.name')->label('HIP'),
                             ]),
                         Grid::make(3)
                             ->schema([

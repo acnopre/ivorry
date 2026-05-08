@@ -41,7 +41,7 @@ class MemberResource extends Resource
                                 name: 'account',
                                 modifyQueryUsing: fn($query) => $query->where('account_status', 'active')
                             )
-                            ->getOptionLabelFromRecordUsing(fn(Account $record) => "{$record->company_name} ({$record->policy_code})")
+                            ->getOptionLabelFromRecordUsing(fn(Account $record) => "{$record->company_name} ({$record->policy_code}) — {$record->hip?->name}")
                             ->required()
                             ->searchable(['company_name', 'policy_code'])
                             ->reactive()

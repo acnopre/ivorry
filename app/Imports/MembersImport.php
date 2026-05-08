@@ -58,10 +58,15 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             };
         }
 
-        $account = Account::where('company_name', $row['account_name'])->first();
+        $account = Account::where('company_name', $row['account_name'])
+            ->when(!empty($row['hip']), function ($q) use ($row) {
+                $q->whereHas('hip', fn($h) => $h->where('name', $row['hip']));
+            })
+            ->first();
 
         if (!$account) {
-            $this->logError($row, "Account '{$row['account_name']}' not found");
+            $hipHint = !empty($row['hip']) ? " with HIP '{$row['hip']}'" : '';
+            $this->logError($row, "Account '{$row['account_name']}'{$hipHint} not found");
             return null;
         }
 

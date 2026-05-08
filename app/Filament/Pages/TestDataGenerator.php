@@ -141,10 +141,11 @@ class TestDataGenerator extends Page implements HasForms
             $coverageType = $selectedCoverage === 'RANDOM' ? $coverageTypes[array_rand($coverageTypes)] : $selectedCoverage;
             // account_coverage_type applies to all plan types
             $memberCoverageType = $selectedMemberCoverage;
+            $hip = $hips[array_rand($hips)];
             $rows[] = [
                 'company_name'         => 'Test Company ' . strtoupper(Str::random(6)),
                 'policy_code'          => 'POL-' . strtoupper(Str::random(8)),
-                'hip'                  => $hips[array_rand($hips)],
+                'hip'                  => $hip,
                 'card_used'            => $cardUsed[array_rand($cardUsed)],
                 'effective_date'       => $effectiveDate,
                 'expiration_date'      => $expirationDate,
@@ -230,6 +231,7 @@ class TestDataGenerator extends Page implements HasForms
 
                 $rows[] = [
                     'account_name'    => $accountName,
+                    'hip'             => is_array($account) ? ($account['hip'] ?? '') : (\App\Models\Account::where('company_name', $accountName)->first()?->hip?->name ?? ''),
                     'first_name'      => $firstName,
                     'last_name'       => $lastName,
                     'middle_name'     => $middleNames[array_rand($middleNames)],

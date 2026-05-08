@@ -19,7 +19,7 @@
         @foreach($serviceTypes as $type => $config)
             @php
                 $filteredServices = $services->services->filter(function($service) use ($type) {
-                    return $service->service->type === $type && ($type === 'basic' || $service->is_unlimited || $service->quantity != 0);
+                    return $service->service->type === $type;
                 });
             @endphp
 
@@ -52,7 +52,7 @@
                                 $qtyChanged = $current && (string)$current->quantity !== (string)$service->quantity;
                                 $unlimitedChanged = $current && (bool)$current->is_unlimited !== (bool)$service->is_unlimited;
                             @endphp
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {{ (!$service->is_unlimited && $service->quantity == 0 && $current && $current->quantity > 0) ? 'bg-danger-50/40 dark:bg-danger-900/10' : '' }}">
                                 <td class="px-6 py-4">
                                     <div class="font-medium text-gray-900 dark:text-gray-100">
                                         {{ $service->service->name }}
@@ -66,30 +66,32 @@
 
                                 <td class="px-6 py-4 text-right font-mono">
                                     @if ($service->is_unlimited)
-                                    <span class="text-gray-400 italic">N/A</span>
+                                        <span class="text-gray-400 italic">N/A</span>
                                     @elseif ($service->quantity > 0)
-                                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">
-                                        {{ number_format($service->quantity) }}
-                                    </span>
+                                        <span class="text-lg font-bold text-primary-600 dark:text-primary-400">
+                                            {{ number_format($service->quantity) }}
+                                        </span>
                                     @else
-                                    <span class="text-lg font-bold text-danger-600 dark:text-danger-400">0</span>
+                                        <x-filament::badge color="danger">Removed (0)</x-filament::badge>
                                     @endif
                                     @if ($qtyChanged)
                                     <div class="text-xs text-warning-600 dark:text-warning-400 mt-0.5">
-                                        Current Value: {{ $current->is_unlimited ? 'Unlimited' : number_format($current->quantity) }}
+                                        Current: {{ $current->is_unlimited ? 'Unlimited' : number_format($current->quantity) }}
                                     </div>
                                     @endif
                                 </td>
 
                                 <td class="px-6 py-4 text-center">
                                     @if ($service->is_unlimited)
-                                    <x-filament::badge color="success">Unlimited</x-filament::badge>
+                                        <x-filament::badge color="success">Unlimited</x-filament::badge>
+                                    @elseif ($service->quantity == 0 && $current && $current->quantity > 0)
+                                        <x-filament::badge color="danger">Zeroed Out</x-filament::badge>
                                     @else
-                                    <x-filament::badge color="gray">Limited</x-filament::badge>
+                                        <x-filament::badge color="gray">Limited</x-filament::badge>
                                     @endif
                                     @if ($unlimitedChanged && !$qtyChanged)
                                     <div class="text-xs text-warning-600 dark:text-warning-400 mt-1">
-                                        Current Value: {{ $current->is_unlimited ? 'Unlimited' : 'Limited' }}
+                                        Current: {{ $current->is_unlimited ? 'Unlimited' : 'Limited' }}
                                     </div>
                                     @endif
                                 </td>

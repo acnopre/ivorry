@@ -6,6 +6,7 @@ use App\Filament\Resources\AccountResource;
 use App\Models\AccountAmendment;
 use App\Models\AccountRenewal;
 use App\Services\AccountEndorsementService;
+use App\Services\AccountService;
 use App\Models\User;
 use Carbon\Carbon;
 use Filament\Actions;
@@ -137,6 +138,21 @@ class EditAccount extends EditRecord
         // 2. HANDLE AMENDMENT WORKFLOW (NEW)
         // -------------------------------------------------------------------
         if ($data['endorsement_type'] === 'AMENDMENT') {
+
+            // Same company + same HIP as another account = reject
+            $newCompany = $data['company_name'] ?? $record->company_name;
+            $newHipId   = $data['hip_id'] ?? $record->hip_id;
+
+            if (AccountService::isDuplicateCompanyHip($newCompany, $newHipId, $record->id)) {
+                Notification::make()
+                    ->danger()
+                    ->title('Duplicate Account')
+                    ->body(AccountService::duplicateMessage($newCompany, $newHipId))
+                    ->persistent()
+                    ->send();
+                $this->halt();
+                return;
+            }
 
             DB::transaction(function () use ($record, $data) {
                 AccountEndorsementService::deletePendingAmendments($record->id);

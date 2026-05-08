@@ -11,6 +11,7 @@ use App\Models\ImportLog;
 use App\Models\ImportLogItem;
 use App\Models\Service;
 use App\Services\AccountEndorsementService;
+use App\Services\AccountService as AccountServiceHelper;
 use App\Services\MblBalanceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -371,9 +372,10 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
             return 'Missing required fields: Company Name, Policy Code, HIP, Plan Type, and Coverage Type are all required';
         }
 
-        // Reject if company_name already exists (regardless of policy_code)
-        if (Account::where('company_name', $row['company_name'])->exists()) {
-            return "Company name '{$row['company_name']}' already exists. Duplicate company names are not allowed.";
+        // Same company + same HIP = reject (duplicate account under same insurer)
+        $hipId = Hip::where('name', $row['hip'])->value('id');
+        if ($hipId && AccountServiceHelper::isDuplicateCompanyHip($row['company_name'], $hipId)) {
+            return AccountServiceHelper::duplicateMessage($row['company_name'], $hipId);
         }
 
         if (!in_array(strtoupper($row['plan_type']), ['INDIVIDUAL', 'SHARED'])) {
@@ -460,22 +462,7 @@ class AccountImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
     private function attachServicesToAccount(Account $account, array $row): void
     {
-        $pivotData = [];
-        foreach ($this->services as $service) {
-            if (isset($row[$service->slug])) {
-                $value       = $row[$service->slug];
-                $isUnlimited = $service->type === 'basic' || strtolower($value) === 'unlimited';
-                $quantity    = $isUnlimited ? null : (is_numeric($value) ? $value : 0);
-                $pivotData[$service->id] = [
-                    'quantity'         => $quantity,
-                    'default_quantity' => $quantity,
-                    'is_unlimited'     => $isUnlimited,
-                ];
-            }
-        }
-        if (!empty($pivotData)) {
-            $account->services()->sync($pivotData);
-        }
+        AccountServiceHelper::syncServicesFromImportRow($account, $this->services, $row);
     }
 
     private function attachServicesToAmendment(AccountAmendment $amendment, array $row, $currentServices = null): void

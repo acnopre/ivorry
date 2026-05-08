@@ -71,13 +71,6 @@ class AccountResource extends Resource
                                 ->label('Company Name')
                                 ->required()
                                 ->maxLength(255)
-                                ->unique(
-                                    table: 'accounts',
-                                    column: 'company_name',
-                                    ignoreRecord: true,
-                                    modifyRuleUsing: fn($rule) => $rule->whereNull('deleted_at')
-                                )
-                                ->validationMessages(['unique' => 'This company name is already registered.'])
                                 ->disabled(fn(Forms\Get $get) => ! $isAmendment($get)),
 
 
@@ -571,17 +564,39 @@ class AccountResource extends Resource
             ->columns([
                 TextColumn::make('company_name')
                     ->label('Account')
-                    ->formatStateUsing(fn($record) => "{$record->company_name} ({$record->policy_code})")
                     ->sortable()
-                    ->searchable(['company_name', 'policy_code'])
-                    ->description(fn($record) => $record->renewals()->where('status', 'APPROVED_PENDING_EFFECTIVE')->exists()
-                        ? '🔄 Renewal approved — awaiting effective date'
-                        : null
+                    ->searchable()
+                    ->wrap()
+                    ->grow()
+                    ->description(
+                        fn($record) => $record->hip?->name . ' · ' . $record->policy_code
                     ),
 
-                TextColumn::make('endorsement_type')
-                    ->label('Endorsement Type')
+                TextColumn::make('account_status')
+                    ->label('Status')
                     ->badge()
+                    ->grow(false)
+                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->colors([
+                        'warning' => 'inactive',
+                        'success' => 'active',
+                        'danger'  => 'expired',
+                    ]),
+
+                TextColumn::make('plan_type')
+                    ->label('Plan')
+                    ->badge()
+                    ->grow(false)
+                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->colors([
+                        'warning' => 'SHARED',
+                        'info'    => 'INDIVIDUAL',
+                    ]),
+
+                TextColumn::make('endorsement_type')
+                    ->label('Endorsement')
+                    ->badge()
+                    ->grow(false)
                     ->colors([
                         'success' => fn($state) => $state === 'NEW',
                         'warning' => fn($state) => $state === 'RENEWAL',
@@ -591,51 +606,35 @@ class AccountResource extends Resource
                 TextColumn::make('endorsement_status')
                     ->label('Endorsement Status')
                     ->badge()
+                    ->grow(false)
                     ->formatStateUsing(fn($state) => match ($state) {
-                        'PENDING' => 'Pending',
+                        'PENDING'  => 'Pending',
                         'APPROVED' => 'Approved',
                         'REJECTED' => 'Rejected',
-                        default => $state,
+                        default    => $state,
                     })
                     ->colors([
                         'warning' => fn($state) => $state === 'PENDING',
                         'success' => fn($state) => $state === 'APPROVED',
-                        'danger' => fn($state) => $state === 'REJECTED',
-                    ]),
-
-                TextColumn::make('account_status')
-                    ->label('Account Status')
-                    ->badge()
-                    ->formatStateUsing(fn($state) => ucfirst($state))
-                    ->colors([
-                        'warning' => 'inactive',
-                        'success'   => 'active',
-                        'danger'    => 'expired',
-                    ]),
-
-                TextColumn::make('plan_type')
-                    ->label('Plan Type')
-                    ->badge()
-                    ->formatStateUsing(fn($state) => ucfirst($state))
-                    ->colors([
-                        'warning' => 'SHARED',
-                        'info'   => 'INDIVIDUAL',
+                        'danger'  => fn($state) => $state === 'REJECTED',
                     ]),
 
                 TextColumn::make('effective_date')
-                    ->label('Effective')
-                    ->date(),
-
-                TextColumn::make('expiration_date')
-                    ->label('Valid Until')
-                    ->date(),
+                    ->label('Coverage')
+                    ->grow(false)
+                    ->formatStateUsing(
+                        fn($state, $record) =>
+                        \Carbon\Carbon::parse($state)->format('M d, Y') . ' – ' .
+                            ($record->expiration_date ? \Carbon\Carbon::parse($record->expiration_date)->format('M d, Y') : '—')
+                    ),
 
                 TextColumn::make('created_at')
                     ->label('Created')
                     ->dateTime()
+                    ->grow(false)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('updated_at', 'desc')
             ->defaultPaginationPageOption(25)
             ->persistFiltersInSession()
             ->filters([
@@ -673,9 +672,10 @@ class AccountResource extends Resource
 
                 Filter::make('expiring_soon')
                     ->label('Expiring Soon (30 days)')
-                    ->query(fn(Builder $query) => $query
-                        ->where('account_status', 'active')
-                        ->whereBetween('expiration_date', [now(), now()->addDays(30)])
+                    ->query(
+                        fn(Builder $query) => $query
+                            ->where('account_status', 'active')
+                            ->whereBetween('expiration_date', [now(), now()->addDays(30)])
                     )
                     ->toggle(),
 

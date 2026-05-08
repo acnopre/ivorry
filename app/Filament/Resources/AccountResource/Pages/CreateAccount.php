@@ -5,6 +5,7 @@ namespace App\Filament\Resources\AccountResource\Pages;
 use App\Filament\Resources\AccountResource;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AccountService;
 use Carbon\Carbon;
 use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Resources\Pages\CreateRecord;
@@ -21,6 +22,19 @@ class CreateAccount extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->servicesData = $data['services'] ?? [];
+
+        // Same company + same HIP = reject
+        if (!empty($data['company_name']) && !empty($data['hip_id'])) {
+            if (AccountService::isDuplicateCompanyHip($data['company_name'], $data['hip_id'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Duplicate Account')
+                    ->body(AccountService::duplicateMessage($data['company_name'], $data['hip_id']))
+                    ->persistent()
+                    ->send();
+                throw new Halt();
+            }
+        }
 
         // Check if expiration_date is in the past
         if (! $this->confirmedExpired && ! empty($data['expiration_date'])) {
@@ -93,42 +107,8 @@ class CreateAccount extends CreateRecord
 
     protected function saveServices(): void
     {
-        $basic = $this->servicesData['basic'] ?? [];
-        $enhancement = $this->servicesData['enhancement'] ?? [];
-        $special = $this->servicesData['special'] ?? [];
-
-        $mergedServices = $basic + $enhancement + $special;
-        if (empty($mergedServices)) {
-            return;
-        }
-
-        $filtered = collect($mergedServices)
-            ->filter(function ($pivotData) {
-                return (isset($pivotData['quantity']) && (int) $pivotData['quantity'] > 0)
-                    || ($pivotData['is_unlimited'] ?? false)
-                    || ! empty($pivotData['remarks']);
-            })
-            ->mapWithKeys(function ($pivotData, $serviceId) {
-                return [
-                    $serviceId => [
-                        'quantity' => $pivotData['quantity'] ?? null,
-                        'default_quantity' => $pivotData['quantity'] ?? null,
-                        'is_unlimited' => filter_var($pivotData['is_unlimited'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                        'remarks' => $pivotData['remarks'] ?? null,
-                    ],
-                ];
-            })
-            ->toArray();
-
-        if (! empty($filtered)) {
-            $this->record->services()->sync($filtered);
-        } else {
-            Notification::make()
-                ->title('No services saved')
-                ->body('All service entries were empty and filtered out.')
-                ->warning()
-                ->send();
-        }
+        if (empty($this->servicesData)) return;
+        AccountService::syncServicesFromForm($this->record, $this->servicesData);
     }
 
     protected function getRedirectUrl(): string

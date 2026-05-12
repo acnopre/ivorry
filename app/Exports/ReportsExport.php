@@ -53,7 +53,7 @@ class ReportsExport extends DefaultValueBinder implements FromQuery, WithHeading
     public function headings(): array
     {
         return match ($this->type) {
-            'members' => ['Account Name', 'HIP', 'Name',  'Member Type', 'Card Number', 'Gender', 'Status', 'Source', 'Account Effective Date', 'Account Valid Until', 'Inactive Date', 'Date Added'],
+            'members' => ['Account Name', 'HIP', 'Name', 'Member Type', 'Card Number', 'Gender', 'Status', 'Source', 'Account Effective Date', 'Account Valid Until', 'Inactive Date', 'Endorsement Deletion Date', 'Date Added'],
             'dentists' => ['Clinic Name', 'Dentist Name', 'Specialization', 'Status', 'Date Added'],
             'clinics' => ['Clinic Name', 'Registered Name', 'Address', 'Branch', 'Business Type', 'Vat Type', 'Witholding Tax', 'Accreditation Status', 'Date Added'],
             'procedures' => ['Availment Date', 'Member Name', 'Account', 'HIP', 'Clinic Name', 'Procedure Name', 'Units', 'Applied Fee', 'Approval Code', 'Status', 'Date Added'],
@@ -81,6 +81,7 @@ class ReportsExport extends DefaultValueBinder implements FromQuery, WithHeading
                 $row->account->effective_date->format('Y-m-d'),
                 $row->account->expiration_date->format('Y-m-d'),
                 optional($row->inactive_date)?->format('Y-m-d'),
+                optional($row->endorsement_deletion_date)?->format('Y-m-d'),
                 optional($row->created_at)?->format('Y-m-d'),
             ],
 

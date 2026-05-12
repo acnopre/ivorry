@@ -27,6 +27,7 @@ class Member extends Model
         'expiration_date',
         'status',
         'inactive_date',
+        'endorsement_deletion_date',
         'import_source',
         'mbl_balance',
         'import_id',
@@ -40,6 +41,7 @@ class Member extends Model
         'effective_date' => 'date',
         'expiration_date' => 'date',
         'inactive_date' => 'date',
+        'endorsement_deletion_date' => 'date',
     ];
 
     protected static function booted(): void

@@ -712,6 +712,10 @@ class ReportsPage extends Page implements HasForms, HasTable
 
                 Tables\Columns\TextColumn::make('inactive_date')
                     ->label('Inactive Date'),
+                Tables\Columns\TextColumn::make('endorsement_deletion_date')
+                    ->label('Endorsement Deletion Date')
+                    ->date('M d, Y')
+                    ->placeholder('—'),
                 Tables\Columns\TextColumn::make('created_at')->date()->label('Date Created'),
             ],
 

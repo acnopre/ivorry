@@ -124,6 +124,12 @@ class ViewMember extends ViewRecord
                                 TextEntry::make('effective_date')->date()->placeholder('—'),
                                 TextEntry::make('expiration_date')->label('Valid Until Date')->date()->placeholder('—'),
                                 TextEntry::make('inactive_date')->date()->placeholder('—'),
+                                TextEntry::make('endorsement_deletion_date')
+                                    ->label('Endorsement Deletion Date')
+                                    ->date()
+                                    ->placeholder('—')
+                                    ->visible(fn($record) => filled($record->endorsement_deletion_date))
+                                    ->color('danger'),
                             ]),
                     ]),
 

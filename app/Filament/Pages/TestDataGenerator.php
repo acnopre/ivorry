@@ -243,10 +243,11 @@ class TestDataGenerator extends Page implements HasForms
                     'email'           => strtolower(str_replace(' ', '', $firstName) . '.' . str_replace(' ', '', $lastName) . rand(10, 999)) . '@example.com',
                     'phone'           => '09' . rand(100000000, 999999999),
                     'address'         => rand(1, 999) . ' ' . $lastNames[array_rand($lastNames)] . ' St., Manila',
-                    'status'          => 'ACTIVE',
-                    'inactive_date'   => '',
-                    'effective_date'  => $memberEffective,
-                    'expiration_date' => $memberExpiration,
+                    'status'                    => 'ACTIVE',
+                    'inactive_date'             => '',
+                    'endorsement_deletion_date' => '',
+                    'effective_date'            => $memberEffective,
+                    'expiration_date'           => $memberExpiration,
                 ];
             }
         }

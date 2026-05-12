@@ -153,13 +153,14 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     $member->restore();
                     $restored = true;
                     $member->update([
-                        'card_number'    => $row['card_number'],
-                        'member_type'    => $row['member_type'],
-                        'status'         => $row['status'] ?? $member->status,
-                        'inactive_date'  => !empty($row['inactive_date']) && is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : $member->inactive_date,
-                        'effective_date' => !empty($row['effective_date']) && is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : $member->effective_date,
-                        'expiration_date' => !empty($row['expiration_date']) && is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : $member->expiration_date,
-                        'import_id'      => $this->importLog->id,
+                        'card_number'               => $row['card_number'],
+                        'member_type'               => $row['member_type'],
+                        'status'                    => $row['status'] ?? $member->status,
+                        'inactive_date'             => !empty($row['inactive_date']) && is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : $member->inactive_date,
+                        'endorsement_deletion_date' => !empty($row['endorsement_deletion_date']) && is_numeric($row['endorsement_deletion_date']) ? Date::excelToDateTimeObject($row['endorsement_deletion_date'])->format('Y-m-d') : $member->endorsement_deletion_date,
+                        'effective_date'            => !empty($row['effective_date']) && is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : $member->effective_date,
+                        'expiration_date'           => !empty($row['expiration_date']) && is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : $member->expiration_date,
+                        'import_id'                 => $this->importLog->id,
                     ]);
                 } else {
                     $oldData = [
@@ -179,6 +180,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
                     $incomingBirthdate = !empty($row['birthdate']) && is_numeric($row['birthdate']) ? Date::excelToDateTimeObject($row['birthdate'])->format('Y-m-d') : ($row['birthdate'] ?? null);
                     $incomingInactive = !empty($row['inactive_date']) && is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;
+                    $incomingDeletion = !empty($row['endorsement_deletion_date']) && is_numeric($row['endorsement_deletion_date']) ? Date::excelToDateTimeObject($row['endorsement_deletion_date'])->format('Y-m-d') : ($row['endorsement_deletion_date'] ?? null);
                     $incomingEffective = !empty($row['effective_date']) && is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null;
                     $incomingExpiration = !empty($row['expiration_date']) && is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null;
 
@@ -193,6 +195,7 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                         && $member->address == ($row['address'] ?? null)
                         && strtolower($member->status) === strtolower($row['status'] ?? '')
                         && $member->inactive_date == $incomingInactive
+                        && $member->endorsement_deletion_date == $incomingDeletion
                         && $member->effective_date == $incomingEffective
                         && $member->expiration_date == $incomingExpiration;
 
@@ -220,6 +223,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
                     if (!empty($row['inactive_date'])) {
                         $updateData['inactive_date'] = is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null;
+                    }
+                    if (!empty($row['endorsement_deletion_date'])) {
+                        $updateData['endorsement_deletion_date'] = is_numeric($row['endorsement_deletion_date']) ? Date::excelToDateTimeObject($row['endorsement_deletion_date'])->format('Y-m-d') : $row['endorsement_deletion_date'];
                     }
                     if (!empty($row['effective_date'])) {
                         $updateData['effective_date'] = is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null;
@@ -251,8 +257,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
                     'email'         => $row['email'],
                     'phone'         => $row['phone'],
                     'address'       => $row['address'] ?? null,
-                    'status'        => $pendingRenewal ? 'INACTIVE' : ($row['status'] ?? 'active'),
-                    'inactive_date' => is_numeric($row['inactive_date']) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
+                    'status'                    => $pendingRenewal ? 'INACTIVE' : ($row['status'] ?? 'active'),
+                    'inactive_date'             => is_numeric($row['inactive_date'] ?? null) ? Date::excelToDateTimeObject($row['inactive_date'])->format('Y-m-d') : null,
+                    'endorsement_deletion_date' => !empty($row['endorsement_deletion_date']) ? (is_numeric($row['endorsement_deletion_date']) ? Date::excelToDateTimeObject($row['endorsement_deletion_date'])->format('Y-m-d') : $row['endorsement_deletion_date']) : null,
                     'import_source' => strtoupper($row['status'] ?? 'ACTIVE') === 'INACTIVE' ? 'import_inactive' : 'import_active',
                     'effective_date' => is_numeric($row['effective_date']) ? Date::excelToDateTimeObject($row['effective_date'])->format('Y-m-d') : null,
                     'expiration_date' => is_numeric($row['expiration_date']) ? Date::excelToDateTimeObject($row['expiration_date'])->format('Y-m-d') : null,
@@ -319,6 +326,10 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
 
         if (empty($row['status']) || !in_array(strtoupper($row['status']), ['ACTIVE', 'INACTIVE'])) {
             return 'Invalid status. Must be ACTIVE or INACTIVE';
+        }
+
+        if (strtoupper($row['status']) === 'INACTIVE' && empty($row['endorsement_deletion_date'])) {
+            return 'endorsement_deletion_date is required when status is INACTIVE';
         }
 
         if (!empty($row['email']) && !filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
@@ -473,9 +484,9 @@ class MembersImport implements ToModel, WithChunkReading, WithHeadingRow, SkipsO
     private function diffSummary(array $old, array $new): string
     {
         $changes = [];
-        $compare = ["card_number", "member_type", "status", "inactive_date", "effective_date", "expiration_date", "birthdate", "gender", "email", "phone", "middle_name", "suffix"];
-        $dateFields = ["birthdate", "inactive_date", "effective_date", "expiration_date"];
-        $labels = ["card_number" => "Card Number", "member_type" => "Member Type", "status" => "Status", "inactive_date" => "Inactive Date", "effective_date" => "Effective Date", "expiration_date" => "Valid Until", "birthdate" => "Birthdate", "gender" => "Gender", "email" => "Email", "phone" => "Phone", "middle_name" => "Middle Name", "suffix" => "Suffix"];
+        $compare = ["card_number", "member_type", "status", "inactive_date", "endorsement_deletion_date", "effective_date", "expiration_date", "birthdate", "gender", "email", "phone", "middle_name", "suffix"];
+        $dateFields = ["birthdate", "inactive_date", "endorsement_deletion_date", "effective_date", "expiration_date"];
+        $labels = ["card_number" => "Card Number", "member_type" => "Member Type", "status" => "Status", "inactive_date" => "Inactive Date", "endorsement_deletion_date" => "Endorsement Deletion Date", "effective_date" => "Effective Date", "expiration_date" => "Valid Until", "birthdate" => "Birthdate", "gender" => "Gender", "email" => "Email", "phone" => "Phone", "middle_name" => "Middle Name", "suffix" => "Suffix"];
         foreach ($compare as $field) {
             $oldVal = (string) ($old[$field] ?? "");
             $newVal = (string) ($new[$field] ?? "");

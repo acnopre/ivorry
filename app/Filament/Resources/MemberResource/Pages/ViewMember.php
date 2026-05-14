@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\MemberResource\Pages;
 
+use App\Filament\Resources\AccountResource;
 use App\Filament\Resources\MemberResource;
-use Filament\Infolists\Components\{Section, TextEntry, Grid, BadgeEntry, View};
+use App\Models\Member;
+use Filament\Infolists\Components\{Section, TextEntry, Grid, BadgeEntry, View, Tabs};
 use Filament\Infolists\Infolist;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\FontWeight;
@@ -14,6 +16,31 @@ class ViewMember extends ViewRecord
 
     public function infolist(Infolist $infolist): Infolist
     {
+        $record = $this->record;
+
+        // All accounts linked to this card number (including current)
+        $relatedMembers = Member::with('account.hip')
+            ->where('card_number', $record->card_number)
+            ->get();
+
+        $currentTab = Tabs\Tab::make($record->account?->company_name ?? 'Current Account')
+            ->badge('Current')
+            ->badgeColor('success')
+            ->schema([
+                $this->accountInfoSection($record->account, $record),
+                View::make('filament.infolists.services-table'),
+            ]);
+
+        $otherTabs = $relatedMembers
+            ->where('id', '!=', $record->id)
+            ->map(fn($m) => Tabs\Tab::make($m->account?->company_name ?? 'Account #' . $m->account_id)
+                ->schema([
+                    $this->accountInfoSection($m->account, $m),
+                    View::make('filament.infolists.member-account-services')
+                        ->viewData(['member' => $m]),
+                ])
+            )->values()->all();
+
         return $infolist
             ->schema([
                 Section::make('Member Information')
@@ -32,8 +59,7 @@ class ViewMember extends ViewRecord
                                         default    => 'gray',
                                     })
                                     ->helperText(
-                                        fn($record) =>
-                                        $record->renewal_id
+                                        fn($record) => $record->renewal_id
                                             ? '🔄 Staged for renewal — will activate on ' . \Carbon\Carbon::parse(
                                                 \App\Models\AccountRenewal::find($record->renewal_id)?->effective_date
                                             )->format('M d, Y')
@@ -51,60 +77,6 @@ class ViewMember extends ViewRecord
                                 TextEntry::make('suffix')->label('Suffix')->placeholder('—'),
                                 TextEntry::make('birthdate')->date()->placeholder('—'),
                                 TextEntry::make('gender')->label('Gender')->placeholder('—'),
-                            ]),
-                    ]),
-
-                Section::make('Account Information')
-                    ->schema([
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('account.company_name')->label('Company Name'),
-                                TextEntry::make('account.policy_code')->label('Policy Code'),
-                                TextEntry::make('account.hip.name')->label('HIP'),
-                            ]),
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('account.effective_date')->date()->label('Account Effective Date'),
-                                TextEntry::make('account.expiration_date')->date()->label('Account Valid Until'),
-                                TextEntry::make('account.account_status')
-                                    ->label('Account Status')
-                                    ->badge()
-                                    ->formatStateUsing(fn($state) => ucfirst($state))
-                                    ->color(fn($state) => match ($state) {
-                                        'active'   => 'success',
-                                        'expired'  => 'danger',
-                                        'inactive' => 'warning',
-                                        default    => 'gray',
-                                    })
-                                    ->helperText(
-                                        fn($record) =>
-                                        $record->account?->renewals()
-                                            ->where('status', 'APPROVED_PENDING_EFFECTIVE')
-                                            ->exists()
-                                            ? '🔄 Renewal effective ' . \Carbon\Carbon::parse(
-                                                $record->account->renewals()
-                                                    ->where('status', 'APPROVED_PENDING_EFFECTIVE')
-                                                    ->value('effective_date')
-                                            )->format('M d, Y')
-                                            : null
-                                    ),
-                            ]),
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('account.plan_type')->label('Plan Type')->badge(),
-                                TextEntry::make('account.mbl_type')->label('MBL Type')->badge(),
-                                TextEntry::make('account.mbl_amount')
-                                    ->label('MBL Amount')
-                                    ->money('PHP')
-                                    ->visible(fn($record) => $record->account?->mbl_type === 'Fixed'),
-                            ]),
-                        Grid::make(1)
-                            ->schema([
-                                TextEntry::make('mbl_balance')
-                                    ->label('MBL Balance')
-                                    ->money('PHP')
-                                    ->visible(fn($record) => $record->account?->mbl_type === 'Fixed')
-                                    ->color(fn($state, $record) => $state < ($record->account?->mbl_amount * 0.2) ? 'danger' : 'success'),
                             ]),
                     ]),
 
@@ -133,11 +105,64 @@ class ViewMember extends ViewRecord
                             ]),
                     ]),
 
-                Section::make('Assigned Account Services')
+                Section::make('Accounts')
                     ->schema([
-                        View::make('filament.infolists.services-table'),
-                    ])
-                    ->collapsible(),
+                        Tabs::make('accounts_tabs')
+                            ->tabs(array_merge([$currentTab], $otherTabs))
+                            ->columnSpanFull(),
+                    ]),
             ]);
+    }
+
+    private function accountInfoSection(?\App\Models\Account $account, Member $member): Section
+    {
+        return Section::make('Account Information')
+            ->schema([
+                Grid::make(3)
+                    ->schema([
+                        TextEntry::make('account.company_name')
+                            ->label('Company Name')
+                            ->state($account?->company_name)
+                            ->url($account ? AccountResource::getUrl('view', ['record' => $account->id]) : null)
+                            ->openUrlInNewTab(),
+                        TextEntry::make('account.policy_code')
+                            ->label('Policy Code')
+                            ->state($account?->policy_code),
+                        TextEntry::make('account.hip.name')
+                            ->label('HIP')
+                            ->state($account?->hip?->name),
+                        TextEntry::make('account.plan_type')
+                            ->label('Plan Type')
+                            ->state($account?->plan_type)
+                            ->badge(),
+                        TextEntry::make('account.mbl_type')
+                            ->label('MBL Type')
+                            ->state($account?->mbl_type)
+                            ->badge(),
+                        TextEntry::make('account.mbl_amount_' . $member->id)
+                            ->label('MBL Amount')
+                            ->state($account?->mbl_type === 'Fixed' ? $account?->mbl_amount : null)
+                            ->money('PHP')
+                            ->visible($account?->mbl_type === 'Fixed'),
+                        TextEntry::make('mbl_balance_' . $member->id)
+                            ->label('MBL Balance')
+                            ->state($account?->mbl_type === 'Fixed' ? $member->mbl_balance : null)
+                            ->money('PHP')
+                            ->visible($account?->mbl_type === 'Fixed')
+                            ->color(fn($state) => ($state ?? 0) < ($account?->mbl_amount * 0.2) ? 'danger' : 'success'),
+                        TextEntry::make('account.account_status_' . $member->id)
+                            ->label('Account Status')
+                            ->state($account?->account_status)
+                            ->badge()
+                            ->formatStateUsing(fn($state) => ucfirst($state ?? ''))
+                            ->color(fn($state) => match ($state) {
+                                'active'   => 'success',
+                                'expired'  => 'danger',
+                                'inactive' => 'warning',
+                                default    => 'gray',
+                            }),
+                    ]),
+            ])
+            ->compact();
     }
 }

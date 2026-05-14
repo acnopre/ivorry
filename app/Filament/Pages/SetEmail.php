@@ -22,6 +22,8 @@ class SetEmail extends Page implements Forms\Contracts\HasForms
 
     public ?array $data = [];
 
+    public ?bool $emailSaved = false;
+
     public function mount(): void
     {
         $this->form->fill([
@@ -84,9 +86,12 @@ class SetEmail extends Page implements Forms\Contracts\HasForms
            
             Notification::make()
                 ->title('Email updated successfully!')
-                ->body('We’ve sent a password reset link to your new email. Please check your inbox.') 
-                ->success() 
+                ->body('We’ve sent a password reset link to your new email. Please check your inbox.')
+                ->success()
+                ->persistent()
                 ->send();
+
+            $this->emailSaved = true;
         }
 
     }
